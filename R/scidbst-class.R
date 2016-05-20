@@ -114,7 +114,7 @@ setMethod("getValues", signature(x='scidbst', row='missing', nrows='missing'),
                 return( matrix(rep(NA, ncell(x) * nlayers(x)), ncol=nlayers(x)) )
               }
             }
-            colnames(x@data@values) <- names(x)
+            colnames(x@data@values) <- x@data@names
             x@data@values
           }
 )
@@ -147,6 +147,10 @@ setMethod("names",signature(x="scidbst"), function(x) {
   return(c(c(dimensions(x),scidb_attributes(x))))
 })
 
+
+setMethod("subset",signature(x="scidbst"), function(x, ...) scidb:::filter_scidb(x, ...))
+
+
 .materializeSCIDBValues = function(object, startrow, nrows=1, startcol=1, ncols=ncol(object)) {
   offs <- c((startrow - 1), (startcol - 1))
   reg <- c(nrows, ncols)
@@ -155,16 +159,24 @@ setMethod("names",signature(x="scidbst"), function(x) {
   #		result <- getRasterData(con, offset=offs, region.dim=reg)
   #		result <- do.call(cbind, lapply(1:nlayers(object), function(i) as.vector(result[,,i])))
   # just as fast, it seems:
-  result <- matrix(nrow = ncols * nrows, ncol = nlayers(object))
+  result <- matrix(nrow = (ncol(object)+1) * (nrow(object)+1), ncol = nlayers(object))
   print("Downloading data...")
-
-  .data = subset(object,paste(object@selector[1,1],"==",object@selector[2,1]))[] #materialize scidb array represented by object
+  #paste(object@selector[1,1],"==",object@selector[2,1],sep="")
+  .data = subset(object,t==1)[] #materialize scidb array represented by object
 
   for (b in 1:object@data@nlayers) {
-    lname = names(object)[b]
+    lname = object@data@names[b]
     #result[, b] <- getRasterData(con, offset = offs,region.dim = reg, band = b)
     #result[,b] <- sample(0:255,ncols*nrows,replace=T)
-    result[,b] <- .data[,lname]
+    #result[,b] <- .data[,lname] #NA values are skipped by SciDB, need to add values via column, row indices
+    for(i in 1:length(.data[,1])) {
+      row = .data[i,"y"]
+      col = .data[i,"x"]
+      val = .data[i,lname]
+
+      index = (row)*(ncol(object)+1)+col
+      result[index,b] = val
+    }
   }
 
 
