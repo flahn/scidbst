@@ -63,10 +63,11 @@ stdb = function(...){
   min = .transformToWorld(.scidb@affine,bbox["x","min"],bbox["y","max"])
   max = .transformToWorld(.scidb@affine,bbox["x","max"],bbox["y","min"])
 
-  .scidb@nrows = as.integer(bbox["y","max"] - bbox["y","min"])
-  .scidb@ncols = as.integer(bbox["x","max"] - bbox["x","min"])
+  .scidb@nrows = as.integer(bbox["y","max"] - bbox["y","min"]+1)
+  .scidb@ncols = as.integer(bbox["x","max"] - bbox["x","min"]+1)
 
   .scidb@extent <- extent(min[1], max[1], min[2], max[2])
+
   return(.scidb)
 
   # .scidb = scidb(...)
@@ -102,10 +103,26 @@ stdb = function(...){
   return(trans %*% c(1,x,y))
 }
 
+#' @export
+setGeneric("setSelection", function(x, dim, val) {
+  standardGeneric("setSelection")
+})
+
+#' @export
+setMethod("setSelection",
+          signature(x='scidbst',dim='character',val='numeric'),
+          function(x,dim,val) {
+            x@selector = matrix(c(dim,val),nrow=2)
+            return(x)
+          }
+)
 
 setMethod("getValues", signature(x='scidbst', row='missing', nrows='missing'),
-          function(x,taxis="t",tindex=0) {
-            x@selector = matrix(c(taxis,tindex),nrow=2)
+          function(x,taxis,tindex) {
+            if (! missing(taxis) & ! missing(tindex)) {
+              x@selector = matrix(c(taxis,tindex),nrow=2)
+            }
+
 
             if (! inMemory(x) ) {
               if ( fromDisk(x) ) {
@@ -159,26 +176,277 @@ setMethod("subset",signature(x="scidbst"), function(x, ...) scidb:::filter_scidb
   #		result <- getRasterData(con, offset=offs, region.dim=reg)
   #		result <- do.call(cbind, lapply(1:nlayers(object), function(i) as.vector(result[,,i])))
   # just as fast, it seems:
-  result <- matrix(nrow = (ncol(object)+1) * (nrow(object)+1), ncol = nlayers(object))
+  result <- matrix(nrow = (ncol(object)) * (nrow(object)), ncol = nlayers(object))
+
+
+
   print("Downloading data...")
-  #paste(object@selector[1,1],"==",object@selector[2,1],sep="")
-  .data = subset(object,t==1)[] #materialize scidb array represented by object
+  sel = paste(object@selector[1,1],"=",object@selector[2,1],sep="") #TODO replace with function that creates the string
+  .data = subset(object,sel)[] #materialize scidb array represented by object
+
 
   for (b in 1:object@data@nlayers) {
     lname = object@data@names[b]
-    #result[, b] <- getRasterData(con, offset = offs,region.dim = reg, band = b)
-    #result[,b] <- sample(0:255,ncols*nrows,replace=T)
-    #result[,b] <- .data[,lname] #NA values are skipped by SciDB, need to add values via column, row indices
-    for(i in 1:length(.data[,1])) {
-      row = .data[i,"y"]
-      col = .data[i,"x"]
-      val = .data[i,lname]
+    if (!is.na(.data[,lname]) || sum(.data[,lname])>0) {
+      #result[, b] <- getRasterData(con, offset = offs,region.dim = reg, band = b)
+      #result[,b] <- sample(0:255,ncols*nrows,replace=T)
+      #result[,b] <- .data[,lname] #NA values are skipped by SciDB, need to add values via column, row indices
 
-      index = (row)*(ncol(object)+1)+col
-      result[index,b] = val
+      tmp = matrix(nrow=(nrow(object)),ncol=(ncol(object)))
+      m = .data[order(.data[,"y"],.data[,"x"]),]
+      m[,1:2]=m[,1:2]+1
+      tmp2 = matrix(m[,lname],nrow=length(unique(m[,"y"])),ncol=length(unique(m[,"x"])),byrow=T)
+      tmp[unique(m[,"y"]),unique(m[,"x"])] = tmp2
+      #restructure the matrix to a one dimensional vector
+      restruct = as.vector(t(tmp))
+
+
+      result[,b] = restruct
+      # for(i in 1:length(.data[,1])) { #for each row
+      #   row = .data[i,"y"]
+      #   col = .data[i,"x"]
+      #   val = .data[i,lname]
+      #
+      #   index = (row)*(ncol(object)+1)+col
+      #   result[index,b] = val
+      # }
     }
   }
 
-
   return(result)
 }
+
+#copy pasted from raster
+setMethod("spplot", signature(obj='scidbst'),
+          function(obj, ..., maxpixels=50000, as.table=TRUE, zlim)  {
+
+            obj <- sampleRegular(obj, maxpixels, asRaster=TRUE,useGDAL=TRUE)
+            if (!missing(zlim)) {
+              if (length(zlim) != 2) {
+                warning('zlim should be a vector of two elements')
+              }
+              if (length(zlim) >= 2) {
+                obj[obj < zlim[1] | obj > zlim[2]] <- NA
+              }
+            }
+
+            obj <- as(obj, 'SpatialGridDataFrame')
+            #obj@data <- obj@data[, ncol(obj@data):1]
+            spplot(obj, ..., as.table=as.table)
+          }
+)
+
+#copied from raster with small changes
+setMethod('sampleRegular', signature(x='scidbst'),
+          function( x, size, ext=NULL, cells=FALSE, xy=FALSE, asRaster=FALSE, sp=FALSE, useGDAL=FALSE, ...) {
+
+            stopifnot(hasValues(x))
+
+            size <- round(size)
+            stopifnot(size > 0)
+            nl <- nlayers(x)
+            rotated <- rotated(x)
+
+            if (is.null(ext)) {
+              if (size >= ncell(x)) {
+                if (asRaster) {
+                  if (!rotated) {
+                    return(x)
+                  }
+                } else {
+                  if (cells) {
+                    return(cbind(1:ncell(x), values(x)))
+                  } else {
+                    return(values(x))
+                  }
+                }
+              }
+              rcut <- raster(x)
+              firstrow <- 1
+              lastrow <- nrow(rcut)
+              firstcol <- 1
+              lastcol <- ncol(rcut)
+
+            } else {
+
+              rcut <- crop(raster(x), ext)
+              ext <- extent(rcut)
+              if (size >= ncell(rcut)) {
+                x <- crop(x, ext)
+                if (asRaster) {
+                  return(x)
+                } else {
+                  return(getValues(x))
+                }
+              }
+              yr <- yres(rcut)
+              xr <- xres(rcut)
+              firstrow <- rowFromY(x, ext@ymax-0.5 *yr)
+              lastrow <- rowFromY(x, ext@ymin+0.5*yr)
+              firstcol <- colFromX(x, ext@xmin+0.5*xr)
+              lastcol <- colFromX(x, ext@xmax-0.5*xr)
+            }
+
+
+            Y <- X <- sqrt(ncell(rcut)/size)
+            nr <- max(1, floor((lastrow - firstrow + 1) / Y))
+            nc <- max(1, floor((lastcol - firstcol + 1) / X))
+
+            rows <- (lastrow - firstrow + 1)/nr * 1:nr + firstrow - 1
+            rows <- rows - (0.5 * (lastrow - firstrow + 1)/nr)
+            cols <- (lastcol - firstcol + 1)/nc * 1:nc  + firstcol - 1
+            cols <- cols - (0.5 * (lastcol - firstcol + 1)/nc)
+
+            cols <- unique(round(cols))
+            rows <- unique(round(rows))
+            cols <- cols[cols>0]
+            rows <- rows[rows>0]
+            nr <- length(rows)
+            nc <- length(cols)
+
+
+            if (fromDisk(x)) {
+
+              if (cells | any(rotated | raster:::.driver(x, FALSE) != 'gdal')) {
+                useGDAL <- FALSE
+              }
+              if (useGDAL) {
+                offs <- c(firstrow,firstcol)-1
+                reg <- c(nrow(rcut), ncol(rcut))-1
+
+                if (inherits(x, 'RasterStack')) {
+
+                  v <- matrix(NA, ncol=nl, nrow=prod(nr, nc))
+
+                  for (i in 1:nl) {
+                    xx <- x[[i]]
+                    con <- GDAL.open(xx@file@name, silent=TRUE)
+                    band <- bandnr(xx)
+                    vv <- getRasterData(con, band=band, offset=offs, region.dim=reg, output.dim=c(nr, nc))
+                    closeDataset(con)
+                    if (xx@data@gain != 1 | xx@data@offset != 0) {
+                      vv <- vv * xx@data@gain + xx@data@offset
+                    }
+                    if (xx@file@nodatavalue < 0) {
+                      vv[vv <= xx@file@nodatavalue] <- NA
+                    } else {
+                      vv[vv == xx@file@nodatavalue] <- NA
+                    }
+                    v[, i] <- vv
+                  }
+
+                } else {
+                  if (nl == 1) {
+                    band <- bandnr(x)
+                  } else {
+                    band <- NULL
+                  }
+                  con <- GDAL.open(x@file@name, silent=TRUE)
+                  v <- getRasterData(con, band=band, offset=offs, region.dim=reg, output.dim=c(nr, nc))
+                  closeDataset(con)
+
+                  if (x@data@gain != 1 | x@data@offset != 0) {
+                    v <- v * x@data@gain + x@data@offset
+                  }
+
+                  if (raster:::.naChanged(x)) {
+                    if (x@file@nodatavalue < 0) {
+                      v[v <= x@file@nodatavalue] <- NA
+                    } else {
+                      v[v == x@file@nodatavalue] <- NA
+                    }
+                  }
+                }
+
+                if (asRaster) {
+                  if (is.null(ext))  {
+                    outras <- raster(x)
+                  } else {
+                    outras <- raster(ext)
+                  }
+                  nrow(outras) <- nr
+                  ncol(outras) <- nc
+                  if (nl > 1) {
+                    outras <- brick(outras, nl=nl)
+                    outras <- setValues(outras, v)
+                  } else {
+                    outras <- setValues(outras, as.vector(v))
+                  }
+                  names(outras) <- scidb_attributes(x)
+                  if (any(is.factor(x))) {
+                    levels(outras) <- levels(x)
+                  }
+                  return(outras)
+
+                } else {
+                  if (cells) {
+                    warning("'cells=TRUE' is ignored when 'useGDAL=TRUE'")
+                  }
+                  if (xy) {
+                    warning("'xy=TRUE' is ignored when 'useGDAL=TRUE'")
+                  }
+                  if (sp) {
+                    warning("'sp=TRUE' is ignored when 'useGDAL=TRUE'")
+                  }
+                  return( as.vector(v) )
+                }
+              }
+            }
+
+            cell <- cellFromRowCol(x, rep(rows, each=nc), rep(cols, times=nr))
+
+
+            if (asRaster) {
+              if (rotated) {
+                if (is.null(ext)) {
+                  outras <- raster(extent(x))
+                } else {
+                  outras <- raster(ext)
+                }
+                ncol(outras) <- nc
+                nrow(outras) <- nr
+                xy <- xyFromCell(outras, 1:ncell(outras))
+                m <- raster:::.xyValues(x, xy)
+
+              } else {
+                m <- raster:::.cellValues(x, cell)
+
+                if (is.null(ext))  {
+                  outras <- raster(x)
+                } else {
+                  outras <- raster(ext)
+                }
+                nrow(outras) <- nr
+                ncol(outras) <- nc
+
+              }
+              if (nl > 1) {
+                outras <- brick(outras, nl=nl)
+              }
+              outras <- setValues(outras, m)
+              names(outras) <- scidb_attributes(x)
+              if (any(is.factor(x))) {
+                levels(outras) <- levels(x)
+              }
+              return(outras)
+
+            } else {
+
+              m <- NULL
+              if (xy) {
+                m <- xyFromCell(x, cell)
+              }
+              if (cells) {
+                m <- cbind(m, cell=cell)
+              }
+              m <- cbind(m, raster:::.cellValues(x, cell))
+
+              if (sp) {
+                m <- SpatialPointsDataFrame(xyFromCell(x, cell), data.frame(m), proj4string=projection(x, asText=FALSE))
+              }
+
+              return(m)
+            }
+          }
+
+)
