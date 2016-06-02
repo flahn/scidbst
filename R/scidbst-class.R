@@ -509,8 +509,8 @@ setMethod('crop', signature(x='scidbst', y='ANY'),
               a[2,1] = ymax(e) # for reference: upper left corner is needed
 
               res@affine = a
-              nrow(res) = (ymax(out) - ymin(out))+1
-              ncol(res) = (xmax(out) - xmin(out))+1
+              ncol(res) = (ymax(out) - ymin(out))+1
+              nrow(res) = (xmax(out) - xmin(out))+1
               # +1 because origin in scidb is 0,0
 
               res@data@names = x@data@names
