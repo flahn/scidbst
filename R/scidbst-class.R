@@ -27,13 +27,13 @@ library(raster)
 
 #' Constructor for scidbst
 #'
-#' @name stdb
+#' @name scidbst
 #' @rdname scidbst-class
-#' @param ... stuff passed to scidb()
+#' @inheritParams scidb::scidb
 #' @return \link{scidbst} object
 #' @import scidb
 #' @export
-stdb = function(...){
+scidbst = function(...){
 
   .scidb = .scidbst_class(scidb(...))
 
@@ -103,6 +103,13 @@ stdb = function(...){
   return(trans %*% c(1,x,y))
 }
 
+#' setSelection
+#'
+#' Sets a selector for the scidbst array. For more information see details.
+#'
+#' @details
+#' Usually printing an image needs a reduction into two dimensions. With the selector you can set a dimension to a fixed value, e.g. in a timeseries of spatial coverages you can select the date.
+#'
 #' @export
 setGeneric("setSelection", function(x, dim, val) {
   standardGeneric("setSelection")
@@ -171,22 +178,20 @@ setMethod("subset",signature(x="scidbst"), function(x, ...) scidb:::filter_scidb
 .materializeSCIDBValues = function(object, startrow, nrows=1, startcol=1, ncols=ncol(object)) {
   offs <- c((startrow - 1), (startcol - 1))
   reg <- c(nrows, ncols)
-  #con <- GDAL.open(object@file@name, silent = TRUE)
-
-  #		result <- getRasterData(con, offset=offs, region.dim=reg)
-  #		result <- do.call(cbind, lapply(1:nlayers(object), function(i) as.vector(result[,,i])))
-  # just as fast, it seems:
   result <- matrix(nrow = (ncol(object)) * (nrow(object)), ncol = nlayers(object))
 
-
-
-  print("Downloading data...")
+  cat("Downloading data...")
   sel = paste(object@selector[1,1],"=",object@selector[2,1],sep="") #TODO replace with function that creates the string
   .data = subset(object,sel)[] #materialize scidb array represented by object
 
 
   for (b in 1:object@data@nlayers) {
     lname = object@data@names[b]
+    if (nrow(.data) == 0) {
+      warning("Image is empty.")
+      return(result)
+    }
+
     if (!is.na(.data[,lname]) || sum(.data[,lname])>0) {
       #result[, b] <- getRasterData(con, offset = offs,region.dim = reg, band = b)
       #result[,b] <- sample(0:255,ncols*nrows,replace=T)
@@ -195,48 +200,29 @@ setMethod("subset",signature(x="scidbst"), function(x, ...) scidb:::filter_scidb
       tmp = matrix(nrow=(nrow(object)),ncol=(ncol(object)))
       m = .data[order(.data[,"y"],.data[,"x"]),]
       m[,1:2]=m[,1:2]+1
+
       tmp2 = matrix(m[,lname],nrow=length(unique(m[,"y"])),ncol=length(unique(m[,"x"])),byrow=T)
+
       tmp[unique(m[,"y"]),unique(m[,"x"])] = tmp2
       #restructure the matrix to a one dimensional vector
       restruct = as.vector(t(tmp))
 
 
       result[,b] = restruct
-      # for(i in 1:length(.data[,1])) { #for each row
-      #   row = .data[i,"y"]
-      #   col = .data[i,"x"]
-      #   val = .data[i,lname]
-      #
-      #   index = (row)*(ncol(object)+1)+col
-      #   result[index,b] = val
-      # }
     }
   }
 
   return(result)
 }
 
-#copy pasted from raster
-setMethod("spplot", signature(obj='scidbst'),
-          function(obj, ..., maxpixels=50000, as.table=TRUE, zlim)  {
-
-            obj <- sampleRegular(obj, maxpixels, asRaster=TRUE,useGDAL=TRUE)
-            if (!missing(zlim)) {
-              if (length(zlim) != 2) {
-                warning('zlim should be a vector of two elements')
-              }
-              if (length(zlim) >= 2) {
-                obj[obj < zlim[1] | obj > zlim[2]] <- NA
-              }
-            }
-
-            obj <- as(obj, 'SpatialGridDataFrame')
-            #obj@data <- obj@data[, ncol(obj@data):1]
-            spplot(obj, ..., as.table=as.table)
-          }
-)
-
+#' Regular Sample
+#'
+#' Take a systematic sample from a SciDBST object.
+#'
+#' @inheritParams raster::sampleRegular
+#' @export
 #copied from raster with small changes
+# changed "names(outras) <- names(x)" to "names(outras) <- scidb_attributes(x)"
 setMethod('sampleRegular', signature(x='scidbst'),
           function( x, size, ext=NULL, cells=FALSE, xy=FALSE, asRaster=FALSE, sp=FALSE, useGDAL=FALSE, ...) {
 
@@ -448,5 +434,64 @@ setMethod('sampleRegular', signature(x='scidbst'),
               return(m)
             }
           }
-
 )
+
+#' @export
+setMethod('crop', signature(x='scidbst', y='ANY'),
+          function(x, y, snap='near', ...) {
+              # as in the raster package, try to get the extent of object y
+              y <- try ( extent(y), silent=TRUE )
+              if (class(y) == "try-error") {
+                stop('Cannot get an Extent object from argument y')
+              }
+              validObject(y)
+
+              e <- intersect(extent(x), extent(y))
+              e <- alignExtent(e, x, snap=snap)
+
+              out = .calculateDimIndices(x,e)
+
+              res = subset(x,paste("y",">=",ymin(out),"and","y","<=",ymax(out),"and","x",">=",xmin(out),"and","x","<=",xmax(out)))
+
+              res = .scidbst_class(res)
+              res@extent = e
+              crs(res) = crs(x)
+              #adapt affine transform (no change in orientation or resolution -> just change x0 and y0)
+              a = x@affine
+              a[1,1] = xmin(e)
+              a[2,1] = ymax(e) # for reference: upper left corner is needed
+
+              res@affine = a
+              nrow(res) = (ymax(out) - ymin(out))+1
+              ncol(res) = (xmax(out) - xmin(out))+1
+              # +1 because origin in scidb is 0,0
+
+              res@data@names = x@data@names
+              res@data@nlayers = nlayers(x)
+              res@data@fromdisk = TRUE
+              res@selector = x@selector
+
+              return(res)
+              #apply eo_cpsrs / eo_(g/s)ettrs
+
+
+          }
+)
+
+.calculateDimIndices = function(object, extent) {
+  ll = c(xmin(extent),ymin(extent))
+  ur = c(xmax(extent),ymax(extent))
+
+  origin = object@affine[,1]
+  sub = object@affine[,2:3]
+
+  img1 = (solve(sub) %*% (ll - origin))
+  img2 = (solve(sub) %*% (ur - origin))
+
+  indices = extent(c(range(img1[1],img2[1]),range(img1[2],img2[2])))
+  xmin(indices) = floor(xmin(indices))
+  ymin(indices) = floor(ymin(indices))
+  xmax(indices) = ceiling(xmax(indices))
+  ymax(indices) = ceiling(ymax(indices))
+  return(indices)
+}

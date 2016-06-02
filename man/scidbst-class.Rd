@@ -5,13 +5,9 @@
 \alias{.scidbst_class}
 \alias{scidbst}
 \alias{scidbst-class}
-\alias{stdb}
 \title{Class scidbst}
 \usage{
-stdb(...)
-}
-\arguments{
-\item{...}{stuff passed to scidb()}
+scidbst(...)
 }
 \value{
 \link{scidbst} object
