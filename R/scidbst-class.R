@@ -85,7 +85,7 @@ scidbst = function(...){
 }
 
 .isMatrixEmpty = function (m) {
-  return(max(is.na(m[,1])) == 0 )
+  return(max(is.na(m)) == 1 )
 }
 
 .createAffineTransformation = function(srs) {
@@ -117,9 +117,23 @@ setGeneric("setSelection", function(x, dim, val) {
 
 #' @export
 setMethod("setSelection",
-          signature(x='scidbst',dim='character',val='numeric'),
+          signature(x='scidbst',dim='character',val='ANY'),
           function(x,dim,val) {
+            if (length(dim) != length(val)) {
+              stop("Stated amount of dimenions and respective values does not match.")
+            }
+
+            if (is.character(val)) {
+              for (elem in val) {
+                if (is.na(as.numeric(elem))) {
+                  if (val != "*") {
+                    stop("value contains illegal value. For selecting all, e.g. aggregation, use '*'.")
+                  }
+                }
+              }
+            }
             x@selector = matrix(c(dim,val),nrow=2)
+
             return(x)
           }
 )
@@ -142,6 +156,29 @@ setMethod("getValues", signature(x='scidbst', row='missing', nrows='missing'),
             x@data@values
           }
 )
+
+#' @export
+setMethod("spplot", signature(obj="scidbst"),function (obj, tdim="t", t,  maxpixels=50000, as.table=TRUE, zlim,...) {
+    if ((missing(t) && .isMatrixEmpty(obj@selector)) && length(dimnames(obj)) > 2 ) {
+      stop("No valid subsetting for time.")
+    }
+    if (!missing(t)) {
+      obj <- setSelection(obj, tdim, t)
+    }
+
+    #following: code from raster::spplot
+    obj <- sampleRegular(obj, maxpixels, asRaster=TRUE, useGDAL=TRUE)
+    if (!missing(zlim)) {
+      if (length(zlim) != 2) {
+        warning('zlim should be a vector of two elements')
+      }
+      if (length(zlim) >= 2) {
+        obj[obj < zlim[1] | obj > zlim[2]] <- NA
+      }
+    }
+    obj <- as(obj, 'SpatialGridDataFrame')
+    spplot(obj, ..., as.table=as.table)
+})
 
 #' readAll
 #'
@@ -193,13 +230,15 @@ setMethod("subset",signature(x="scidbst"), function(x, ...) scidb:::filter_scidb
     }
 
     if (!is.na(.data[,lname]) || sum(.data[,lname])>0) {
-      #result[, b] <- getRasterData(con, offset = offs,region.dim = reg, band = b)
-      #result[,b] <- sample(0:255,ncols*nrows,replace=T)
-      #result[,b] <- .data[,lname] #NA values are skipped by SciDB, need to add values via column, row indices
-
       tmp = matrix(nrow=(nrow(object)),ncol=(ncol(object)))
       m = .data[order(.data[,"y"],.data[,"x"]),]
-      m[,1:2]=m[,1:2]+1
+      start_y = min(.data[,"y"])
+      start_x = min(.data[,"x"])
+      #shift x coordinates 0->1 and remove offst
+      m[,"x"]=m[,"x"]+1-start_x
+      #same for y
+      m[,"y"]=m[,"y"]+1-start_y
+
 
       tmp2 = matrix(m[,lname],nrow=length(unique(m[,"y"])),ncol=length(unique(m[,"x"])),byrow=T)
 
@@ -438,7 +477,15 @@ setMethod('sampleRegular', signature(x='scidbst'),
 
 #' @export
 setMethod('crop', signature(x='scidbst', y='ANY'),
-          function(x, y, snap='near', ...) {
+          function(x, y, snap='near', tdim="t", t, ...) {
+              if ((missing(t) && .isMatrixEmpty(x@selector)) && length(dimnames(x)) > 2 ) {
+                stop("No valid subsetting for time.")
+              }
+
+              if (!missing(t)) {
+                x <- setSelection(x, tdim, t)
+              }
+
               # as in the raster package, try to get the extent of object y
               y <- try ( extent(y), silent=TRUE )
               if (class(y) == "try-error") {
