@@ -15,11 +15,10 @@
 .scidbst_class = setClass("scidbst",
                           contains=list("scidb","RasterBrick"),
                           representation=representation(
-                            affine = "matrix",
-                            selector = "matrix"
+                            affine = "matrix"
                           )
 )
-.scidbst_class
+#.scidbst_class
 
 #' Constructor for scidbst
 #'
@@ -32,8 +31,6 @@
 scidbst = function(...){
 
   .scidb = .scidbst_class(scidb(...))
-
-  .scidb@selector = matrix(NA,nrow=2,ncol=1)
 
   .srs = iquery(paste("eo_getsrs(",.scidb@name,")",sep=""),return=TRUE)
   .scidb@affine <- .createAffineTransformation(.srs)
@@ -86,47 +83,11 @@ scidbst = function(...){
   return(trans %*% c(1,x,y))
 }
 
-#' setSelection
-#'
-#' Sets a selector for the scidbst array. For more information see details.
-#'
-#' @details
-#' Usually printing an image needs a reduction into two dimensions. With the selector you can set a dimension to a fixed value, e.g. in a timeseries of spatial coverages you can select the date.
-#'
-#' @export
-setGeneric("setSelection", function(x, dim, val) {
-  standardGeneric("setSelection")
-})
-
-#' @export
-setMethod("setSelection",
-          signature(x='scidbst',dim='character',val='ANY'),
-          function(x,dim,val) {
-            if (length(dim) != length(val)) {
-              stop("Stated amount of dimenions and respective values does not match.")
-            }
-
-            if (is.character(val)) {
-              for (elem in val) {
-                if (is.na(as.numeric(elem))) {
-                  if (val != "*") {
-                    stop("value contains illegal value. For selecting all, e.g. aggregation, use '*'.")
-                  }
-                }
-              }
-            }
-            x@selector = matrix(c(dim,val),nrow=2)
-
-            return(x)
-          }
-)
-
 setMethod("getValues", signature(x='scidbst', row='missing', nrows='missing'),
-          function(x,taxis,tindex) {
-            if (! missing(taxis) & ! missing(tindex)) {
-              x@selector = matrix(c(taxis,tindex),nrow=2)
+          function(x) {
+            if (length(dimnames(x)) > 2 ) {
+              stop("Too many dimensions detected. Try 'slice' to subset the image for example time.")
             }
-            print(x@name)
 
             if (! inMemory(x) ) {
               if ( fromDisk(x) ) {
@@ -144,12 +105,9 @@ setMethod("getValues", signature(x='scidbst', row='missing', nrows='missing'),
 )
 
 #' @export
-setMethod("spplot", signature(obj="scidbst"),function (obj, tdim="t", t,  maxpixels=50000, as.table=TRUE, zlim,...) {
-  if ((missing(t) && .isMatrixEmpty(obj@selector)) && length(dimnames(obj)) > 2 ) {
-    stop("No valid subsetting for time.")
-  }
-  if (!missing(t)) {
-    obj <- setSelection(obj, tdim, t)
+setMethod("spplot", signature(obj="scidbst"),function (obj, maxpixels=50000, as.table=TRUE, zlim,...) {
+  if (length(dimnames(obj)) > 2 ) {
+    stop("Too many dimensions detected. Try slice to make a 2D subset of the image.")
   }
 
   #following: code from raster::spplot
@@ -163,10 +121,15 @@ setMethod("spplot", signature(obj="scidbst"),function (obj, tdim="t", t,  maxpix
     }
   }
 
-  attr_names = scidb_attributes(obj)
-  obj <- as(obj, 'SpatialGridDataFrame')
-  names(obj) <- attr_names
-  spplot(obj, ..., as.table=as.table)
+  if (inherits(obj,"scidb")) {
+    attr_names = scidb_attributes(obj)
+    obj <- as(obj, 'SpatialGridDataFrame')
+    spplot(obj,..., as.table=as.table)
+  } else {
+    obj <- as(obj, 'SpatialGridDataFrame')
+    spplot(obj,... , as.table=as.table)
+  }
+
 })
 
 #' readAll
@@ -193,6 +156,7 @@ setMethod('readAll', signature(object='scidbst'),
           }
 )
 
+
 setMethod("names",signature(x="scidbst"), function(x) {
   return(c(c(dimensions(x),scidb_attributes(x))))
 })
@@ -206,27 +170,18 @@ setMethod("subset",signature(x="scidbst"), function(x, ...) scidb:::filter_scidb
   reg <- c(nrows, ncols)
   result <- matrix(nrow = (ncol(object)) * (nrow(object)), ncol = nlayers(object))
 
-  cat("Downloading data...")
-
-  if (!.isMatrixEmpty(object@selector)) {
-    #sel = paste(object@selector[1,1],"=",object@selector[2,1],sep="") #TODO replace with function that creates the string
-    extent = as.matrix(.calculateDimIndices(object,extent(object)))
-    print(extent)
-    n = rownames(extent)
-    if (object@selector[1,1] %in% dimensions(object)) {
-      extent = rbind(extent,as.numeric(c(object@selector[2,1],object@selector[2,1]))) #TODO replace with function that creates the string
-      rownames(extent) = c(n,object@selector[1,1])
-      print(extent)
-    }
-    #.data = subset(object,sel)[] #materialize scidb array represented by object
-    #change object name if between is already in it --> problem: crop changes affine transformation
-
-    #arrayName = gsub("^between\\((\\w*),.*\\)$","\\1",object@name,perl=TRUE)
-    #object@name = arrayName
-    .data = subarray(object,extent[dimensions(object),],between = TRUE)
-    print(.data@name)
-    .data = .data[]
+  cat("Downloading data...\n")
+  browser()
+  if (length(dimensions(object))>2) {
+    stop("Array has more than two dimensions to fetch data in a raster format")
+    #TODO if time is referenced allow download of multiple timesteps, if needed
   }
+
+  extent = as.matrix(.calculateDimIndices(object,extent(object)))
+
+  #.data = subarray(object,extent[dimensions(object),],between = TRUE)
+  .data = iquery(object@name,return=T)
+
 
   if (nrow(.data) == 0) {
     warning("Image is empty.")
@@ -257,7 +212,7 @@ setMethod("subset",signature(x="scidbst"), function(x, ...) scidb:::filter_scidb
       result[,b] = restruct
     }
   }
-
+  colnames(result) = scidb_attributes(object)
   return(result)
 }
 
@@ -271,9 +226,7 @@ setMethod("subset",signature(x="scidbst"), function(x, ...) scidb:::filter_scidb
 # changed "names(outras) <- names(x)" to "names(outras) <- scidb_attributes(x)"
 setMethod('sampleRegular', signature(x='scidbst'),
           function( x, size, ext=NULL, cells=FALSE, xy=FALSE, asRaster=FALSE, sp=FALSE, useGDAL=FALSE, ...) {
-
             stopifnot(hasValues(x))
-
             size <- round(size)
             stopifnot(size > 0)
             nl <- nlayers(x)
@@ -484,16 +437,42 @@ setMethod('sampleRegular', signature(x='scidbst'),
           }
 )
 
+if (!isGeneric("slice")) {
+  setGeneric("slice", function(x,d,n) standardGeneric("slice"))
+}
+
+#' Slice the array
+#'
+#' Takes a dimension name and a value to create a slice of an array. This usually means reducing the dimensions
+#' of an array.
+#'
+#' @inheritParams scidb::slice
+#' @return scidbst A new scidbst object with reduced number of dimensions
+#' @export
+setMethod('slice', signature(x="scidbst",d="character",n="numeric") ,function(x,d,n) {
+    out = .scidbst_class(scidb::slice(x,d,n))
+    out@affine = x@affine
+
+    extent(out) = extent(x)
+    crs(out) = crs(x)
+
+    nrow(out) = nrow(x)
+    ncol(out) = ncol(x)
+
+    out@data@names = x@data@names
+    out@data@nlayers = nlayers(x)
+    out@data@fromdisk = TRUE
+
+    return(out)
+})
+
 #' @export
 setMethod('crop', signature(x='scidbst', y='ANY'),
-          function(x, y, snap='near', tdim="t", t, ...) {
-            if ((missing(t) && .isMatrixEmpty(x@selector)) && length(dimnames(x)) > 2 ) {
-              stop("No valid subsetting for time.")
+          function(x, y, snap='near', ...) {
+            if (length(dimnames(x)) > 2 ) {
+              stop("More than two dimensions")
             }
 
-            if (!missing(t)) {
-              x <- setSelection(x, tdim, t)
-            }
 
             # as in the raster package, try to get the extent of object y
             y <- try ( extent(y), silent=TRUE )
@@ -510,12 +489,12 @@ setMethod('crop', signature(x='scidbst', y='ANY'),
             #TODO check creation with
             limits = as.matrix(out)
 
-            if (!.isMatrixEmpty(x@selector)) {
-              n = rownames(limits)
-              limits = rbind(limits,as.numeric(c(x@selector[2,1],x@selector[2,1])))
-
-              rownames(limits) = c(n,x@selector[1,1])
-            }
+            # if (!.isMatrixEmpty(x@selector)) {
+            #   n = rownames(limits)
+            #   limits = rbind(limits,as.numeric(c(x@selector[2,1],x@selector[2,1])))
+            #
+            #   rownames(limits) = c(n,x@selector[1,1])
+            # }
 
 
             #res = subset(x,paste("y",">=",ymin(out),"and","y","<=",ymax(out),"and","x",">=",xmin(out),"and","x","<=",xmax(out)))
@@ -538,7 +517,6 @@ setMethod('crop', signature(x='scidbst', y='ANY'),
             res@data@names = x@data@names
             res@data@nlayers = nlayers(x)
             res@data@fromdisk = TRUE
-            res@selector = x@selector
 
             return(res)
             #apply eo_cpsrs / eo_(g/s)ettrs
