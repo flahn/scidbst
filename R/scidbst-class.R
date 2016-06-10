@@ -171,7 +171,6 @@ setMethod("subset",signature(x="scidbst"), function(x, ...) scidb:::filter_scidb
   result <- matrix(nrow = (ncol(object)) * (nrow(object)), ncol = nlayers(object))
 
   cat("Downloading data...\n")
-  browser()
   if (length(dimensions(object))>2) {
     stop("Array has more than two dimensions to fetch data in a raster format")
     #TODO if time is referenced allow download of multiple timesteps, if needed
