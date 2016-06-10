@@ -1,7 +1,3 @@
-library(scidb)
-library(raster)
-
-
 #' Class scidbst
 #'
 #' Class \code{scidbst} inherits from class \code{scidb}
@@ -17,11 +13,11 @@ library(raster)
 #' @import raster
 #' @exportClass scidbst
 .scidbst_class = setClass("scidbst",
-         contains=list("scidb","RasterBrick"),
-         representation=representation(
-           affine = "matrix",
-           selector = "matrix"
-         )
+                          contains=list("scidb","RasterBrick"),
+                          representation=representation(
+                            affine = "matrix",
+                            selector = "matrix"
+                          )
 )
 .scidbst_class
 
@@ -69,19 +65,6 @@ scidbst = function(...){
   .scidb@extent <- extent(min[1], max[1], min[2], max[2])
 
   return(.scidb)
-
-  # .scidb = scidb(...)
-  # .srs = iquery(paste("eo_getsrs(",.scidb@name,")",sep=""),return=TRUE)
-  # .aff <- .createAffineTransformation(.srs)
-  # .crs <- CRS(.srs$proj4text)
-  # .extent <- extent(-180, 0, 0, 90)
-  # .st = new("scidbst", CRS=.crs,affine=.aff,extent=.extent)
-
-  # sn = slotNames("scidb")
-  # for (i in 1:length(sn)) {
-  #   slot(.st, sn[i]) <- slot(.scidb, sn[i])
-  # }
-  # return(.st)
 }
 
 .isMatrixEmpty = function (m) {
@@ -143,7 +126,7 @@ setMethod("getValues", signature(x='scidbst', row='missing', nrows='missing'),
             if (! missing(taxis) & ! missing(tindex)) {
               x@selector = matrix(c(taxis,tindex),nrow=2)
             }
-
+            print(x@name)
 
             if (! inMemory(x) ) {
               if ( fromDisk(x) ) {
@@ -152,32 +135,38 @@ setMethod("getValues", signature(x='scidbst', row='missing', nrows='missing'),
                 return( matrix(rep(NA, ncell(x) * nlayers(x)), ncol=nlayers(x)) )
               }
             }
-            colnames(x@data@values) <- x@data@names
+            #colnames(x@data@values) <- x@data@names
+            x@data@names = scidb_attributes(x)
+            colnames(x@data@values) <- scidb_attributes(x)
+
             x@data@values
           }
 )
 
 #' @export
 setMethod("spplot", signature(obj="scidbst"),function (obj, tdim="t", t,  maxpixels=50000, as.table=TRUE, zlim,...) {
-    if ((missing(t) && .isMatrixEmpty(obj@selector)) && length(dimnames(obj)) > 2 ) {
-      stop("No valid subsetting for time.")
-    }
-    if (!missing(t)) {
-      obj <- setSelection(obj, tdim, t)
-    }
+  if ((missing(t) && .isMatrixEmpty(obj@selector)) && length(dimnames(obj)) > 2 ) {
+    stop("No valid subsetting for time.")
+  }
+  if (!missing(t)) {
+    obj <- setSelection(obj, tdim, t)
+  }
 
-    #following: code from raster::spplot
-    obj <- sampleRegular(obj, maxpixels, asRaster=TRUE, useGDAL=TRUE)
-    if (!missing(zlim)) {
-      if (length(zlim) != 2) {
-        warning('zlim should be a vector of two elements')
-      }
-      if (length(zlim) >= 2) {
-        obj[obj < zlim[1] | obj > zlim[2]] <- NA
-      }
+  #following: code from raster::spplot
+  obj <- sampleRegular(obj, maxpixels, asRaster=TRUE, useGDAL=TRUE)
+  if (!missing(zlim)) {
+    if (length(zlim) != 2) {
+      warning('zlim should be a vector of two elements')
     }
-    obj <- as(obj, 'SpatialGridDataFrame')
-    spplot(obj, ..., as.table=as.table)
+    if (length(zlim) >= 2) {
+      obj[obj < zlim[1] | obj > zlim[2]] <- NA
+    }
+  }
+
+  attr_names = scidb_attributes(obj)
+  obj <- as(obj, 'SpatialGridDataFrame')
+  names(obj) <- attr_names
+  spplot(obj, ..., as.table=as.table)
 })
 
 #' readAll
@@ -218,18 +207,36 @@ setMethod("subset",signature(x="scidbst"), function(x, ...) scidb:::filter_scidb
   result <- matrix(nrow = (ncol(object)) * (nrow(object)), ncol = nlayers(object))
 
   cat("Downloading data...")
-  sel = paste(object@selector[1,1],"=",object@selector[2,1],sep="") #TODO replace with function that creates the string
-  .data = subset(object,sel)[] #materialize scidb array represented by object
 
+  if (!.isMatrixEmpty(object@selector)) {
+    #sel = paste(object@selector[1,1],"=",object@selector[2,1],sep="") #TODO replace with function that creates the string
+    extent = as.matrix(.calculateDimIndices(object,extent(object)))
+    print(extent)
+    n = rownames(extent)
+    if (object@selector[1,1] %in% dimensions(object)) {
+      extent = rbind(extent,as.numeric(c(object@selector[2,1],object@selector[2,1]))) #TODO replace with function that creates the string
+      rownames(extent) = c(n,object@selector[1,1])
+      print(extent)
+    }
+    #.data = subset(object,sel)[] #materialize scidb array represented by object
+    #change object name if between is already in it --> problem: crop changes affine transformation
+
+    #arrayName = gsub("^between\\((\\w*),.*\\)$","\\1",object@name,perl=TRUE)
+    #object@name = arrayName
+    .data = subarray(object,extent[dimensions(object),],between = TRUE)
+    print(.data@name)
+    .data = .data[]
+  }
+
+  if (nrow(.data) == 0) {
+    warning("Image is empty.")
+    return(result)
+  }
 
   for (b in 1:object@data@nlayers) {
     lname = object@data@names[b]
-    if (nrow(.data) == 0) {
-      warning("Image is empty.")
-      return(result)
-    }
 
-    if (!is.na(.data[,lname]) || sum(.data[,lname])>0) {
+    if (!all(is.na(.data[,lname]))) {
       tmp = matrix(nrow=(nrow(object)),ncol=(ncol(object)))
       m = .data[order(.data[,"y"],.data[,"x"]),]
       start_y = min(.data[,"y"])
@@ -336,6 +343,7 @@ setMethod('sampleRegular', signature(x='scidbst'),
                 useGDAL <- FALSE
               }
               if (useGDAL) {
+                print("using GDAL")
                 offs <- c(firstrow,firstcol)-1
                 reg <- c(nrow(rcut), ncol(rcut))-1
 
@@ -418,6 +426,7 @@ setMethod('sampleRegular', signature(x='scidbst'),
               }
             }
 
+            # calculates the number of cells
             cell <- cellFromRowCol(x, rep(rows, each=nc), rep(cols, times=nr))
 
 
@@ -478,48 +487,61 @@ setMethod('sampleRegular', signature(x='scidbst'),
 #' @export
 setMethod('crop', signature(x='scidbst', y='ANY'),
           function(x, y, snap='near', tdim="t", t, ...) {
-              if ((missing(t) && .isMatrixEmpty(x@selector)) && length(dimnames(x)) > 2 ) {
-                stop("No valid subsetting for time.")
-              }
+            if ((missing(t) && .isMatrixEmpty(x@selector)) && length(dimnames(x)) > 2 ) {
+              stop("No valid subsetting for time.")
+            }
 
-              if (!missing(t)) {
-                x <- setSelection(x, tdim, t)
-              }
+            if (!missing(t)) {
+              x <- setSelection(x, tdim, t)
+            }
 
-              # as in the raster package, try to get the extent of object y
-              y <- try ( extent(y), silent=TRUE )
-              if (class(y) == "try-error") {
-                stop('Cannot get an Extent object from argument y')
-              }
-              validObject(y)
+            # as in the raster package, try to get the extent of object y
+            y <- try ( extent(y), silent=TRUE )
+            if (class(y) == "try-error") {
+              stop('Cannot get an Extent object from argument y')
+            }
+            validObject(y)
 
-              e <- intersect(extent(x), extent(y))
-              e <- alignExtent(e, x, snap=snap)
+            e <- intersect(extent(x), extent(y))
+            e <- alignExtent(e, x, snap=snap)
 
-              out = .calculateDimIndices(x,e)
+            out = .calculateDimIndices(x,e)
 
-              res = subset(x,paste("y",">=",ymin(out),"and","y","<=",ymax(out),"and","x",">=",xmin(out),"and","x","<=",xmax(out)))
+            #TODO check creation with
+            limits = as.matrix(out)
 
-              res = .scidbst_class(res)
-              res@extent = e
-              crs(res) = crs(x)
-              #adapt affine transform (no change in orientation or resolution -> just change x0 and y0)
-              a = x@affine
-              a[1,1] = xmin(e)
-              a[2,1] = ymax(e) # for reference: upper left corner is needed
+            if (!.isMatrixEmpty(x@selector)) {
+              n = rownames(limits)
+              limits = rbind(limits,as.numeric(c(x@selector[2,1],x@selector[2,1])))
 
-              res@affine = a
-              ncol(res) = (ymax(out) - ymin(out))+1
-              nrow(res) = (xmax(out) - xmin(out))+1
-              # +1 because origin in scidb is 0,0
+              rownames(limits) = c(n,x@selector[1,1])
+            }
 
-              res@data@names = x@data@names
-              res@data@nlayers = nlayers(x)
-              res@data@fromdisk = TRUE
-              res@selector = x@selector
 
-              return(res)
-              #apply eo_cpsrs / eo_(g/s)ettrs
+            #res = subset(x,paste("y",">=",ymin(out),"and","y","<=",ymax(out),"and","x",">=",xmin(out),"and","x","<=",xmax(out)))
+            res = subarray(x=x,limits=limits[dimensions(x),],between=TRUE)
+            res = .scidbst_class(res)
+            res@extent = e
+            crs(res) = crs(x)
+            #adapt affine transform (no change in orientation or resolution -> just change x0 and y0)
+
+
+            #a = x@affine
+            #a[1,1] = xmin(e)
+            #a[2,1] = ymax(e) # for reference: upper left corner is needed
+
+            res@affine = x@affine
+            nrow(res) = (ymax(out) - ymin(out))+1
+            ncol(res) = (xmax(out) - xmin(out))+1
+            # +1 because origin in scidb is 0,0
+
+            res@data@names = x@data@names
+            res@data@nlayers = nlayers(x)
+            res@data@fromdisk = TRUE
+            res@selector = x@selector
+
+            return(res)
+            #apply eo_cpsrs / eo_(g/s)ettrs
 
 
           }
