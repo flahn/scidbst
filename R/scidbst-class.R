@@ -7,6 +7,8 @@
 #' @slot CRS The coordinate reference system used as class 'CRS' that represents a Proj.4 string
 #' @slot extent The outer boundary of the SciDB array in referenced coordinates
 #' @slot affine The affine transformation used to convert real-world coordinates into image frame coordinates
+#' @slot spatial_dims the names of the spatial dimensions
+#' @slot temporal_dim the name of the temporal dimension
 #' @aliases scidbst
 #' @import methods
 #' @import scidb
@@ -15,7 +17,14 @@
 .scidbst_class = setClass("scidbst",
                           contains=list("scidb","RasterBrick"),
                           representation=representation(
-                            affine = "matrix"
+                            affine = "matrix",
+                            spatial_dims = "list",
+                            temporal_dim = "character",
+                            startTime = "data.frame",
+                            tResolution = "character",
+                            tUnit = "character",
+                            isSpatial ="logical",
+                            isTemporal = "logical"
                           )
 )
 
@@ -34,17 +43,37 @@ scidbst = function(...){
   .scidb = .scidbst_class(scidb(...))
 
   .srs = iquery(paste("eo_getsrs(",.scidb@name,")",sep=""),return=TRUE)
-  .scidb@affine <- .createAffineTransformation(.srs)
-  .scidb@crs <- CRS(.srs$proj4text)
+  .trs = iquery(paste("eo_gettrs(",.scidb@name,")",sep=""),return=TRUE)
+  .extent = iquery(paste("eo_extent(",.scidb@name,")",sep=""),return=TRUE)
+
+  .scidb@isSpatial = (nrow(.srs) > 0)
+  .scidb@isTemporal = (nrow(.trs) > 0)
+
+  if (.scidb@isTemporal) { #make sure that there is actually a temporal reference
+    .scidb@temporal_dim = .trs[,"tdim"]
+    .scidb@tResolution = .trs[,"dt"]
+    .scidb@tUnit = .findTUnit(.trs[,"dt"])
+    .scidb@startTime = .getDateTime(.trs[,"t0"],.scidb@tUnit)
+  }
 
 
-  .schema = schema(.scidb)
-  .attr = strsplit(gsub("[<|>]","",strsplit(.schema," ")[[1]][1]),",")[[1]]
+  if (.scidb@isSpatial) {
+    .scidb@affine <- .createAffineTransformation(.srs)
+    .scidb@crs <- CRS(.srs$proj4text)
+    .scidb@spatial_dims = list(xdim=.srs[,"xdim"],ydim=.srs[,"ydim"])
+  }
 
-  .scidb@data@names = matrix(unlist(sapply(.attr,strsplit,split=":")),length(.attr), 2 ,byrow=TRUE)[,1]
+  if (nrow(.extent > 0)) {
+    .scidb@extent = extent(.extent[,"xmin"],.extent[,"xmax"],.extent[,"ymin"],.extent[,"ymax"])
+  }
+
+  .attr = scidb_attributes(.scidb)
+  .scidb@data@names = .attr
   .scidb@data@nlayers = length(.attr)
   .scidb@data@fromdisk = TRUE
 
+  #get minimum and maximum extent for spatial dimensions
+  .schema = schema(.scidb)
   .dims = matrix(strsplit(gsub("[\\[|\\]]","",strsplit(.schema," ")[[1]][2],perl=T),",")[[1]],nrow=3)
   .dims = strsplit(.dims[1,],"[=|:]")
   mins = as.numeric(c(.dims[[1]][2],.dims[[2]][2]))
@@ -53,16 +82,54 @@ scidbst = function(...){
   colnames(bbox)=c("min","max")
   rownames(bbox)=c(.dims[[1]][1],.dims[[2]][1])
 
-  #x and y refer to image coordinates -> flip ymin, ymax
-  min = .transformToWorld(.scidb@affine,bbox["x","min"],bbox["y","max"])
-  max = .transformToWorld(.scidb@affine,bbox["x","max"],bbox["y","min"])
-
   .scidb@nrows = as.integer(bbox["y","max"] - bbox["y","min"]+1)
   .scidb@ncols = as.integer(bbox["x","max"] - bbox["x","min"]+1)
 
-  .scidb@extent <- extent(min[1], max[1], min[2], max[2])
 
   return(.scidb)
+}
+
+.findTUnit = function(res) {
+  days = "P(\\d)+D"
+  months = "P(\\d)+M"
+  years = "P(\\d)+Y"
+  weeks = "P(\\d)+W"
+  hours = "P(\\d)+h"
+  minutes = "P(\\d)+m"
+  seconds = "P(\\d)+s"
+
+  if (grepl(days,res)) {
+    return("days")
+  }
+  if (grepl(months,res)) {
+    return("months")
+  }
+  if (grepl(years,res)) {
+    return("years")
+  }
+  if (grepl(weeks,res)) {
+    return("weeks")
+  }
+  if (grepl(hours,res)) {
+    return("hours")
+  }
+  if (grepl(minutes,res)) {
+    return("mins")
+  }
+  if (grepl(seconds,res)) {
+    return("secs")
+  }
+}
+
+.getDateTime = function (str, unit) {
+  if (unit == "days") {
+    tmp = strptime(str, "%Y-%m-%d") #day in month of year
+    if (is.na(tmp)) {
+      tmp = strptime(str, "%Y-%j") #day of year
+    }
+    return(tmp)
+  }
+  stop("Cannot extract start time of the time series")
 }
 
 .isMatrixEmpty = function (m) {
@@ -587,3 +654,12 @@ setMethod('crop', signature(x='scidbst', y='ANY'),
   ymax(indices) = ceiling(ymax(indices))
   return(indices)
 }
+
+
+#' aggregates over time
+# setMethod('aggregate.t', signature(x="scidbst"), .aggregate_scidbst)
+#
+# .aggregate_scidbst = function(x, ...) {
+#
+#   scidb::aggregate(x, ...)
+# }
