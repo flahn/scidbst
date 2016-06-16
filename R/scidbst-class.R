@@ -9,6 +9,12 @@
 #' @slot affine The affine transformation used to convert real-world coordinates into image frame coordinates
 #' @slot spatial_dims the names of the spatial dimensions
 #' @slot temporal_dim the name of the temporal dimension
+#' @slot startTime the start time as a POSIXlt object
+#' @slot tResolution The temporal resolution as a numeric
+#' @slot tExtent the temporal extent (min/max) as a list
+#' @slot tUnit the temporal base unit for this timeseries
+#' @slot isSpatial A flag whether or not this object has a spatial reference
+#' @slot isTemporal A flag whether or not this object has a temporal reference
 #' @aliases scidbst
 #' @import methods
 #' @import scidb
@@ -21,7 +27,8 @@
                             spatial_dims = "list",
                             temporal_dim = "character",
                             startTime = "ANY",
-                            tResolution = "character",
+                            tExtent = "list",
+                            tResolution = "numeric",
                             tUnit = "character",
                             isSpatial ="logical",
                             isTemporal = "logical"
@@ -51,9 +58,10 @@ scidbst = function(...){
 
   if (.scidb@isTemporal) { #make sure that there is actually a temporal reference
     .scidb@temporal_dim = .trs[,"tdim"]
-    .scidb@tResolution = .trs[,"dt"]
+    .scidb@tResolution = as.numeric(unlist(regmatches(.trs[,"dt"],gregexpr("(\\d)+",.trs[,"dt"]))))
     .scidb@tUnit = .findTUnit(.trs[,"dt"])
     .scidb@startTime = .getDateTime(.trs[,"t0"],.scidb@tUnit)
+
   }
 
 
@@ -65,6 +73,7 @@ scidbst = function(...){
 
   if (nrow(.extent > 0)) {
     .scidb@extent = extent(.extent[,"xmin"],.extent[,"xmax"],.extent[,"ymin"],.extent[,"ymax"])
+    .scidb@tExtent = list(min=.getDateTime(.extent[,"tmin"],.scidb@tUnit),max=.getDateTime(.extent[,"tmax"],.scidb@tUnit))
   }
 
   .attr = scidb_attributes(.scidb)
@@ -236,7 +245,6 @@ setMethod("spplot", signature(obj="scidbst"),function (obj, maxpixels=50000, as.
 #' @export
 setMethod('readAll', signature(object='scidbst'),
           function(object){
-            #print("picked correct function")
             if (! object@data@fromdisk)  {
               stop('cannot read values; there is no file associated with this scidbst raster inheriting thing')
             }
@@ -281,7 +289,6 @@ setMethod("subset",signature(x="scidbst"), function(x, ...) scidb:::filter_scidb
 
   extent = as.matrix(.calculateDimIndices(object,extent(object)))
 
-  #.data = subarray(object,extent[dimensions(object),],between = TRUE)
   .data = iquery(object@name,return=T)
 
 
@@ -553,17 +560,31 @@ if (!isGeneric("slice")) {
 #' @export
 setMethod('slice', signature(x="scidbst",d="character",n="numeric") ,function(x,d,n) {
     out = .scidbst_class(scidb::slice(x,d,n))
-    out@affine = x@affine
 
-    extent(out) = extent(x)
-    crs(out) = crs(x)
+    .cpMetadata(x,out)
+    if (d %in% x@temporal_dim) {
+      baseTime = 0
 
-    nrow(out) = nrow(x)
-    ncol(out) = ncol(x)
+      if (x@tUnit == "weeks") {
+        baseTime = 7*24*60*60
+      } else if (x@tUnit == "days") {
+        baseTime = 24*60*60
+      } else if (x@tUnit == "hours") {
+        baseTime = 60 * 60
+      } else if (x@tUnit == "mins") {
+        baseTime = 60
+      } else if (x@tUnit == "secs") {
+        baseTime = 1
+      } else {
+        stop("currently no other temporal unit supported")
+      }
 
-    out@data@names = x@data@names
-    out@data@nlayers = nlayers(x)
-    out@data@fromdisk = TRUE
+      newStart = as.character(x@startTime + n * x@tResolution * baseTime)
+      newEnd = as.character(x@startTime + (n+1) * x@tResolution * baseTime)
+      out@tExtent[["min"]] = newStart
+      out@tExtent[["max"]] = newEnd
+      out@isTemporal = FALSE
+    }
 
     return(out)
 })
@@ -601,34 +622,15 @@ setMethod('crop', signature(x='scidbst', y='ANY'),
             #TODO check creation with
             limits = as.matrix(out)
 
-            # if (!.isMatrixEmpty(x@selector)) {
-            #   n = rownames(limits)
-            #   limits = rbind(limits,as.numeric(c(x@selector[2,1],x@selector[2,1])))
-            #
-            #   rownames(limits) = c(n,x@selector[1,1])
-            # }
-
-
-            #res = subset(x,paste("y",">=",ymin(out),"and","y","<=",ymax(out),"and","x",">=",xmin(out),"and","x","<=",xmax(out)))
             res = subarray(x=x,limits=limits[dimensions(x),],between=TRUE)
             res = .scidbst_class(res)
+            res = .cpMetadata(x,res) #first copy all, then adapt
+
             res@extent = e
-            crs(res) = crs(x)
-            #adapt affine transform (no change in orientation or resolution -> just change x0 and y0)
-
-
-            #a = x@affine
-            #a[1,1] = xmin(e)
-            #a[2,1] = ymax(e) # for reference: upper left corner is needed
-
-            res@affine = x@affine
             nrow(res) = (ymax(out) - ymin(out))+1
             ncol(res) = (xmax(out) - xmin(out))+1
             # +1 because origin in scidb is 0,0
 
-            res@data@names = x@data@names
-            res@data@nlayers = nlayers(x)
-            res@data@fromdisk = TRUE
 
             return(res)
             #apply eo_cpsrs / eo_(g/s)ettrs
@@ -636,6 +638,38 @@ setMethod('crop', signature(x='scidbst', y='ANY'),
 
           }
 )
+
+.cpMetadata = function(from,to) {
+  if (class(from) == "scidbst" && class(to) == "scidbst") {
+    to@extent = from@extent
+    crs(to) = crs(from)
+
+    to@affine = from@affine
+    nrow(to) = nrow(from)
+    ncol(to) = ncol(from)
+    # +1 because origin in scidb is 0,0
+
+    to@data@names = from@data@names
+    to@data@nlayers = nlayers(from)
+    to@data@fromdisk = TRUE
+
+
+    to@spatial_dims = from@spatial_dims
+    to@temporal_dim = from@temporal_dim
+    to@startTime = from@startTime
+    to@tExtent = from@tExtent
+    to@tResolution = from@tResolution
+    to@tUnit = from@tUnit
+    to@isSpatial = from@isSpatial
+    to@isTemporal = from@isTemporal
+
+    if (inMemory(from)) {
+      to@data@inmemory = FALSE
+    }
+
+    return(to)
+  }
+}
 
 .calculateDimIndices = function(object, extent) {
   ll = c(xmin(extent),ymin(extent))
@@ -656,10 +690,30 @@ setMethod('crop', signature(x='scidbst', y='ANY'),
 }
 
 
+setGeneric("aggregate.t", function(x, ...) standardGeneric("aggregate.t"))
+
+.aggregate.t.scidbst = function(x, attributes, ...) {
+  selection = x@spatial_dims
+  if (x@isTemporal) {
+    if (!missing(attributes)) {
+      if (!is.list(attributes)) {
+        attributes = as.list(attributes)
+      }
+
+    }
+    out = .scidbst_class(scidb::aggregate(x, by=selection,...))
+    out = .cpMetadata(x,out)
+    out@isTemporal = FALSE
+    out@tResolution = as.numeric(difftime(x@tExtent[["max"]],x@tExtent[["min"]],x@tUnit))+1
+
+    return(out)
+  } else {
+    stop("Cannot aggregate over time with no temporal reference on the object")
+  }
+
+}
+
 #' aggregates over time
-# setMethod('aggregate.t', signature(x="scidbst"), .aggregate_scidbst)
-#
-# .aggregate_scidbst = function(x, ...) {
-#
-#   scidb::aggregate(x, ...)
-# }
+#'
+#' @export
+setMethod('aggregate.t', signature(x="scidbst"), .aggregate.t.scidbst)
