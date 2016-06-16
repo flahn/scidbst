@@ -7,7 +7,14 @@
 \usage{
 \S4method{readAll}{scidbst}(object)
 }
+\arguments{
+\item{object}{scidbst object}
+}
+\value{
+the modified scidbst object with values
+}
 \description{
-In combination with \code{raster::getValues()} this function is called to retrieve the values from the source and store them in memory
+Like \code{raster::getValues()} this function is called to retrieve the values from the source and store them in memory. It
+differs from getValues in the fact that the scidbst object will be manipulated and returned back.
 }
 

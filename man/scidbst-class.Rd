@@ -9,8 +9,13 @@
 \usage{
 scidbst(...)
 }
+\arguments{
+\item{name}{a character string name of a stored SciDB array or a valid SciDB AFL expression}
+
+\item{gc}{a logical value, TRUE means connect the SciDB array to R's garbage collector}
+}
 \value{
-\link{scidbst} object
+scidbst object
 }
 \description{
 Class \code{scidbst} inherits from class \code{scidb}
