@@ -28,6 +28,6 @@
 \item{...}{additional arguments. None implemented}
 }
 \description{
-Take a systematic sample from a SciDBST object.
+Take a systematic sample from a scidbst object.
 }
 

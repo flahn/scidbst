@@ -11,21 +11,22 @@
 #' @import methods
 #' @import scidb
 #' @import raster
-#' @exportClass scidbst
+#' @export
 .scidbst_class = setClass("scidbst",
                           contains=list("scidb","RasterBrick"),
                           representation=representation(
                             affine = "matrix"
                           )
 )
-#.scidbst_class
+
 
 #' Constructor for scidbst
 #'
 #' @name scidbst
 #' @rdname scidbst-class
-#' @inheritParams scidb::scidb
-#' @return \link{scidbst} object
+#' @param name a character string name of a stored SciDB array or a valid SciDB AFL expression
+#' @param gc a logical value, TRUE means connect the SciDB array to R's garbage collector
+#' @return scidbst object
 #' @import scidb
 #' @export
 scidbst = function(...){
@@ -83,6 +84,23 @@ scidbst = function(...){
   return(trans %*% c(1,x,y))
 }
 
+#' getValues method
+#'
+#' This function retrieves data from the remote scidb database and stores them internally like a Raster* object. This function
+#' work in principle like scidbs array materialization 'array []'. However this function also needs the multidimensional array
+#' to be reduced to a simple 2 dimensional array (spatial dimensions)
+#'
+#' @param x scidbst object
+#'
+#' @return vector or matrix of raster values
+#'
+#' @examples
+#' \dontrun{
+#' scidbconnect(...)
+#' array_proxy = scidbst(...)
+#' getValues(array_proxy)
+#' }
+#' @export
 setMethod("getValues", signature(x='scidbst', row='missing', nrows='missing'),
           function(x) {
             if (length(dimnames(x)) > 2 ) {
@@ -104,6 +122,14 @@ setMethod("getValues", signature(x='scidbst', row='missing', nrows='missing'),
           }
 )
 
+#' spplot for scidbst objects
+#'
+#' Like the raster version for spplot, this function plots a spatially referenced scidb array. To make this work on a
+#' multidimensional array, the number of dimensions must be reduced to the correct two spatial dimensions. This can
+#' be done by using the 'slice' operation of scidb.
+#'
+#' @param obj scidbst object
+#'
 #' @export
 setMethod("spplot", signature(obj="scidbst"),function (obj, maxpixels=50000, as.table=TRUE, zlim,...) {
   if (length(dimnames(obj)) > 2 ) {
@@ -134,7 +160,11 @@ setMethod("spplot", signature(obj="scidbst"),function (obj, maxpixels=50000, as.
 
 #' readAll
 #'
-#' In combination with \code{raster::getValues()} this function is called to retrieve the values from the source and store them in memory
+#' Like \code{raster::getValues()} this function is called to retrieve the values from the source and store them in memory. It
+#' differs from getValues in the fact that the scidbst object will be manipulated and returned back.
+#'
+#' @param object scidbst object
+#' @return the modified scidbst object with values
 #'
 #' @export
 setMethod('readAll', signature(object='scidbst'),
@@ -156,7 +186,13 @@ setMethod('readAll', signature(object='scidbst'),
           }
 )
 
-
+#' names function
+#'
+#' Returns the names of the dimensions and attributes used in the remote scidb array.
+#'
+#' @param x scibst object
+#' @return vector of character containing the names of dimensions and attributes
+#'
 setMethod("names",signature(x="scidbst"), function(x) {
   return(c(c(dimensions(x),scidb_attributes(x))))
 })
@@ -217,7 +253,7 @@ setMethod("subset",signature(x="scidbst"), function(x, ...) scidb:::filter_scidb
 
 #' Regular Sample
 #'
-#' Take a systematic sample from a SciDBST object.
+#' Take a systematic sample from a scidbst object.
 #'
 #' @inheritParams raster::sampleRegular
 #' @export
@@ -465,6 +501,16 @@ setMethod('slice', signature(x="scidbst",d="character",n="numeric") ,function(x,
     return(out)
 })
 
+#' crop function
+#'
+#' This function creates a spatial subset of a scidbst array and returns the subset scidbst object.
+#'
+#' @param x scidbst object
+#' @param y Extent object, or any object from which an Extent object can be extracted
+#' @param snap Character. One of 'near', 'in', or 'out', for use with alignExtent
+#' @param ...	Additional arguments as for writeRaster
+#'
+#' @return scidbst object with refined spatial extent
 #' @export
 setMethod('crop', signature(x='scidbst', y='ANY'),
           function(x, y, snap='near', ...) {
