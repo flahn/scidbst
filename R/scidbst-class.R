@@ -1,7 +1,3 @@
-library(scidb)
-library(raster)
-
-
 #' Class scidbst
 #'
 #' Class \code{scidbst} inherits from class \code{scidb}
@@ -11,46 +7,82 @@ library(raster)
 #' @slot CRS The coordinate reference system used as class 'CRS' that represents a Proj.4 string
 #' @slot extent The outer boundary of the SciDB array in referenced coordinates
 #' @slot affine The affine transformation used to convert real-world coordinates into image frame coordinates
+#' @slot spatial_dims the names of the spatial dimensions
+#' @slot temporal_dim the name of the temporal dimension
+#' @slot startTime the start time as a POSIXlt object
+#' @slot tResolution The temporal resolution as a numeric
+#' @slot tExtent the temporal extent (min/max) as a list
+#' @slot tUnit the temporal base unit for this timeseries
+#' @slot isSpatial A flag whether or not this object has a spatial reference
+#' @slot isTemporal A flag whether or not this object has a temporal reference
 #' @aliases scidbst
 #' @import methods
 #' @import scidb
 #' @import raster
-#' @exportClass scidbst
+#' @export
 .scidbst_class = setClass("scidbst",
-         contains=list("scidb","RasterBrick"),
-         representation=representation(
-           affine = "matrix",
-           selector = "matrix"
-         )
+                          contains=list("scidb","RasterBrick"),
+                          representation=representation(
+                            affine = "matrix",
+                            spatial_dims = "list",
+                            temporal_dim = "character",
+                            startTime = "ANY",
+                            tExtent = "list",
+                            tResolution = "numeric",
+                            tUnit = "character",
+                            isSpatial ="logical",
+                            isTemporal = "logical"
+                          )
 )
-.scidbst_class
+
 
 #' Constructor for scidbst
 #'
-#' @name stdb
+#' @name scidbst
 #' @rdname scidbst-class
-#' @param ... stuff passed to scidb()
-#' @return \link{scidbst} object
+#' @param name a character string name of a stored SciDB array or a valid SciDB AFL expression
+#' @param gc a logical value, TRUE means connect the SciDB array to R's garbage collector
+#' @return scidbst object
 #' @import scidb
 #' @export
-stdb = function(...){
+scidbst = function(...){
 
   .scidb = .scidbst_class(scidb(...))
 
-  .scidb@selector = matrix(NA,nrow=2,ncol=1)
-
   .srs = iquery(paste("eo_getsrs(",.scidb@name,")",sep=""),return=TRUE)
-  .scidb@affine <- .createAffineTransformation(.srs)
-  .scidb@crs <- CRS(.srs$proj4text)
+  .trs = iquery(paste("eo_gettrs(",.scidb@name,")",sep=""),return=TRUE)
+  .extent = iquery(paste("eo_extent(",.scidb@name,")",sep=""),return=TRUE)
+
+  .scidb@isSpatial = (nrow(.srs) > 0)
+  .scidb@isTemporal = (nrow(.trs) > 0)
+
+  if (.scidb@isTemporal) { #make sure that there is actually a temporal reference
+    .scidb@temporal_dim = .trs[,"tdim"]
+    .scidb@tResolution = as.numeric(unlist(regmatches(.trs[,"dt"],gregexpr("(\\d)+",.trs[,"dt"]))))
+    .scidb@tUnit = .findTUnit(.trs[,"dt"])
+    .scidb@startTime = .getDateTime(.trs[,"t0"],.scidb@tUnit)
+
+  }
 
 
-  .schema = schema(.scidb)
-  .attr = strsplit(gsub("[<|>]","",strsplit(.schema," ")[[1]][1]),",")[[1]]
+  if (.scidb@isSpatial) {
+    .scidb@affine <- .createAffineTransformation(.srs)
+    .scidb@crs <- CRS(.srs$proj4text)
+    .scidb@spatial_dims = list(xdim=.srs[,"xdim"],ydim=.srs[,"ydim"])
+  }
 
-  .scidb@data@names = matrix(unlist(sapply(.attr,strsplit,split=":")),length(.attr), 2 ,byrow=TRUE)[,1]
+  if (nrow(.extent > 0)) {
+    .scidb@extent = extent(.extent[,"xmin"],.extent[,"xmax"],.extent[,"ymin"],.extent[,"ymax"])
+    .scidb@tExtent = list(min=.getDateTime(.extent[,"tmin"],.scidb@tUnit),max=.getDateTime(.extent[,"tmax"],.scidb@tUnit))
+  }
+
+  .attr = scidb_attributes(.scidb)
+  .scidb@data@names = .attr
   .scidb@data@nlayers = length(.attr)
   .scidb@data@fromdisk = TRUE
 
+  #get minimum and maximum extent for spatial dimensions
+  .schema = schema(.scidb)
   .dims = matrix(strsplit(gsub("[\\[|\\]]","",strsplit(.schema," ")[[1]][2],perl=T),",")[[1]],nrow=3)
   .dims = strsplit(.dims[1,],"[=|:]")
   mins = as.numeric(c(.dims[[1]][2],.dims[[2]][2]))
@@ -59,33 +91,58 @@ stdb = function(...){
   colnames(bbox)=c("min","max")
   rownames(bbox)=c(.dims[[1]][1],.dims[[2]][1])
 
-  #x and y refer to image coordinates -> flip ymin, ymax
-  min = .transformToWorld(.scidb@affine,bbox["x","min"],bbox["y","max"])
-  max = .transformToWorld(.scidb@affine,bbox["x","max"],bbox["y","min"])
-
   .scidb@nrows = as.integer(bbox["y","max"] - bbox["y","min"]+1)
   .scidb@ncols = as.integer(bbox["x","max"] - bbox["x","min"]+1)
 
-  .scidb@extent <- extent(min[1], max[1], min[2], max[2])
 
   return(.scidb)
+}
 
-  # .scidb = scidb(...)
-  # .srs = iquery(paste("eo_getsrs(",.scidb@name,")",sep=""),return=TRUE)
-  # .aff <- .createAffineTransformation(.srs)
-  # .crs <- CRS(.srs$proj4text)
-  # .extent <- extent(-180, 0, 0, 90)
-  # .st = new("scidbst", CRS=.crs,affine=.aff,extent=.extent)
+.findTUnit = function(res) {
+  days = "P(\\d)+D"
+  months = "P(\\d)+M"
+  years = "P(\\d)+Y"
+  weeks = "P(\\d)+W"
+  hours = "P(\\d)+h"
+  minutes = "P(\\d)+m"
+  seconds = "P(\\d)+s"
 
-  # sn = slotNames("scidb")
-  # for (i in 1:length(sn)) {
-  #   slot(.st, sn[i]) <- slot(.scidb, sn[i])
-  # }
-  # return(.st)
+  if (grepl(days,res)) {
+    return("days")
+  }
+  if (grepl(months,res)) {
+    return("months")
+  }
+  if (grepl(years,res)) {
+    return("years")
+  }
+  if (grepl(weeks,res)) {
+    return("weeks")
+  }
+  if (grepl(hours,res)) {
+    return("hours")
+  }
+  if (grepl(minutes,res)) {
+    return("mins")
+  }
+  if (grepl(seconds,res)) {
+    return("secs")
+  }
+}
+
+.getDateTime = function (str, unit) {
+  if (unit == "days") {
+    tmp = strptime(str, "%Y-%m-%d") #day in month of year
+    if (is.na(tmp)) {
+      tmp = strptime(str, "%Y-%j") #day of year
+    }
+    return(tmp)
+  }
+  stop("Cannot extract start time of the time series")
 }
 
 .isMatrixEmpty = function (m) {
-  return(max(is.na(m[,1])) == 0 )
+  return(max(is.na(m)) == 1 )
 }
 
 .createAffineTransformation = function(srs) {
@@ -103,26 +160,28 @@ stdb = function(...){
   return(trans %*% c(1,x,y))
 }
 
+#' getValues method
+#'
+#' This function retrieves data from the remote scidb database and stores them internally like a Raster* object. This function
+#' work in principle like scidbs array materialization 'array []'. However this function also needs the multidimensional array
+#' to be reduced to a simple 2 dimensional array (spatial dimensions)
+#'
+#' @param x scidbst object
+#'
+#' @return vector or matrix of raster values
+#'
+#' @examples
+#' \dontrun{
+#' scidbconnect(...)
+#' array_proxy = scidbst(...)
+#' getValues(array_proxy)
+#' }
 #' @export
-setGeneric("setSelection", function(x, dim, val) {
-  standardGeneric("setSelection")
-})
-
-#' @export
-setMethod("setSelection",
-          signature(x='scidbst',dim='character',val='numeric'),
-          function(x,dim,val) {
-            x@selector = matrix(c(dim,val),nrow=2)
-            return(x)
-          }
-)
-
 setMethod("getValues", signature(x='scidbst', row='missing', nrows='missing'),
-          function(x,taxis,tindex) {
-            if (! missing(taxis) & ! missing(tindex)) {
-              x@selector = matrix(c(taxis,tindex),nrow=2)
+          function(x) {
+            if (length(dimnames(x)) > 2 ) {
+              stop("Too many dimensions detected. Try 'slice' to subset the image for example time.")
             }
-
 
             if (! inMemory(x) ) {
               if ( fromDisk(x) ) {
@@ -131,19 +190,61 @@ setMethod("getValues", signature(x='scidbst', row='missing', nrows='missing'),
                 return( matrix(rep(NA, ncell(x) * nlayers(x)), ncol=nlayers(x)) )
               }
             }
-            colnames(x@data@values) <- x@data@names
+            #colnames(x@data@values) <- x@data@names
+            x@data@names = scidb_attributes(x)
+            colnames(x@data@values) <- scidb_attributes(x)
+
             x@data@values
           }
 )
 
+#' spplot for scidbst objects
+#'
+#' Like the raster version for spplot, this function plots a spatially referenced scidb array. To make this work on a
+#' multidimensional array, the number of dimensions must be reduced to the correct two spatial dimensions. This can
+#' be done by using the 'slice' operation of scidb.
+#'
+#' @param obj scidbst object
+#'
+#' @export
+setMethod("spplot", signature(obj="scidbst"),function (obj, maxpixels=50000, as.table=TRUE, zlim,...) {
+  if (length(dimnames(obj)) > 2 ) {
+    stop("Too many dimensions detected. Try slice to make a 2D subset of the image.")
+  }
+
+  #following: code from raster::spplot
+  obj <- sampleRegular(obj, maxpixels, asRaster=TRUE, useGDAL=TRUE)
+  if (!missing(zlim)) {
+    if (length(zlim) != 2) {
+      warning('zlim should be a vector of two elements')
+    }
+    if (length(zlim) >= 2) {
+      obj[obj < zlim[1] | obj > zlim[2]] <- NA
+    }
+  }
+
+  if (inherits(obj,"scidb")) {
+    attr_names = scidb_attributes(obj)
+    obj <- as(obj, 'SpatialGridDataFrame')
+    spplot(obj,..., as.table=as.table)
+  } else {
+    obj <- as(obj, 'SpatialGridDataFrame')
+    spplot(obj,... , as.table=as.table)
+  }
+
+})
+
 #' readAll
 #'
-#' In combination with \code{raster::getValues()} this function is called to retrieve the values from the source and store them in memory
+#' Like \code{raster::getValues()} this function is called to retrieve the values from the source and store them in memory. It
+#' differs from getValues in the fact that the scidbst object will be manipulated and returned back.
+#'
+#' @param object scidbst object
+#' @return the modified scidbst object with values
 #'
 #' @export
 setMethod('readAll', signature(object='scidbst'),
           function(object){
-            #print("picked correct function")
             if (! object@data@fromdisk)  {
               stop('cannot read values; there is no file associated with this scidbst raster inheriting thing')
             }
@@ -160,6 +261,13 @@ setMethod('readAll', signature(object='scidbst'),
           }
 )
 
+#' names function
+#'
+#' Returns the names of the dimensions and attributes used in the remote scidb array.
+#'
+#' @param x scibst object
+#' @return vector of character containing the names of dimensions and attributes
+#'
 setMethod("names",signature(x="scidbst"), function(x) {
   return(c(c(dimensions(x),scidb_attributes(x))))
 })
@@ -171,77 +279,63 @@ setMethod("subset",signature(x="scidbst"), function(x, ...) scidb:::filter_scidb
 .materializeSCIDBValues = function(object, startrow, nrows=1, startcol=1, ncols=ncol(object)) {
   offs <- c((startrow - 1), (startcol - 1))
   reg <- c(nrows, ncols)
-  #con <- GDAL.open(object@file@name, silent = TRUE)
-
-  #		result <- getRasterData(con, offset=offs, region.dim=reg)
-  #		result <- do.call(cbind, lapply(1:nlayers(object), function(i) as.vector(result[,,i])))
-  # just as fast, it seems:
   result <- matrix(nrow = (ncol(object)) * (nrow(object)), ncol = nlayers(object))
 
+  cat("Downloading data...\n")
+  if (length(dimensions(object))>2) {
+    stop("Array has more than two dimensions to fetch data in a raster format")
+    #TODO if time is referenced allow download of multiple timesteps, if needed
+  }
+
+  extent = as.matrix(.calculateDimIndices(object,extent(object)))
+
+  .data = iquery(object@name,return=T)
 
 
-  print("Downloading data...")
-  sel = paste(object@selector[1,1],"=",object@selector[2,1],sep="") #TODO replace with function that creates the string
-  .data = subset(object,sel)[] #materialize scidb array represented by object
-
+  if (nrow(.data) == 0) {
+    warning("Image is empty.")
+    return(result)
+  }
 
   for (b in 1:object@data@nlayers) {
     lname = object@data@names[b]
-    if (!is.na(.data[,lname]) || sum(.data[,lname])>0) {
-      #result[, b] <- getRasterData(con, offset = offs,region.dim = reg, band = b)
-      #result[,b] <- sample(0:255,ncols*nrows,replace=T)
-      #result[,b] <- .data[,lname] #NA values are skipped by SciDB, need to add values via column, row indices
 
+    if (!all(is.na(.data[,lname]))) {
       tmp = matrix(nrow=(nrow(object)),ncol=(ncol(object)))
       m = .data[order(.data[,"y"],.data[,"x"]),]
-      m[,1:2]=m[,1:2]+1
+      start_y = min(.data[,"y"])
+      start_x = min(.data[,"x"])
+      #shift x coordinates 0->1 and remove offst
+      m[,"x"]=m[,"x"]+1-start_x
+      #same for y
+      m[,"y"]=m[,"y"]+1-start_y
+
+
       tmp2 = matrix(m[,lname],nrow=length(unique(m[,"y"])),ncol=length(unique(m[,"x"])),byrow=T)
+
       tmp[unique(m[,"y"]),unique(m[,"x"])] = tmp2
       #restructure the matrix to a one dimensional vector
       restruct = as.vector(t(tmp))
 
 
       result[,b] = restruct
-      # for(i in 1:length(.data[,1])) { #for each row
-      #   row = .data[i,"y"]
-      #   col = .data[i,"x"]
-      #   val = .data[i,lname]
-      #
-      #   index = (row)*(ncol(object)+1)+col
-      #   result[index,b] = val
-      # }
     }
   }
-
+  colnames(result) = scidb_attributes(object)
   return(result)
 }
 
-#copy pasted from raster
-setMethod("spplot", signature(obj='scidbst'),
-          function(obj, ..., maxpixels=50000, as.table=TRUE, zlim)  {
-
-            obj <- sampleRegular(obj, maxpixels, asRaster=TRUE,useGDAL=TRUE)
-            if (!missing(zlim)) {
-              if (length(zlim) != 2) {
-                warning('zlim should be a vector of two elements')
-              }
-              if (length(zlim) >= 2) {
-                obj[obj < zlim[1] | obj > zlim[2]] <- NA
-              }
-            }
-
-            obj <- as(obj, 'SpatialGridDataFrame')
-            #obj@data <- obj@data[, ncol(obj@data):1]
-            spplot(obj, ..., as.table=as.table)
-          }
-)
-
+#' Regular Sample
+#'
+#' Take a systematic sample from a scidbst object.
+#'
+#' @inheritParams raster::sampleRegular
+#' @export
 #copied from raster with small changes
+# changed "names(outras) <- names(x)" to "names(outras) <- scidb_attributes(x)"
 setMethod('sampleRegular', signature(x='scidbst'),
           function( x, size, ext=NULL, cells=FALSE, xy=FALSE, asRaster=FALSE, sp=FALSE, useGDAL=FALSE, ...) {
-
             stopifnot(hasValues(x))
-
             size <- round(size)
             stopifnot(size > 0)
             nl <- nlayers(x)
@@ -311,6 +405,7 @@ setMethod('sampleRegular', signature(x='scidbst'),
                 useGDAL <- FALSE
               }
               if (useGDAL) {
+                print("using GDAL")
                 offs <- c(firstrow,firstcol)-1
                 reg <- c(nrow(rcut), ncol(rcut))-1
 
@@ -393,6 +488,7 @@ setMethod('sampleRegular', signature(x='scidbst'),
               }
             }
 
+            # calculates the number of cells
             cell <- cellFromRowCol(x, rep(rows, each=nc), rep(cols, times=nr))
 
 
@@ -448,5 +544,176 @@ setMethod('sampleRegular', signature(x='scidbst'),
               return(m)
             }
           }
-
 )
+
+if (!isGeneric("slice")) {
+  setGeneric("slice", function(x,d,n) standardGeneric("slice"))
+}
+
+#' Slice the array
+#'
+#' Takes a dimension name and a value to create a slice of an array. This usually means reducing the dimensions
+#' of an array.
+#'
+#' @inheritParams scidb::slice
+#' @return scidbst A new scidbst object with reduced number of dimensions
+#' @export
+setMethod('slice', signature(x="scidbst",d="character",n="numeric") ,function(x,d,n) {
+    out = .scidbst_class(scidb::slice(x,d,n))
+
+    .cpMetadata(x,out)
+    if (d %in% x@temporal_dim) {
+      baseTime = 0
+
+      if (x@tUnit == "weeks") {
+        baseTime = 7*24*60*60
+      } else if (x@tUnit == "days") {
+        baseTime = 24*60*60
+      } else if (x@tUnit == "hours") {
+        baseTime = 60 * 60
+      } else if (x@tUnit == "mins") {
+        baseTime = 60
+      } else if (x@tUnit == "secs") {
+        baseTime = 1
+      } else {
+        stop("currently no other temporal unit supported")
+      }
+
+      newStart = as.character(x@startTime + n * x@tResolution * baseTime)
+      newEnd = as.character(x@startTime + (n+1) * x@tResolution * baseTime)
+      out@tExtent[["min"]] = newStart
+      out@tExtent[["max"]] = newEnd
+      out@isTemporal = FALSE
+    }
+
+    return(out)
+})
+
+#' crop function
+#'
+#' This function creates a spatial subset of a scidbst array and returns the subset scidbst object.
+#'
+#' @param x scidbst object
+#' @param y Extent object, or any object from which an Extent object can be extracted
+#' @param snap Character. One of 'near', 'in', or 'out', for use with alignExtent
+#' @param ...	Additional arguments as for writeRaster
+#'
+#' @return scidbst object with refined spatial extent
+#' @export
+setMethod('crop', signature(x='scidbst', y='ANY'),
+          function(x, y, snap='near', ...) {
+            if (length(dimnames(x)) > 2 ) {
+              stop("More than two dimensions")
+            }
+
+
+            # as in the raster package, try to get the extent of object y
+            y <- try ( extent(y), silent=TRUE )
+            if (class(y) == "try-error") {
+              stop('Cannot get an Extent object from argument y')
+            }
+            validObject(y)
+
+            e <- intersect(extent(x), extent(y))
+            e <- alignExtent(e, x, snap=snap)
+
+            out = .calculateDimIndices(x,e)
+
+            #TODO check creation with
+            limits = as.matrix(out)
+
+            res = subarray(x=x,limits=limits[dimensions(x),],between=TRUE)
+            res = .scidbst_class(res)
+            res = .cpMetadata(x,res) #first copy all, then adapt
+
+            res@extent = e
+            nrow(res) = (ymax(out) - ymin(out))+1
+            ncol(res) = (xmax(out) - xmin(out))+1
+            # +1 because origin in scidb is 0,0
+
+
+            return(res)
+            #apply eo_cpsrs / eo_(g/s)ettrs
+
+
+          }
+)
+
+.cpMetadata = function(from,to) {
+  if (class(from) == "scidbst" && class(to) == "scidbst") {
+    to@extent = from@extent
+    crs(to) = crs(from)
+
+    to@affine = from@affine
+    nrow(to) = nrow(from)
+    ncol(to) = ncol(from)
+    # +1 because origin in scidb is 0,0
+
+    to@data@names = from@data@names
+    to@data@nlayers = nlayers(from)
+    to@data@fromdisk = TRUE
+
+
+    to@spatial_dims = from@spatial_dims
+    to@temporal_dim = from@temporal_dim
+    to@startTime = from@startTime
+    to@tExtent = from@tExtent
+    to@tResolution = from@tResolution
+    to@tUnit = from@tUnit
+    to@isSpatial = from@isSpatial
+    to@isTemporal = from@isTemporal
+
+    if (inMemory(from)) {
+      to@data@inmemory = FALSE
+    }
+
+    return(to)
+  }
+}
+
+.calculateDimIndices = function(object, extent) {
+  ll = c(xmin(extent),ymin(extent))
+  ur = c(xmax(extent),ymax(extent))
+
+  origin = object@affine[,1]
+  sub = object@affine[,2:3]
+
+  img1 = (solve(sub) %*% (ll - origin))
+  img2 = (solve(sub) %*% (ur - origin))
+
+  indices = extent(c(range(img1[1],img2[1]),range(img1[2],img2[2])))
+  xmin(indices) = floor(xmin(indices))
+  ymin(indices) = floor(ymin(indices))
+  xmax(indices) = ceiling(xmax(indices))
+  ymax(indices) = ceiling(ymax(indices))
+  return(indices)
+}
+
+
+setGeneric("aggregate.t", function(x, ...) standardGeneric("aggregate.t"))
+
+.aggregate.t.scidbst = function(x, attributes, ...) {
+  selection = x@spatial_dims
+  if (x@isTemporal) {
+    if (!missing(attributes)) {
+      if (!is.list(attributes)) {
+        attributes = as.list(attributes)
+      }
+
+    }
+    out = .scidbst_class(scidb::aggregate(x, by=selection,...))
+    out = .cpMetadata(x,out)
+    out@isTemporal = FALSE
+    out@tResolution = as.numeric(difftime(x@tExtent[["max"]],x@tExtent[["min"]],x@tUnit))+1
+
+    return(out)
+  } else {
+    stop("Cannot aggregate over time with no temporal reference on the object")
+  }
+
+}
+
+#' aggregates over time
+#'
+#' @export
+setMethod('aggregate.t', signature(x="scidbst"), .aggregate.t.scidbst)
