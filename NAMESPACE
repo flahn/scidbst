@@ -2,6 +2,7 @@
 
 export(scidbst)
 exportClasses(scidbst)
+exportMethods(aggregate.t)
 exportMethods(crop)
 exportMethods(getValues)
 exportMethods(readAll)
