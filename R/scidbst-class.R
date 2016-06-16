@@ -20,7 +20,7 @@
                             affine = "matrix",
                             spatial_dims = "list",
                             temporal_dim = "character",
-                            startTime = "data.frame",
+                            startTime = "ANY",
                             tResolution = "character",
                             tUnit = "character",
                             isSpatial ="logical",
