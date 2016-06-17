@@ -1,3 +1,10 @@
+# just a precaution, since the class was not exported in the package SciDBR
+setClass("scidb",
+         representation(name="character",
+                        meta="environment",
+                        gc="environment"),
+         S3methods=TRUE)
+
 #' Class scidbst
 #'
 #' Class \code{scidbst} inherits from class \code{scidb}
@@ -16,7 +23,7 @@
 #' @slot isSpatial A flag whether or not this object has a spatial reference
 #' @slot isTemporal A flag whether or not this object has a temporal reference
 #' @aliases scidbst
-#' @import methods
+#' @importClassesFrom methods environment POSIXlt
 #' @import scidb
 #' @import raster
 #' @export
@@ -98,6 +105,25 @@ scidbst = function(...){
   return(.scidb)
 }
 
+.calcTDimIndex = function (x, time) {
+  if (is.character(time)) {
+    time = as.POSIXlt(.getDateTime(time,x@tUnit))
+  } else {
+    time = as.POSIXlt(time) #first simply try it
+  }
+
+  if (time >= x@tExtent$min && time <= x@tExtent$max) {
+    t0 = x@startTime
+    dt = x@tResolution
+    unit = x@tUnit
+    index  = floor(as.numeric(difftime(time,t0,unit))/dt)
+
+    return(index)
+  } else {
+    stop("time statement is out of bounds")
+  }
+}
+
 .findTUnit = function(res) {
   days = "P(\\d)+D"
   months = "P(\\d)+M"
@@ -129,6 +155,8 @@ scidbst = function(...){
     return("secs")
   }
 }
+
+
 
 .getDateTime = function (str, unit) {
   if (unit == "days") {
@@ -550,6 +578,38 @@ if (!isGeneric("slice")) {
   setGeneric("slice", function(x,d,n) standardGeneric("slice"))
 }
 
+.slice = function (x,d,n) {
+  out = .scidbst_class(scidb::slice(x,d,n))
+
+  .cpMetadata(x,out)
+  if (d %in% x@temporal_dim) {
+    baseTime = 0
+
+    if (x@tUnit == "weeks") {
+      baseTime = 7*24*60*60
+    } else if (x@tUnit == "days") {
+      baseTime = 24*60*60
+    } else if (x@tUnit == "hours") {
+      baseTime = 60 * 60
+    } else if (x@tUnit == "mins") {
+      baseTime = 60
+    } else if (x@tUnit == "secs") {
+      baseTime = 1
+    } else {
+      stop("currently no other temporal unit supported")
+    }
+
+    #adapt temporal extent
+    newStart = as.POSIXlt(x@startTime + n * x@tResolution * baseTime)
+    newEnd = as.POSIXlt(x@startTime + (n+1) * x@tResolution * baseTime)
+    out@tExtent[["min"]] = newStart
+    out@tExtent[["max"]] = newEnd
+    out@isTemporal = TRUE
+  }
+
+  return(out)
+}
+
 #' Slice the array
 #'
 #' Takes a dimension name and a value to create a slice of an array. This usually means reducing the dimensions
@@ -558,36 +618,21 @@ if (!isGeneric("slice")) {
 #' @inheritParams scidb::slice
 #' @return scidbst A new scidbst object with reduced number of dimensions
 #' @export
-setMethod('slice', signature(x="scidbst",d="character",n="numeric") ,function(x,d,n) {
-    out = .scidbst_class(scidb::slice(x,d,n))
+setMethod('slice', signature(x="scidbst",d="character",n="ANY") , function(x,d,n) {
+  if (d %in% x@temporal_dim) {
+    if (is.character(n) || !tryCatch(is.na.POSIXlt(n,error=function(e) {return(TRUE)}))) {
 
-    .cpMetadata(x,out)
-    if (d %in% x@temporal_dim) {
-      baseTime = 0
-
-      if (x@tUnit == "weeks") {
-        baseTime = 7*24*60*60
-      } else if (x@tUnit == "days") {
-        baseTime = 24*60*60
-      } else if (x@tUnit == "hours") {
-        baseTime = 60 * 60
-      } else if (x@tUnit == "mins") {
-        baseTime = 60
-      } else if (x@tUnit == "secs") {
-        baseTime = 1
-      } else {
-        stop("currently no other temporal unit supported")
-      }
-
-      newStart = as.character(x@startTime + n * x@tResolution * baseTime)
-      newEnd = as.character(x@startTime + (n+1) * x@tResolution * baseTime)
-      out@tExtent[["min"]] = newStart
-      out@tExtent[["max"]] = newEnd
-      out@isTemporal = FALSE
+      n = .calcTDimIndex(x,n)
+    } else if (is.numeric(n)) {
+      n = round(n)
+    } else {
+      stop("Not recognized value for time dimension during slice operation")
     }
+  }
 
-    return(out)
+  return(.slice(x,d,n))
 })
+
 
 #' crop function
 #'
@@ -716,4 +761,4 @@ setGeneric("aggregate.t", function(x, ...) standardGeneric("aggregate.t"))
 #' aggregates over time
 #'
 #' @export
-setMethod('aggregate.t', signature(x="scidbst"), .aggregate.t.scidbst)
+setMethod("aggregate.t", signature(x="scidbst"), .aggregate.t.scidbst)
