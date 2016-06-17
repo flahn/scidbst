@@ -1,9 +1,8 @@
-# just a precaution, since the class was not exported in the package SciDBR
+# just a precaution, since the class was not exported in the package SciDBR (remved S3Methods for now)
 setClass("scidb",
          representation(name="character",
                         meta="environment",
-                        gc="environment"),
-         S3methods=TRUE)
+                        gc="environment"))
 
 #' Class scidbst
 #'
@@ -743,22 +742,53 @@ setGeneric("aggregate.t", function(x, ...) standardGeneric("aggregate.t"))
     if (!missing(attributes)) {
       if (!is.list(attributes)) {
         attributes = as.list(attributes)
+        selection = append(selection,attributes)
+        cat("having attributes")
       }
 
     }
     out = .scidbst_class(scidb::aggregate(x, by=selection,...))
     out = .cpMetadata(x,out)
+    out@data@names = scidb_attributes(out)
     out@isTemporal = FALSE
     out@tResolution = as.numeric(difftime(x@tExtent[["max"]],x@tExtent[["min"]],x@tUnit))+1
-
+    out@temporal_dim = ""
     return(out)
   } else {
     stop("Cannot aggregate over time with no temporal reference on the object")
   }
-
 }
 
 #' aggregates over time
 #'
 #' @export
 setMethod("aggregate.t", signature(x="scidbst"), .aggregate.t.scidbst)
+
+setGeneric("aggregate.sp", function(x, ...) standardGeneric("aggregate.sp"))
+
+.aggregate.sp.scidbst = function(x, attributes, ...) {
+  selection = as.list(x@temporal_dim)
+  if (x@isSpatial) {
+    if (!missing(attributes)) {
+      if (!is.list(attributes)) {
+        attributes = as.list(attributes)
+        selection = append(selection,attributes)
+      }
+
+    }
+    out = .scidbst_class(scidb::aggregate(x, by=selection,...))
+    out = .cpMetadata(x,out)
+    out@data@names = scidb_attributes(out)
+    out@isSpatial = FALSE
+    out@spatial_dims = list()
+
+    return(out)
+  } else {
+    stop("Cannot aggregate over space with no spatial reference on the object")
+  }
+}
+
+#' aggregates over time
+#'
+#' @export
+setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
