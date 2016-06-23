@@ -13,7 +13,7 @@ setClass("scidb",
 #' @slot CRS The coordinate reference system used as class 'CRS' that represents a Proj.4 string
 #' @slot extent The outer boundary of the SciDB array in referenced coordinates
 #' @slot affine The affine transformation used to convert real-world coordinates into image frame coordinates
-#' @slot spatial_dims the names of the spatial dimensions
+#' @slot spatial_dims the names of the spatial dimensions as a named list. 'xdim' describes the west-east axis and 'ydim' the north-south axis.
 #' @slot temporal_dim the name of the temporal dimension
 #' @slot startTime the start time as a POSIXlt object
 #' @slot tResolution The temporal resolution as a numeric
@@ -25,7 +25,7 @@ setClass("scidb",
 #' @importClassesFrom methods environment POSIXlt
 #' @import scidb
 #' @import raster
-#' @export
+#' @exportClass scidbst
 .scidbst_class = setClass("scidbst",
                           contains=list("scidb","RasterBrick"),
                           representation=representation(
@@ -292,6 +292,8 @@ setMethod('readAll', signature(object='scidbst'),
 #'
 #' Returns the names of the dimensions and attributes used in the remote scidb array.
 #'
+#' @note This function overwrites the standard S3 names function of raster.
+#'
 #' @param x scibst object
 #' @return vector of character containing the names of dimensions and attributes
 #'
@@ -308,6 +310,8 @@ setMethod("subset",signature(x="scidbst"), function(x, ...) scidb:::filter_scidb
   reg <- c(nrows, ncols)
   result <- matrix(nrow = (ncol(object)) * (nrow(object)), ncol = nlayers(object))
 
+
+
   cat("Downloading data...\n")
   if (length(dimensions(object))>2) {
     stop("Array has more than two dimensions to fetch data in a raster format")
@@ -317,35 +321,56 @@ setMethod("subset",signature(x="scidbst"), function(x, ...) scidb:::filter_scidb
   extent = as.matrix(.calculateDimIndices(object,extent(object)))
 
   .data = iquery(object@name,return=T)
+  ndims = length(dimensions(.data))
 
-
-  if (nrow(.data) == 0) {
-    warning("Image is empty.")
-    return(result)
+  if (nrow(.data) == 0) { #scidb does not return data. Stop here
+    stop("Image is empty.")
   }
 
   for (b in 1:object@data@nlayers) {
     lname = object@data@names[b]
 
     if (!all(is.na(.data[,lname]))) {
-      tmp = matrix(nrow=(nrow(object)),ncol=(ncol(object)))
-      m = .data[order(.data[,"y"],.data[,"x"]),]
-      start_y = min(.data[,"y"])
-      start_x = min(.data[,"x"])
-      #shift x coordinates 0->1 and remove offst
-      m[,"x"]=m[,"x"]+1-start_x
-      #same for y
-      m[,"y"]=m[,"y"]+1-start_y
+
+      if (ndims == 2) {
+        tmp = matrix(nrow=(nrow(object)),ncol=(ncol(object)))
+        m = .data[order(.data[,"y"],.data[,"x"]),]
+        start_y = min(.data[,"y"])
+        start_x = min(.data[,"x"])
+        #shift x coordinates 0->1 and remove offset
+        m[,"x"]=m[,"x"]+1-start_x
+        #same for y
+        m[,"y"]=m[,"y"]+1-start_y
+
+        tmp2 = matrix(m[,lname],nrow=length(unique(m[,"y"])),ncol=length(unique(m[,"x"])),byrow=T)
+
+        tmp[unique(m[,"y"]),unique(m[,"x"])] = tmp2
+        #restructure the matrix to a one dimensional vector
+        restruct = as.vector(t(tmp))
 
 
-      tmp2 = matrix(m[,lname],nrow=length(unique(m[,"y"])),ncol=length(unique(m[,"x"])),byrow=T)
+        result[,b] = restruct
+      } else { #number of dimensions is 1
+        tmp = matrix(nrow=1,ncol=(max(.data[,"t"])-min(.data[,"t"])+1))
+        m = .data[order(.data[,"t"]),]
+        start_t = min(.data[,"t"])
+        #shift t coordinates 0->1 and remove offset
+        m[,"t"]=m[,"t"]+1-start_t
 
-      tmp[unique(m[,"y"]),unique(m[,"x"])] = tmp2
-      #restructure the matrix to a one dimensional vector
-      restruct = as.vector(t(tmp))
+        tmp2 = matrix(m[,lname],nrow=1,ncol=length(unique(m[,"t"])),byrow=T)
+
+        tmp[1,unique(m[,"t"])] = tmp2
+        #restructure the matrix to a one dimensional vector
+        restruct = as.vector(t(tmp))
 
 
-      result[,b] = restruct
+        result[,b] = restruct
+      }
+
+
+
+
+
     }
   }
   colnames(result) = scidb_attributes(object)
@@ -645,7 +670,7 @@ setMethod('slice', signature(x="scidbst",d="character",n="ANY") , function(x,d,n
 #' @return scidbst object with refined spatial extent
 #' @export
 setMethod('crop', signature(x='scidbst', y='ANY'),
-          function(x, y, snap='near', ...) {
+    function(x, y, snap='near', ...) {
             if (length(dimnames(x)) > 2 ) {
               stop("More than two dimensions")
             }
@@ -689,8 +714,9 @@ setMethod('crop', signature(x='scidbst', y='ANY'),
     crs(to) = crs(from)
 
     to@affine = from@affine
-    nrow(to) = nrow(from)
-    ncol(to) = ncol(from)
+    #nrow(to) = nrow(from)
+    #ncol(to) = ncol(from) # should be calculated automatically now
+
     # +1 because origin in scidb is 0,0
 
     to@data@names = from@data@names
@@ -715,6 +741,29 @@ setMethod('crop', signature(x='scidbst', y='ANY'),
   }
 }
 
+setMethod("nrow",signature(x="scidbst"),function(x) {
+  if (x@isSpatial) {
+    #dim = x@spatial_dims$ydim
+    extent = .calculateDimIndices(x,extent(x))
+    return(extent$ymax-extent$ymin+1)
+  } else if (x@isTemporal){
+    return(1)
+  } else {
+    #TODO return length of first dimension
+  }
+})
+
+setMethod("ncol",signature(x="scidbst"),function(x) {
+  if (x@isSpatial) {
+    extent = .calculateDimIndices(x,extent(x))
+    return(extent$xmax-extent$xmin+1)
+  } else if (x@isTemporal) {
+    return(as.numeric(difftime(x@tExtent[["max"]],x@tExtent[["min"]],x@tUnit))+1)
+  } else {
+    #TODO return length of second dimension
+  }
+})
+
 .calculateDimIndices = function(object, extent) {
   ll = c(xmin(extent),ymin(extent))
   ur = c(xmax(extent),ymax(extent))
@@ -732,63 +781,3 @@ setMethod('crop', signature(x='scidbst', y='ANY'),
   ymax(indices) = ceiling(ymax(indices))
   return(indices)
 }
-
-
-setGeneric("aggregate.t", function(x, ...) standardGeneric("aggregate.t"))
-
-.aggregate.t.scidbst = function(x, attributes, ...) {
-  selection = x@spatial_dims
-  if (x@isTemporal) {
-    if (!missing(attributes)) {
-      if (!is.list(attributes)) {
-        attributes = as.list(attributes)
-        selection = append(selection,attributes)
-        cat("having attributes")
-      }
-
-    }
-    out = .scidbst_class(scidb::aggregate(x, by=selection,...))
-    out = .cpMetadata(x,out)
-    out@data@names = scidb_attributes(out)
-    out@isTemporal = FALSE
-    out@tResolution = as.numeric(difftime(x@tExtent[["max"]],x@tExtent[["min"]],x@tUnit))+1
-    out@temporal_dim = ""
-    return(out)
-  } else {
-    stop("Cannot aggregate over time with no temporal reference on the object")
-  }
-}
-
-#' aggregates over time
-#'
-#' @export
-setMethod("aggregate.t", signature(x="scidbst"), .aggregate.t.scidbst)
-
-setGeneric("aggregate.sp", function(x, ...) standardGeneric("aggregate.sp"))
-
-.aggregate.sp.scidbst = function(x, attributes, ...) {
-  selection = as.list(x@temporal_dim)
-  if (x@isSpatial) {
-    if (!missing(attributes)) {
-      if (!is.list(attributes)) {
-        attributes = as.list(attributes)
-        selection = append(selection,attributes)
-      }
-
-    }
-    out = .scidbst_class(scidb::aggregate(x, by=selection,...))
-    out = .cpMetadata(x,out)
-    out@data@names = scidb_attributes(out)
-    out@isSpatial = FALSE
-    out@spatial_dims = list()
-
-    return(out)
-  } else {
-    stop("Cannot aggregate over space with no spatial reference on the object")
-  }
-}
-
-#' aggregates over time
-#'
-#' @export
-setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
