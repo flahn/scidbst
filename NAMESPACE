@@ -2,6 +2,7 @@
 
 export(scidbst)
 exportClasses(scidbst)
+exportMethods(aggregate)
 exportMethods(aggregate.sp)
 exportMethods(aggregate.t)
 exportMethods(crop)
