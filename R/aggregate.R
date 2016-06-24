@@ -3,8 +3,7 @@ NULL
 
 setGeneric("aggregate.t", function(x, ...) standardGeneric("aggregate.t"))
 
-.aggregate.t.scidbst = function(x, ...) {
-  browser()
+.aggregate.t.scidbst = function(x, by, ...) {
   selection = x@spatial_dims
 
   if (x@isTemporal) {
@@ -36,15 +35,21 @@ setMethod("aggregate.t", signature(x="scidbst"), .aggregate.t.scidbst)
 
 setGeneric("aggregate.sp", function(x, ...) standardGeneric("aggregate.sp"))
 
-.aggregate.sp.scidbst = function(x, attributes, ...) {
+.aggregate.sp.scidbst = function(x, by, ...) {
+  dots = list(...)
+
   selection = as.list(x@temporal_dim)
+  if (!missing(by)) {
+    dots["by"] <- NULL
+  }
+
   if (x@isSpatial) {
 
     x@isSpatial = FALSE
     old_nrow = nrow(x)
     old_ncol = ncol(x)
     sobj = scidb(x@name)
-    agg = aggregate(sobj, by=selection,...) # delegate operation to scidb package
+    agg = aggregate(sobj, by=selection, dots) # delegate operation to scidb package
     out = .scidbst_class(agg)
     out = .cpMetadata(x,out)
     out@data@names = scidb_attributes(out)
@@ -78,53 +83,40 @@ setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
   }
 
   if (x@isTemporal) {
-    aggregate_by_time = all(by %in% x@spatial_dims)
+    aggregate_by_time = all(x@spatial_dims %in% by)
   }
   if (x@isSpatial) {
-    aggregate_by_space = all(by %in% x@temporal_dim)
+    aggregate_by_space = all(x@temporal_dim %in% by)
   }
-  browser()
-  if (aggregate_by_time && !aggregate_by_space) {
+
+  if (aggregate_by_time && !aggregate_by_space) { #all spatial dimensions are present
     out = aggregate.t(x, by, ...)
     return(out)
   }
-  if (aggregate_by_space && !aggregate_by_time) {
+
+  if (aggregate_by_space && !aggregate_by_time) { # all temporal dimensions are present
     out = aggregate.sp(x, by, ...)
     return(out)
   }
 
-  if (!aggregate_by_time && !aggregate_by_space) {
-    #check if one of the reference axis is involved in the by statement, aggregate and copy metadata
-    dims = list()
-    if (x@isSpatial) {
-      dims = append(dims,x@spatial_dims)
-    }
-    if (x@isTemporal) {
-      dims = append(dims, x@temporal_dim)
+  if (aggregate_by_time && aggregate_by_space) { #aggregation over space and time
+    # aggregate as scidb
+    old_ncol = ncol(x)
+    old_nrow = nrow(x)
+
+    if (length(by) != length(dimensions(x))) {
+      out = aggregate(scidb(x@name),by,...)
+    } else {
+      out = aggregate(scidb(x@name), by="", ...)
     }
 
-    has_any_ref_axis = any(dims %in% by)
-    if (!has_any_ref_axis) {
-      #aggregate as scidb object
-      arr = aggregate(scidb(x@name),by,...)
-      #and then transform to scidbst
-      arr = .scidbst_class(arr)
-      arr = .cpMetadata(x,arr)
-      return(arr)
-    } else if (any(x@temporal_dim %in% by)) {
-      #for now this should not happen, since length of temporal_dim is 1
-      return(aggregate.t(x, by, ...))
-    } else {
-      #then it is one spatial dimension
-      #which means we loose the spatial reference
-      stop("Aggregating over just one spatial dimension currently not allowed.")
+
+    if (is.null(out)) {
+      stop("No dimensions left.")
     }
-  } else {
-    #aggregation over space and time
-    # aggregate as scidb
-    arr = aggregate(scidb(x@name),by,...)
     # copy metadata
-    arr = .cpMetadata(x,arr)
+    out = .scidbst_class(out)
+    out = .cpMetadata(x,out)
     out@data@names = scidb_attributes(out)
     # set tResolution to complete temporal extent
 
@@ -136,6 +128,20 @@ setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
     out@affine = out@affine %*% matrix(c(1,0,0,0,old_ncol,0,0,0,old_nrow),ncol=3,nrow=3)
     return(out)
   }
+
+  # at this point either no or just one spatial dimension is present
+
+  if (!aggregate_by_time && !aggregate_by_space && !any(x@spatial_dims %in% by)) { # no referenced dimension involved
+    #aggregate as scidb object
+    arr = aggregate(scidb(x@name),by,...)
+    #and then transform to scidbst
+    arr = .scidbst_class(arr)
+    arr = .cpMetadata(x,arr)
+    return(arr)
+  } else {
+    stop("Aggregation over one spatial dimension currently not allowed")
+  }
+
 }
 
 #' Aggregates a SciDBST object over the given dimensions and/or attributes

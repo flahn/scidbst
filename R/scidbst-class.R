@@ -1,8 +1,14 @@
+#' @import methods
+#' @import scidb
+#' @import raster
+NULL
+
 # just a precaution, since the class was not exported in the package SciDBR (remved S3Methods for now)
 setClass("scidb",
          representation(name="character",
                         meta="environment",
-                        gc="environment"))
+                        gc="environment")
+         )
 
 #' Class scidbst
 #'
@@ -22,9 +28,6 @@ setClass("scidb",
 #' @slot isSpatial A flag whether or not this object has a spatial reference
 #' @slot isTemporal A flag whether or not this object has a temporal reference
 #' @aliases scidbst
-#' @importClassesFrom methods environment POSIXlt
-#' @import scidb
-#' @import raster
 #' @exportClass scidbst
 .scidbst_class = setClass("scidbst",
                           contains=list("scidb","RasterBrick"),
@@ -745,7 +748,7 @@ setMethod("nrow",signature(x="scidbst"),function(x) {
   if (x@isSpatial) {
     #dim = x@spatial_dims$ydim
     extent = .calculateDimIndices(x,extent(x))
-    return(extent$ymax-extent$ymin+1)
+    return(extent@ymax-extent@ymin+1)
   } else if (x@isTemporal){
     return(1)
   } else {
@@ -756,12 +759,17 @@ setMethod("nrow",signature(x="scidbst"),function(x) {
 setMethod("ncol",signature(x="scidbst"),function(x) {
   if (x@isSpatial) {
     extent = .calculateDimIndices(x,extent(x))
-    return(extent$xmax-extent$xmin+1)
+    return(extent@xmax-extent@xmin+1)
   } else if (x@isTemporal) {
     return(as.numeric(difftime(x@tExtent[["max"]],x@tExtent[["min"]],x@tUnit))+1)
   } else {
     #TODO return length of second dimension
   }
+})
+
+#' @export
+setMethod("show",signature(object="scidbst"), function(object){
+  show(scidb(object@name))
 })
 
 .calculateDimIndices = function(object, extent) {

@@ -5,7 +5,7 @@
 \alias{aggregate.sp,scidbst-method}
 \title{aggregates over space}
 \usage{
-\S4method{aggregate.sp}{scidbst}(x, attributes, ...)
+\S4method{aggregate.sp}{scidbst}(x, by, ...)
 }
 \value{
 scidbst object with the spatial resolution extended to the whole image extent
