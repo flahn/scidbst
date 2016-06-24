@@ -309,22 +309,21 @@ setMethod("subset",signature(x="scidbst"), function(x, ...) scidb:::filter_scidb
 
 
 .materializeSCIDBValues = function(object, startrow, nrows=1, startcol=1, ncols=ncol(object)) {
-  offs <- c((startrow - 1), (startcol - 1))
-  reg <- c(nrows, ncols)
-  result <- matrix(nrow = (ncol(object)) * (nrow(object)), ncol = nlayers(object))
-
-
-
-  cat("Downloading data...\n")
   if (length(dimensions(object))>2) {
     stop("Array has more than two dimensions to fetch data in a raster format")
     #TODO if time is referenced allow download of multiple timesteps, if needed
   }
+  offs <- c((startrow - 1), (startcol - 1))
+  reg <- c(nrows, ncols)
+  result <- matrix(nrow = (ncol(object)) * (nrow(object)), ncol = nlayers(object))
 
   extent = as.matrix(.calculateDimIndices(object,extent(object)))
 
+  cat("Downloading data...\n")
   .data = iquery(object@name,return=T)
-  ndims = length(dimensions(.data))
+
+  dims = dimensions(object)
+  ndims = length(dims)
 
   if (nrow(.data) == 0) { #scidb does not return data. Stop here
     stop("Image is empty.")
@@ -336,33 +335,38 @@ setMethod("subset",signature(x="scidbst"), function(x, ...) scidb:::filter_scidb
     if (!all(is.na(.data[,lname]))) {
 
       if (ndims == 2) {
+        ydim = getYDim(object)
+        xdim = getXDim(object)
+
         tmp = matrix(nrow=(nrow(object)),ncol=(ncol(object)))
-        m = .data[order(.data[,"y"],.data[,"x"]),]
-        start_y = min(.data[,"y"])
-        start_x = min(.data[,"x"])
+        m = .data[order(.data[,ydim],.data[,xdim]),]
+        start_y = min(.data[,ydim])
+        start_x = min(.data[,xdim])
         #shift x coordinates 0->1 and remove offset
-        m[,"x"]=m[,"x"]+1-start_x
+        m[,xdim]=m[,xdim]+1-start_x
         #same for y
-        m[,"y"]=m[,"y"]+1-start_y
+        m[,ydim]=m[,ydim]+1-start_y
 
-        tmp2 = matrix(m[,lname],nrow=length(unique(m[,"y"])),ncol=length(unique(m[,"x"])),byrow=T)
+        tmp2 = matrix(m[,lname],nrow=length(unique(m[,ydim])),ncol=length(unique(m[,xdim])),byrow=T)
 
-        tmp[unique(m[,"y"]),unique(m[,"x"])] = tmp2
+        tmp[unique(m[,ydim]),unique(m[,xdim])] = tmp2
         #restructure the matrix to a one dimensional vector
         restruct = as.vector(t(tmp))
 
 
         result[,b] = restruct
       } else { #number of dimensions is 1
-        tmp = matrix(nrow=1,ncol=(max(.data[,"t"])-min(.data[,"t"])+1))
-        m = .data[order(.data[,"t"]),]
-        start_t = min(.data[,"t"])
+        tdim = getTDim(object)
+
+        tmp = matrix(nrow=1,ncol=(max(.data[,tdim])-min(.data[,tdim])+1))
+        m = .data[order(.data[,tdim]),]
+        start_t = min(.data[,tdim])
         #shift t coordinates 0->1 and remove offset
-        m[,"t"]=m[,"t"]+1-start_t
+        m[,tdim]=m[,tdim]+1-start_t
 
-        tmp2 = matrix(m[,lname],nrow=1,ncol=length(unique(m[,"t"])),byrow=T)
+        tmp2 = matrix(m[,lname],nrow=1,ncol=length(unique(m[,tdim])),byrow=T)
 
-        tmp[1,unique(m[,"t"])] = tmp2
+        tmp[1,unique(m[,tdim])] = tmp2
         #restructure the matrix to a one dimensional vector
         restruct = as.vector(t(tmp))
 
@@ -752,6 +756,8 @@ setMethod("nrow",signature(x="scidbst"),function(x) {
   } else if (x@isTemporal){
     return(1)
   } else {
+    dims = iquery(paste("dimensions(",x@name,")",sep=""),return=T)
+    return(diff(c(dims[1,"low"],dims[1,"high"]))+1)
     #TODO return length of first dimension
   }
 })
@@ -763,6 +769,8 @@ setMethod("ncol",signature(x="scidbst"),function(x) {
   } else if (x@isTemporal) {
     return(as.numeric(difftime(x@tExtent[["max"]],x@tExtent[["min"]],x@tUnit))+1)
   } else {
+    dims = iquery(paste("dimensions(",x@name,")",sep=""),return=T)
+    return(diff(c(dims[2,"low"],dims[2,"high"]))+1)
     #TODO return length of second dimension
   }
 })
@@ -789,3 +797,34 @@ setMethod("show",signature(object="scidbst"), function(object){
   ymax(indices) = ceiling(ymax(indices))
   return(indices)
 }
+
+setGeneric("getXDim",function(x) standardGeneric("getXDim"))
+
+#' @export
+setMethod("getXDim",signature(x="scidbst"),function(x){
+  if (x@isSpatial) {
+    return(x@spatial_dims$xdim)
+  } else {
+    return(dimensions(x)[2])
+  }
+})
+
+setGeneric("getYDim",function(x) standardGeneric("getYDim"))
+#' @export
+setMethod("getYDim",signature(x="scidbst"),function(x){
+  if (x@isSpatial) {
+    return(x@spatial_dims$ydim)
+  } else {
+    return(dimensions(x)[1])
+  }
+})
+
+setGeneric("getTDim",function(x) standardGeneric("getTDim"))
+#' @export
+setMethod("getTDim",signature(x="scidbst"),function(x){
+  if (x@isTemporal) {
+    return(x@temporal_dim)
+  } else {
+    return(dimensions(x)[1])
+  }
+})
