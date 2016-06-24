@@ -4,6 +4,7 @@
 #'
 #' @import raster
 #' @import scidb
+#' @import methods
 #' @seealso \code{\link{scidbst}}
 #' @docType package
 NULL

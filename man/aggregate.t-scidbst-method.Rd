@@ -5,7 +5,7 @@
 \alias{aggregate.t,scidbst-method}
 \title{aggregates over time}
 \usage{
-\S4method{aggregate.t}{scidbst}(x, ...)
+\S4method{aggregate.t}{scidbst}(x, by, ...)
 }
 \value{
 scidbst array with a temporal resolution of the whole time series
