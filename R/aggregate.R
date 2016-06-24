@@ -118,6 +118,7 @@ setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
     out = .scidbst_class(out)
     out = .cpMetadata(x,out)
     out@data@names = scidb_attributes(out)
+
     # set tResolution to complete temporal extent
 
     out@tResolution = as.numeric(difftime(x@tExtent[["max"]],x@tExtent[["min"]],x@tUnit))+1
@@ -126,6 +127,8 @@ setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
     out@spatial_dims = list()
 
     out@affine = out@affine %*% matrix(c(1,0,0,0,old_ncol,0,0,0,old_nrow),ncol=3,nrow=3)
+    out@isSpatial = FALSE
+    out@isTemporal = FALSE
     return(out)
   }
 
