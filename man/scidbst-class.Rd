@@ -46,5 +46,9 @@ Constructor for scidbst
 \item{\code{isSpatial}}{A flag whether or not this object has a spatial reference}
 
 \item{\code{isTemporal}}{A flag whether or not this object has a temporal reference}
+
+\item{\code{sref}}{A named list of elements that represent the spatial reference as specified in scidb by eo_getsrs}
+
+\item{\code{tref}}{A named list with the elements retrieved by eo_gettrs function}
 }}
 
