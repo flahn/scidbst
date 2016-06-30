@@ -31,7 +31,7 @@ Constructor for scidbst
 
 \item{\code{affine}}{The affine transformation used to convert real-world coordinates into image frame coordinates}
 
-\item{\code{spatial_dims}}{the names of the spatial dimensions}
+\item{\code{spatial_dims}}{the names of the spatial dimensions as a named list. 'xdim' describes the west-east axis and 'ydim' the north-south axis.}
 
 \item{\code{temporal_dim}}{the name of the temporal dimension}
 
