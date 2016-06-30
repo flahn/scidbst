@@ -3,7 +3,7 @@
 \docType{methods}
 \name{aggregate,scidbst-method}
 \alias{aggregate,scidbst-method}
-\title{Aggregates a SciDBST object over the given dimensions and/or attributes}
+\title{Aggregates a 'scidbst' object over the given dimensions and/or attributes}
 \usage{
 aggregate(x, by, FUN, window, variable_window)
 }
@@ -21,7 +21,9 @@ or a \code{scidb} object to group by. Not required for \code{windowed} and grand
 coordinate dimension axis specified by \code{by}.}
 }
 \description{
-Aggregates a SciDBST object over the given dimensions and/or attributes
+Due to the fact that scidbst arrays can have dimensions that are referenced in space and/or time, this function
+uses 'scidb's aggregate function for performing the aggregation itself and it manages the metadata information
+about the references / extents and alike.
 }
 \seealso{
 \link{aggregate,scidb-method}

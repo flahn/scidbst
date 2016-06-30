@@ -8,7 +8,7 @@ setGeneric("aggregate.t", function(x, ...) standardGeneric("aggregate.t"))
 
   if (x@isTemporal) {
     x@isTemporal = FALSE
-    sobj = scidb(x@name)
+    sobj = .toScidb(x)
     agg = aggregate(sobj, by=selection,...) #delegate operation to scidb package
     out = .scidbst_class(agg)
 
@@ -48,7 +48,7 @@ setGeneric("aggregate.sp", function(x, ...) standardGeneric("aggregate.sp"))
     x@isSpatial = FALSE
     old_nrow = nrow(x)
     old_ncol = ncol(x)
-    sobj = scidb(x@name)
+    sobj = .toScidb(x)
     agg = aggregate(sobj, by=selection, dots) # delegate operation to scidb package
     out = .scidbst_class(agg)
     out = .cpMetadata(x,out)
@@ -105,13 +105,15 @@ setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
     old_nrow = nrow(x)
 
     if (length(by) != length(dimensions(x))) {
-      out = aggregate(scidb(x@name),by,...)
+      out = aggregate(.toScidb(x),by,...)
     } else {
-      out = aggregate(scidb(x@name), by="", ...)
+      out = aggregate(.toScidb(x), by="", ...)
     }
 
 
     if (is.null(out)) {
+      # this should basically never happen, because dimension 'i' will be used if every other dimension
+      # is gone.
       stop("No dimensions left.")
     }
     # copy metadata
@@ -136,7 +138,7 @@ setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
 
   if (!aggregate_by_time && !aggregate_by_space && !any(x@spatial_dims %in% by)) { # no referenced dimension involved
     #aggregate as scidb object
-    arr = aggregate(scidb(x@name),by,...)
+    arr = aggregate(.toScidb(x),by,...)
     #and then transform to scidbst
     arr = .scidbst_class(arr)
     arr = .cpMetadata(x,arr)
@@ -147,7 +149,11 @@ setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
 
 }
 
-#' Aggregates a SciDBST object over the given dimensions and/or attributes
+#' Aggregates a 'scidbst' object over the given dimensions and/or attributes
+#'
+#' Due to the fact that scidbst arrays can have dimensions that are referenced in space and/or time, this function
+#' uses 'scidb's aggregate function for performing the aggregation itself and it manages the metadata information
+#' about the references / extents and alike.
 #'
 #' @usage
 #' aggregate(x, by, FUN, window, variable_window)
