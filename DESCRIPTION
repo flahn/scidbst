@@ -14,3 +14,4 @@ Collate:
     'scidbst-class.R'
     'aggregate.R'
     'pkg.R'
+    'scidbeval.R'

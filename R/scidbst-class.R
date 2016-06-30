@@ -27,12 +27,16 @@ setClass("scidb",
 #' @slot tUnit the temporal base unit for this timeseries
 #' @slot isSpatial A flag whether or not this object has a spatial reference
 #' @slot isTemporal A flag whether or not this object has a temporal reference
+#' @slot sref A named list of elements that represent the spatial reference as specified in scidb by eo_getsrs
+#' @slot tref A named list with the elements retrieved by eo_gettrs function
 #' @aliases scidbst
 #' @exportClass scidbst
 .scidbst_class = setClass("scidbst",
                           contains=list("scidb","RasterBrick"),
                           representation=representation(
                             affine = "matrix",
+                            sref = "list",
+                            tref = "list",
                             spatial_dims = "list",
                             temporal_dim = "character",
                             startTime = "ANY",
@@ -59,7 +63,26 @@ scidbst = function(...){
   .scidb = .scidbst_class(scidb(...))
 
   .srs = iquery(paste("eo_getsrs(",.scidb@name,")",sep=""),return=TRUE)
+
+  .scidb@sref = list()
+  for (n in names(.srs)) {
+    if (n %in% c("i")) {
+      next
+    } else {
+      .scidb@sref[n] = .srs[1,n]
+    }
+  }
+
   .trs = iquery(paste("eo_gettrs(",.scidb@name,")",sep=""),return=TRUE)
+  .scidb@tref = list()
+  for (n in names(.trs)) {
+    if (n %in% c("i")) {
+      next
+    } else {
+      .scidb@tref[n] = .trs[1,n]
+    }
+  }
+
   .extent = iquery(paste("eo_extent(",.scidb@name,")",sep=""),return=TRUE)
 
   .scidb@isSpatial = (nrow(.srs) > 0)
@@ -721,10 +744,6 @@ setMethod('crop', signature(x='scidbst', y='ANY'),
     crs(to) = crs(from)
 
     to@affine = from@affine
-    #nrow(to) = nrow(from)
-    #ncol(to) = ncol(from) # should be calculated automatically now
-
-    # +1 because origin in scidb is 0,0
 
     to@data@names = from@data@names
     to@data@nlayers = nlayers(from)
@@ -739,6 +758,8 @@ setMethod('crop', signature(x='scidbst', y='ANY'),
     to@tUnit = from@tUnit
     to@isSpatial = from@isSpatial
     to@isTemporal = from@isTemporal
+    to@sref = from@sref
+    to@tref = from@tref
 
     if (inMemory(from)) {
       to@data@inmemory = FALSE
@@ -853,4 +874,14 @@ setMethod("getTDim",signature(x="scidbst"),function(x){
   res@gc = x@gc
   res@meta = suppressWarnings(x@meta)
   return(res)
+}
+
+.getRefPeriod = function(x) {
+  m = matrix(cbind(c("P(\\d)+D","P(\\d)+M","P(\\d)+Y","P(\\d)+W","P(\\d)+h","P(\\d)+m","P(\\d)+s"),
+                   c("days","months","years","weeks","hours","mins","secs"),
+                   c("D","M","Y","W","h","m","s")),ncol=3)
+  colnames(m)=c("regexp","tunit","abbrev")
+
+  out = paste("P",x@tResolution,m[m[,"tunit"]==x@tUnit,"abbrev"],sep="")
+  return(out)
 }
