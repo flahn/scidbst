@@ -107,11 +107,13 @@ scidbst = function(...){
   return(.scidb)
 }
 
+# function to calculate the dimension index by a given time string
 .calcTDimIndex = function (x, time) {
   if (is.character(time)) {
     time = as.POSIXlt(.getDateTime(time,x@tUnit))
   } else {
-    time = as.POSIXlt(time) #first simply try it
+    #is this called?
+    time = as.POSIXlt(time) #assuming valid POSIX string
   }
 
   if (time >= x@tExtent$min && time <= x@tExtent$max) {
@@ -159,7 +161,7 @@ scidbst = function(...){
 }
 
 
-
+# transforms a string by a given temporal unit into a valid POSIX string
 .getDateTime = function (str, unit) {
   if (unit == "days") {
     tmp = strptime(str, "%Y-%m-%d") #day in month of year
@@ -352,8 +354,6 @@ setMethod("subset",signature(x="scidbst"), function(x, ...) scidb:::filter_scidb
         tmp[unique(m[,ydim]),unique(m[,xdim])] = tmp2
         #restructure the matrix to a one dimensional vector
         restruct = as.vector(t(tmp))
-
-
         result[,b] = restruct
       } else { #number of dimensions is 1
         tdim = getTDim(object)
@@ -373,11 +373,6 @@ setMethod("subset",signature(x="scidbst"), function(x, ...) scidb:::filter_scidb
 
         result[,b] = restruct
       }
-
-
-
-
-
     }
   }
   colnames(result) = scidb_attributes(object)
@@ -651,9 +646,14 @@ if (!isGeneric("slice")) {
 #' @export
 setMethod('slice', signature(x="scidbst",d="character",n="ANY") , function(x,d,n) {
   if (d %in% x@temporal_dim) {
-    if (is.character(n) || !tryCatch(is.na.POSIXlt(n,error=function(e) {return(TRUE)}))) {
-
-      n = .calcTDimIndex(x,n)
+    if (is.character(n) ) {
+      #|| !tryCatch(is.na.POSIXlt(n,error=function(e) {return(TRUE)}))
+      index = suppressWarnings(as.numeric(n)) #disable warnings that might result from converting a plain string
+      if (is.na(index)) {
+        n = .calcTDimIndex(x,n)
+      } else {
+        n = round(index)
+      }
     } else if (is.numeric(n)) {
       n = round(n)
     } else {
@@ -783,7 +783,8 @@ setMethod("ncol",signature(x="scidbst"),function(x) {
 
 #' @export
 setMethod("show",signature(object="scidbst"), function(object){
-  show(scidb(object@name))
+  s = .toScidb(object)
+  show(s)
 })
 
 .calculateDimIndices = function(object, extent) {
@@ -842,4 +843,14 @@ setMethod("getTDim",signature(x="scidbst"),function(x){
   names(v) = dimnames
 
   return(v)
+}
+
+# function to create a scidb array from a scidbst array, this approach copies the environment content (object promises)
+# rather than querying the scidb instance anew for the same information
+.toScidb = function(x) {
+  res = scidb("")
+  res@name = x@name
+  res@gc = x@gc
+  res@meta = suppressWarnings(x@meta)
+  return(res)
 }
