@@ -16,4 +16,7 @@ vector of character containing the names of dimensions and attributes
 \description{
 Returns the names of the dimensions and attributes used in the remote scidb array.
 }
+\note{
+This function overwrites the standard S3 names function of raster.
+}
 
