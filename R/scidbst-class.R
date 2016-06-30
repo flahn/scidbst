@@ -275,9 +275,9 @@ setMethod("spplot", signature(obj="scidbst"),function (obj, maxpixels=50000, as.
 #' @export
 setMethod('readAll', signature(object='scidbst'),
           function(object){
-            if (! object@data@fromdisk)  {
-              stop('cannot read values; there is no file associated with this scidbst raster inheriting thing')
-            }
+            # if (! object@data@fromdisk)  {
+            #   stop('cannot read values; there is no file associated with this scidbst raster inheriting thing')
+            # }
             object@data@inmemory <- TRUE
             object@data@values <- .materializeSCIDBValues(object, 1, object@nrows)
             w <- getOption('warn')
@@ -756,9 +756,12 @@ setMethod("nrow",signature(x="scidbst"),function(x) {
   } else if (x@isTemporal){
     return(1)
   } else {
-    dims = iquery(paste("dimensions(",x@name,")",sep=""),return=T)
-    return(diff(c(dims[1,"low"],dims[1,"high"]))+1)
-    #TODO return length of first dimension
+    lengths = .getLengths(x)
+    if (length(lengths) == 1) {
+      return(1)
+    } else {
+      return(lengths[getYDim(x)])
+    }
   }
 })
 
@@ -769,9 +772,12 @@ setMethod("ncol",signature(x="scidbst"),function(x) {
   } else if (x@isTemporal) {
     return(as.numeric(difftime(x@tExtent[["max"]],x@tExtent[["min"]],x@tUnit))+1)
   } else {
-    dims = iquery(paste("dimensions(",x@name,")",sep=""),return=T)
-    return(diff(c(dims[2,"low"],dims[2,"high"]))+1)
-    #TODO return length of second dimension
+    lengths = .getLengths(x)
+    if (length(lengths) == 1) {
+      return(lengths[1])
+    } else {
+      return(lengths[getXDim(x)])
+    }
   }
 })
 
@@ -828,3 +834,12 @@ setMethod("getTDim",signature(x="scidbst"),function(x){
     return(dimensions(x)[1])
   }
 })
+
+.getLengths = function(obj) {
+  dimnames = dimensions(obj)
+  dimbounds = scidb_coordinate_bounds(obj)
+  v = as.numeric(dimbounds$length)
+  names(v) = dimnames
+
+  return(v)
+}
