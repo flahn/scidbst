@@ -631,8 +631,8 @@ setMethod('sampleRegular', signature(x='scidbst'),
 
     to@affine = from@affine
 
-    to@data@names = from@data@names
-    to@data@nlayers = nlayers(from)
+    to@data@names = scidb_attributes(to)
+    to@data@nlayers = length(to@data@names)
     to@data@fromdisk = TRUE
 
 
