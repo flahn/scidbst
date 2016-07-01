@@ -15,5 +15,6 @@ Collate:
     'aggregate.R'
     'crop.R'
     'pkg.R'
+    'regrid.R'
     'scidbsteval.R'
     'slice.R'
