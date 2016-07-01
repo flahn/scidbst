@@ -13,4 +13,7 @@ Depends:
 Collate:
     'scidbst-class.R'
     'aggregate.R'
+    'crop.R'
     'pkg.R'
+    'scidbsteval.R'
+    'slice.R'
