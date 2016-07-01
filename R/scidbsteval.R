@@ -1,18 +1,18 @@
 #' @include scidbst-class.R
 NULL
 
-if (!isGeneric("scidbeval")) {
-  setGeneric("scidbeval",function(expr, name, ...) standardGeneric("scidbeval"))
+if (!isGeneric("scidbsteval")) {
+  setGeneric("scidbsteval",function(expr, name, ...) standardGeneric("scidbsteval"))
 }
 
-.scidbeval.scidbst = function(expr,name,eval=TRUE,gc=TRUE,temp=FALSE) {
+.scidbeval.scidbst = function(expr, name, eval = TRUE, gc = TRUE, temp = FALSE) {
   if (missing(name)) {
     stop("No target array name specified. Please use parameter 'name' to state the target arrays name.")
   }
   # first store / evaluate array
   if (inherits(expr,"scidb")) {
     scidb.obj = .toScidb(expr)
-    scidbeval(expr,eval=eval,name = name, gc = gc, temp = temp)
+    scidbeval(scidb.obj,eval,name, gc, temp)
   }
 
   # then set spatial and temporal references if applicable
@@ -23,7 +23,7 @@ if (!isGeneric("scidbeval")) {
   }
 
   if (expr@isTemporal) {
-    cmd = paste("eo_settrs(",name,",'",getTDim(expr),"','",expr@startTime,"','",.getRefPeriod(expr),"'",")",sep="")
+    cmd = paste("eo_settrs(",name,",'",getTDim(expr),"','",as.character(expr@startTime),"','",.getRefPeriod(expr),"'",")",sep="")
     iquery(cmd)
   }
 
@@ -37,7 +37,7 @@ if (!isGeneric("scidbeval")) {
 #' which can be modified by various scidb operations. By calling this function the actual commands are executed in the
 #' SciDB cluster. The result will be stored under the given 'name' parameter. In addition to the original function, the
 #' evaluation of a scidbst object will also set the current spatial and/or temporal reference.
-#'
+#' @rdname scidbsteval
 #' @param expr The scidbst object
 #' @param name The name of the target array in which the data is stored
 #' @param eval A flag whether or not the commands shall be executed in scidb
@@ -47,4 +47,4 @@ if (!isGeneric("scidbeval")) {
 #' @return The modified scidbst object
 #'
 #' @export
-setMethod("scidbeval", signature(expr="scidbst", name="character"), .scidbeval.scidbst )
+setMethod("scidbsteval", signature(expr="scidbst", name="character"), .scidbeval.scidbst )

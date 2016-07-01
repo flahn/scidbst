@@ -85,6 +85,10 @@ scidbst = function(...){
 
   .extent = iquery(paste("eo_extent(",.scidb@name,")",sep=""),return=TRUE)
 
+  if (nrow(.extent) == 0) {
+    stop("There is no spatial or temporal extent for this array.")
+  }
+
   .scidb@isSpatial = (nrow(.srs) > 0)
   .scidb@isTemporal = (nrow(.trs) > 0)
 
@@ -93,7 +97,7 @@ scidbst = function(...){
     .scidb@tResolution = as.numeric(unlist(regmatches(.trs[,"dt"],gregexpr("(\\d)+",.trs[,"dt"]))))
     .scidb@tUnit = .findTUnit(.trs[,"dt"])
     .scidb@startTime = .getDateTime(.trs[,"t0"],.scidb@tUnit)
-
+    .scidb@tExtent = list(min=.getDateTime(.extent[,"tmin"],.scidb@tUnit),max=.getDateTime(.extent[,"tmax"],.scidb@tUnit))
   }
 
 
@@ -101,11 +105,7 @@ scidbst = function(...){
     .scidb@affine <- .createAffineTransformation(.srs)
     .scidb@crs <- CRS(.srs$proj4text)
     .scidb@spatial_dims = list(xdim=.srs[,"xdim"],ydim=.srs[,"ydim"])
-  }
-
-  if (nrow(.extent > 0)) {
     .scidb@extent = extent(.extent[,"xmin"],.extent[,"xmax"],.extent[,"ymin"],.extent[,"ymax"])
-    .scidb@tExtent = list(min=.getDateTime(.extent[,"tmin"],.scidb@tUnit),max=.getDateTime(.extent[,"tmax"],.scidb@tUnit))
   }
 
   .attr = scidb_attributes(.scidb)
@@ -623,120 +623,6 @@ setMethod('sampleRegular', signature(x='scidbst'),
           }
 )
 
-if (!isGeneric("slice")) {
-  setGeneric("slice", function(x,d,n) standardGeneric("slice"))
-}
-
-.slice = function (x,d,n) {
-  out = .scidbst_class(scidb::slice(x,d,n))
-
-  .cpMetadata(x,out)
-  if (d %in% x@temporal_dim) {
-    baseTime = 0
-
-    if (x@tUnit == "weeks") {
-      baseTime = 7*24*60*60
-    } else if (x@tUnit == "days") {
-      baseTime = 24*60*60
-    } else if (x@tUnit == "hours") {
-      baseTime = 60 * 60
-    } else if (x@tUnit == "mins") {
-      baseTime = 60
-    } else if (x@tUnit == "secs") {
-      baseTime = 1
-    } else {
-      stop("currently no other temporal unit supported")
-    }
-
-    #adapt temporal extent
-    newStart = as.POSIXlt(x@startTime + n * x@tResolution * baseTime)
-    newEnd = as.POSIXlt(x@startTime + (n+1) * x@tResolution * baseTime)
-    out@tExtent[["min"]] = newStart
-    out@tExtent[["max"]] = newEnd
-    out@isTemporal = TRUE
-  }
-
-  return(out)
-}
-
-#' Slice the array
-#'
-#' Takes a dimension name and a value to create a slice of an array. This usually means reducing the dimensions
-#' of an array.
-#'
-#' @inheritParams scidb::slice
-#' @return scidbst A new scidbst object with reduced number of dimensions
-#' @export
-setMethod('slice', signature(x="scidbst",d="character",n="ANY") , function(x,d,n) {
-  if (d %in% x@temporal_dim) {
-    if (is.character(n) ) {
-      #|| !tryCatch(is.na.POSIXlt(n,error=function(e) {return(TRUE)}))
-      index = suppressWarnings(as.numeric(n)) #disable warnings that might result from converting a plain string
-      if (is.na(index)) {
-        n = .calcTDimIndex(x,n)
-      } else {
-        n = round(index)
-      }
-    } else if (is.numeric(n)) {
-      n = round(n)
-    } else {
-      stop("Not recognized value for time dimension during slice operation")
-    }
-  }
-
-  return(.slice(x,d,n))
-})
-
-
-#' crop function
-#'
-#' This function creates a spatial subset of a scidbst array and returns the subset scidbst object.
-#'
-#' @param x scidbst object
-#' @param y Extent object, or any object from which an Extent object can be extracted
-#' @param snap Character. One of 'near', 'in', or 'out', for use with alignExtent
-#' @param ...	Additional arguments as for writeRaster
-#'
-#' @return scidbst object with refined spatial extent
-#' @export
-setMethod('crop', signature(x='scidbst', y='ANY'),
-    function(x, y, snap='near', ...) {
-            if (length(dimnames(x)) > 2 ) {
-              stop("More than two dimensions")
-            }
-
-
-            # as in the raster package, try to get the extent of object y
-            y <- try ( extent(y), silent=TRUE )
-            if (class(y) == "try-error") {
-              stop('Cannot get an Extent object from argument y')
-            }
-            validObject(y)
-
-            e <- intersect(extent(x), extent(y))
-            e <- alignExtent(e, x, snap=snap)
-
-            out = .calculateDimIndices(x,e)
-
-            #TODO check creation with
-            limits = as.matrix(out)
-
-            res = subarray(x=x,limits=limits[dimensions(x),],between=TRUE)
-            res = .scidbst_class(res)
-            res = .cpMetadata(x,res) #first copy all, then adapt
-
-            res@extent = e
-            nrow(res) = (ymax(out) - ymin(out))+1
-            ncol(res) = (xmax(out) - xmin(out))+1
-            # +1 because origin in scidb is 0,0
-
-
-            return(res)
-            #apply eo_cpsrs / eo_(g/s)ettrs
-
-
-          }
-)
 
 .cpMetadata = function(from,to) {
   if (class(from) == "scidbst" && class(to) == "scidbst") {
