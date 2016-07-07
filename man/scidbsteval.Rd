@@ -2,6 +2,7 @@
 % Please edit documentation in R/scidbsteval.R
 \docType{methods}
 \name{scidbsteval,scidbst,character-method}
+\alias{scidbsteval}
 \alias{scidbsteval,scidbst,character-method}
 \title{Executes cascaded operations and stores data in scidb under a given name}
 \usage{
@@ -27,5 +28,29 @@ The function works in the similar way as \link{scidbeval}. As an expression this
 which can be modified by various scidb operations. By calling this function the actual commands are executed in the
 SciDB cluster. The result will be stored under the given 'name' parameter. In addition to the original function, the
 evaluation of a scidbst object will also set the current spatial and/or temporal reference.
+}
+\note{
+Using the similar function \code{scidbeval} function will also perform the storing operation, but it will not transfer
+the dimension references for space and/or time.
+}
+\examples{
+\dontrun{
+scidbconnect(...)
+scidbst.obj = scidbst(array_name) # array with spatial and temporal dimensions
+
+#array renaming
+scidbsteval(expr=scidbst.obj,name=new_name)
+
+# slicing and storing
+sliced = slice(scidbst.obj,"t","2016-05-03")
+scidbsteval(sliced,new_name)
+
+# aggregation over space and storing
+agg.t = aggregate(x=scidbst.obj,by=list("t"),FUN="avg(attribute1)")
+scidbsteval(agg.t,name=new_name)
+}
+}
+\seealso{
+\code{\link{scidbeval}}
 }
 
