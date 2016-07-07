@@ -23,13 +23,32 @@ setGeneric("aggregate.t", function(x, ...) standardGeneric("aggregate.t"))
   }
 }
 
-#' aggregates over time
+#' Aggregate over time
 #'
-#' This function aggregates a scidbst array for the dimension time. This means the resulting array will stripped from
-#' the temporal dimension.
+#' This function aggregates a scidbst array for the temporal dimension. This means the resulting array will stripped from
+#' the temporal dimension and the values on the temporal dimension will be aggregated.
 #'
-#' @return scidbst array with a temporal resolution of the whole time series
+#' @note The aggregated scidbst object will loose its temporal reference after aggregation, due to the fact that the spatial
+#' dimensions are removed
+#' @aliases aggregate.t
+#' @usage
+#' aggregate(x, by, FUN, window, variable_window)
 #'
+#' @param x A \code{scidbst} object.
+#' @param by optional single character string or a list of array dimension and/or attribute names to group by additionally to
+#' the temporal dimension
+#' @param FUN a character string representing a SciDB aggregation expression or a reduction function.
+#' @param window optional, if specified, perform a moving window aggregate along the specified coordinate windows.
+#' @param variable_window optional, if specified, perform a moving window aggregate over successive data values along the
+#' coordinate dimension axis specified by \code{by}.
+#'
+#' @return scidbst array with aggregated values on the temporal dimension (no temporal dimension)
+#' @examples
+#' \dontrun{
+#' scidbconnect(...)
+#' scidbst.obj = scidbst(array_name)
+#' aggt = aggregate.t(scidbst.obj,FUN="avg(attribute1)") # returns something similar to a raster with aggregated values over the temporal dimension
+#' }
 #' @export
 setMethod("aggregate.t", signature(x="scidbst"), .aggregate.t.scidbst)
 
@@ -63,13 +82,35 @@ setGeneric("aggregate.sp", function(x, ...) standardGeneric("aggregate.sp"))
   }
 }
 
-#' aggregates over space
+#' Aggregate over space
 #'
-#' This function aggregates over space leaving a scidbst array that has a spatial resolution of the
-#' prior spatial extent of the array.
+#' This function aggregates over space leaving a scidbst array without spatial dimensions. The spatial information will remain
+#' on the R object. The spatial resolution will be increased to the whole spatial dimensions (one cell captures the whole image). And
+#' the spatial extent will remain the same.
 #'
-#' @return scidbst object with the spatial resolution extended to the whole image extent
+#' @note the aggregate scidbst object will loose its spatial reference after evaluation, due to the fact that the spatial
+#' dimensions are removed
+#' @aliases aggregate.sp
+#' @usage
+#' aggregate(x, by, FUN, window, variable_window)
 #'
+#' @param x A \code{scidbst} object.
+#' @param by optional single character string or a list of array dimension and/or attribute names to group by additionally to
+#' the spatial dimensions
+#' @param FUN a character string representing a SciDB aggregation expression or a reduction function.
+#' @param window optional, if specified, perform a moving window aggregate along the specified coordinate windows.
+#' @param variable_window optional, if specified, perform a moving window aggregate over successive data values along the
+#' coordinate dimension axis specified by \code{by}.
+#'
+#' @return scidbst object with the spatial resolution extended to the whole image extent (spatial dimension is removed), often times
+#' something similar to a time series will remain
+#'
+#' @examples
+#' \dontrun{
+#' scidbconnect(...)
+#' scidbst.obj = scidbst(array_name)
+#' aggt = aggregate.sp(scidbst.obj,FUN="avg(attribute1)") # returns something similar to a timeseries with aggregated values over the spatial dimension
+#' }
 #' @export
 setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
 
@@ -155,6 +196,10 @@ setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
 #' uses 'scidb's aggregate function for performing the aggregation itself and it manages the metadata information
 #' about the references / extents and alike.
 #'
+#' @details The scidbst package also provides functions to directly aggregate over space or time without the need to
+#' specify the dimensions that need to be aggregated by. For more information see: \code{\link{aggregate.t}} and
+#' \code{\link{aggregate.sp}}
+#'
 #' @usage
 #' aggregate(x, by, FUN, window, variable_window)
 #'
@@ -166,7 +211,13 @@ setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
 #' @param variable_window optional, if specified, perform a moving window aggregate over successive data values along the
 #' coordinate dimension axis specified by \code{by}.
 #'
+#' @seealso \code{\link{aggregate,scidb-method}}, \code{\link{aggregate.t}}, \code{\link{aggregate.sp}}
+#' @examples
+#' scidbconnect(...)
+#' scidbst.obj = scidbst(array_name) #array with spatial and temporal dimension (x,y,t)
+#' agg.1 = aggregate(x=scidbst.obj,by=list("y","x"),FUN="avg(band1)") # aggreagtes over time, result something similar to a raster
+#' agg.2 = aggregate(x=scidbst.obj,by=list("t"),FUN="avg(band1)") # aggregate over space, result something like a time series
+#' agg.3 = aggregate(x=scidbst.obj,by=list("y","x","t"),FUN=count) # count cells that are aggregated = total number of cells over all dimensions
 #' @export
-#' @seealso \link{aggregate,scidb-method}
-
+#'
 setMethod("aggregate",signature(x="scidbst"), .aggregate.scidbst)
