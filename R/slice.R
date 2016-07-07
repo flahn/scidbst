@@ -32,25 +32,39 @@ if (!isGeneric("slice")) {
     out@tExtent[["min"]] = newStart
     out@tExtent[["max"]] = newEnd
     out@isTemporal = FALSE
-    # it is not temporal anymore since the dimension is removed, even though the temporal information is still
-    # present in the R object
+    # it remains temporal in R, but not in scidb => keep information, but set temporal to false
   }
 
   return(out)
 }
 
-#' Slice the array
+#' Slice a scidbst object at a particular dimension value
 #'
 #' Takes a dimension name and a value to create a slice of an array. This usually means reducing the dimensions
-#' of an array.
+#' of an array by one. The dimension name and value choosen fixed and the other dimensions and attributes are returned.
 #'
-#' @inheritParams scidb::slice
-#' @return scidbst A new scidbst object with reduced number of dimensions
+#' @aliases slice-scidbst
+#' @rdname slice-scidbst-method
+#' @param x scidbst array object
+#' @param d name of a dimension
+#' @param n coordinate value to slice on
+#' @return scidbst array with a reduced number of dimensions.
+#'
+#' @examples
+#' \dontrun{
+#' scidbconnect(...)
+#' scidbst.obj = scidbst(array_name) #scidb array with spatial and temporal dimension
+#'
+#' #examples on the temporal dimension
+#' slice1 = slice(scidbst.obj,"t","0") # @ temporal index 0
+#' slice2 = slice(scidbst.obj,"t",1) # @ temporal index 1
+#' slice3 = slice(scidbst.obj,"t","2016-05-05") # @ the temporal index for a date
+#' # other are also dimensions also applicable
+#' }
 #' @export
 setMethod('slice', signature(x="scidbst",d="character",n="ANY") , function(x,d,n) {
   if (d %in% x@temporal_dim) {
     if (is.character(n) ) {
-      #|| !tryCatch(is.na.POSIXlt(n,error=function(e) {return(TRUE)}))
       index = suppressWarnings(as.numeric(n)) #disable warnings that might result from converting a plain string
       if (is.na(index)) {
         n = .calcTDimIndex(x,n)
