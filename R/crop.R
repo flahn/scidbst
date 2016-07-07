@@ -32,9 +32,13 @@ NULL
       return(res)
 }
 
-#' crop function
+#' Crop / spatial subset function
 #'
-#' This function creates a spatial subset of a scidbst array and returns the subset scidbst object.
+#' This function is based on the similar function in the raster package. It creates a spatial subset of a scidbst array and
+#' returns the subset scidbst object.
+#'
+#' @note For proper use the new extent has to contain coordinates that are in the same reference
+#' system as the scidbst object.
 #'
 #' @param x scidbst object
 #' @param y Extent object, or any object from which an Extent object can be extracted
@@ -42,6 +46,15 @@ NULL
 #' @param ...	Additional arguments as for writeRaster
 #'
 #' @return scidbst object with refined spatial extent
+#' @examples
+#' \dontrun{
+#' scidbconnect(...)
+#' scidbst.obj = scidbst(array_name)
+#' e = extent(scidbst.obj)
+#' ymax(e) = ymin(e)+((ymax(e)-ymin(e))/4)
+#' xmax(e) = xmin(e)+((xmax(e)-xmin(e))/4)
+#' cropped = crop(scidbst.obj,e)
+#' }
 #' @export
 setMethod('crop', signature(x='scidbst', y='ANY'),
           .crop.scidbst
