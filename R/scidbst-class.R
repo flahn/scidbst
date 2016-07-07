@@ -59,7 +59,6 @@ setClass("scidb",
 #' @import scidb
 #' @export
 scidbst = function(...){
-
   .scidb = .scidbst_class(scidb(...))
 
   .srs = iquery(paste("eo_getsrs(",.scidb@name,")",sep=""),return=TRUE)
@@ -106,26 +105,17 @@ scidbst = function(...){
     .scidb@crs <- CRS(.srs$proj4text)
     .scidb@spatial_dims = list(xdim=.srs[,"xdim"],ydim=.srs[,"ydim"])
     .scidb@extent = extent(.extent[,"xmin"],.extent[,"xmax"],.extent[,"ymin"],.extent[,"ymax"])
+
+    #get minimum and maximum extent for spatial dimensions
+    .lengths = .getLengths(.scidb)
+    .scidb@nrows = as.integer(.lengths[getYDim(.scidb)])
+    .scidb@ncols = as.integer(.lengths[getXDim(.scidb)])
   }
 
   .attr = scidb_attributes(.scidb)
   .scidb@data@names = .attr
   .scidb@data@nlayers = length(.attr)
   .scidb@data@fromdisk = TRUE
-
-  #get minimum and maximum extent for spatial dimensions
-  .schema = schema(.scidb)
-  .dims = matrix(strsplit(gsub("[\\[|\\]]","",strsplit(.schema," ")[[1]][2],perl=T),",")[[1]],nrow=3)
-  .dims = strsplit(.dims[1,],"[=|:]")
-  mins = as.numeric(c(.dims[[1]][2],.dims[[2]][2]))
-  maxs = as.numeric(c(.dims[[1]][3],.dims[[2]][3]))
-  bbox = cbind(mins,maxs)
-  colnames(bbox)=c("min","max")
-  rownames(bbox)=c(.dims[[1]][1],.dims[[2]][1])
-
-  .scidb@nrows = as.integer(bbox["y","max"] - bbox["y","min"]+1)
-  .scidb@ncols = as.integer(bbox["x","max"] - bbox["x","min"]+1)
-
 
   return(.scidb)
 }
