@@ -37,7 +37,9 @@ if (!isGeneric("scidbsteval")) {
 #' which can be modified by various scidb operations. By calling this function the actual commands are executed in the
 #' SciDB cluster. The result will be stored under the given 'name' parameter. In addition to the original function, the
 #' evaluation of a scidbst object will also set the current spatial and/or temporal reference.
+#'
 #' @rdname scidbsteval
+#' @aliases scidbsteval
 #' @param expr The scidbst object
 #' @param name The name of the target array in which the data is stored
 #' @param eval A flag whether or not the commands shall be executed in scidb
@@ -46,5 +48,24 @@ if (!isGeneric("scidbsteval")) {
 #'
 #' @return The modified scidbst object
 #'
+#' @note Using the similar function \code{scidbeval} function will also perform the storing operation, but it will not transfer
+#' the dimension references for space and/or time.
+#' @seealso \code{\link{scidbeval}}
+#' @examples
+#' \dontrun{
+#' scidbconnect(...)
+#' scidbst.obj = scidbst(array_name) # array with spatial and temporal dimensions
+#'
+#' #array renaming
+#' scidbsteval(expr=scidbst.obj,name=new_name)
+#'
+#' # slicing and storing
+#' sliced = slice(scidbst.obj,"t","2016-05-03")
+#' scidbsteval(sliced,new_name)
+#'
+#' # aggregation over space and storing
+#' agg.t = aggregate(x=scidbst.obj,by=list("t"),FUN="avg(attribute1)")
+#' scidbsteval(agg.t,name=new_name)
+#' }
 #' @export
 setMethod("scidbsteval", signature(expr="scidbst", name="character"), .scidbeval.scidbst )
