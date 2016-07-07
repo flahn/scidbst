@@ -1,4 +1,4 @@
-Package: STRasterSciDB
+Package: scidbst
 Type: Package
 Title: What the Package Does (Title Case)
 Version: 0.1.0
@@ -8,3 +8,22 @@ Description: More about what it does (maybe more than one line)
 License: What license is it under?
 LazyData: TRUE
 RoxygenNote: 5.0.1
+Depends:
+    raster,scidb,rgdal
+Collate:
+    'scidbst-class.R'
+    'aggregate.R'
+    'crop.R'
+    'getValues.R'
+    'getterSetter.R'
+    'names.R'
+    'ncol.R'
+    'nrow.R'
+    'pkg.R'
+    'readAll.R'
+    'regrid.R'
+    'sampleRegular.R'
+    'scidbsteval.R'
+    'slice.R'
+    'spplot.R'
+    'utils.R'

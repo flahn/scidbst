@@ -5,16 +5,17 @@
 \alias{.scidbst_class}
 \alias{scidbst}
 \alias{scidbst-class}
-\alias{stdb}
 \title{Class scidbst}
 \usage{
-stdb(...)
+scidbst(...)
 }
 \arguments{
-\item{...}{stuff passed to scidb()}
+\item{name}{a character string name of a stored SciDB array or a valid SciDB AFL expression}
+
+\item{gc}{a logical value, TRUE means connect the SciDB array to R's garbage collector}
 }
 \value{
-\link{scidbst} object
+scidbst object
 }
 \description{
 Class \code{scidbst} inherits from class \code{scidb}
@@ -29,5 +30,25 @@ Constructor for scidbst
 \item{\code{extent}}{The outer boundary of the SciDB array in referenced coordinates}
 
 \item{\code{affine}}{The affine transformation used to convert real-world coordinates into image frame coordinates}
+
+\item{\code{spatial_dims}}{the names of the spatial dimensions as a named list. 'xdim' describes the west-east axis and 'ydim' the north-south axis.}
+
+\item{\code{temporal_dim}}{the name of the temporal dimension}
+
+\item{\code{startTime}}{the start time as a POSIXlt object}
+
+\item{\code{tResolution}}{The temporal resolution as a numeric}
+
+\item{\code{tExtent}}{the temporal extent (min/max) as a list}
+
+\item{\code{tUnit}}{the temporal base unit for this timeseries}
+
+\item{\code{isSpatial}}{A flag whether or not this object has a spatial reference}
+
+\item{\code{isTemporal}}{A flag whether or not this object has a temporal reference}
+
+\item{\code{sref}}{A named list of elements that represent the spatial reference as specified in scidb by eo_getsrs}
+
+\item{\code{tref}}{A named list with the elements retrieved by eo_gettrs function}
 }}
 
