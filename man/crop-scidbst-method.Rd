@@ -3,7 +3,7 @@
 \docType{methods}
 \name{crop,scidbst-method}
 \alias{crop,scidbst-method}
-\title{crop function}
+\title{Crop / spatial subset function}
 \usage{
 \S4method{crop}{scidbst}(x, y, snap = "near", ...)
 }
@@ -20,6 +20,21 @@
 scidbst object with refined spatial extent
 }
 \description{
-This function creates a spatial subset of a scidbst array and returns the subset scidbst object.
+This function is based on the similar function in the raster package. It creates a spatial subset of a scidbst array and
+returns the subset scidbst object.
+}
+\note{
+For proper use the new extent has to contain coordinates that are in the same reference
+system as the scidbst object.
+}
+\examples{
+\dontrun{
+scidbconnect(...)
+scidbst.obj = scidbst(array_name)
+e = extent(scidbst.obj)
+ymax(e) = ymin(e)+((ymax(e)-ymin(e))/4)
+xmax(e) = xmin(e)+((xmax(e)-xmin(e))/4)
+cropped = crop(scidbst.obj,e)
+}
 }
 
