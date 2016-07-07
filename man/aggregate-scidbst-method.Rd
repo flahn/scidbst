@@ -25,7 +25,19 @@ Due to the fact that scidbst arrays can have dimensions that are referenced in s
 uses 'scidb's aggregate function for performing the aggregation itself and it manages the metadata information
 about the references / extents and alike.
 }
+\details{
+The scidbst package also provides functions to directly aggregate over space or time without the need to
+specify the dimensions that need to be aggregated by. For more information see: \code{\link{aggregate.t}} and
+\code{\link{aggregate.sp}}
+}
+\examples{
+scidbconnect(...)
+scidbst.obj = scidbst(array_name) #array with spatial and temporal dimension (x,y,t)
+agg.1 = aggregate(x=scidbst.obj,by=list("y","x"),FUN="avg(band1)") # aggreagtes over time, result something similar to a raster
+agg.2 = aggregate(x=scidbst.obj,by=list("t"),FUN="avg(band1)") # aggregate over space, result something like a time series
+agg.3 = aggregate(x=scidbst.obj,by=list("y","x","t"),FUN=count) # count cells that are aggregated = total number of cells over all dimensions
+}
 \seealso{
-\link{aggregate,scidb-method}
+\code{\link{aggregate,scidb-method}}, \code{\link{aggregate.t}}, \code{\link{aggregate.sp}}
 }
 
