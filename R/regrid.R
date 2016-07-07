@@ -33,7 +33,8 @@ NULL
 
   #feed parameter to scidb::regrid
   sci.obj = .toScidb(x)
-  sci.obj = regrid(sci.obj,grid, expr)
+  sci.obj = regrid(x=sci.obj,grid=grid, expr=expr)
+
 
   #copy and adapt metadata
   out = .scidbst_class(sci.obj)
