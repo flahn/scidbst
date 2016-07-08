@@ -45,7 +45,8 @@ NULL
     out@affine[1,2] = out@affine[1,2] * grid[getXDim(x)]
     out@affine[2,3] = out@affine[2,3] * (-1) *grid[getYDim(x)]
   }
-
+  out@ncols = as.integer(ncol(out))
+  out@nrows = as.integer(nrow(out))
   if (x@isTemporal && (grid[getTDim(x) > 1])) {
     #adapt temporal reference
     tres = round(out@tResolution * grid[getTDim(x)])

@@ -106,10 +106,15 @@ scidbst = function(...){
     .scidb@spatial_dims = list(xdim=.srs[,"xdim"],ydim=.srs[,"ydim"])
     .scidb@extent = extent(.extent[,"xmin"],.extent[,"xmax"],.extent[,"ymin"],.extent[,"ymax"])
 
-    #get minimum and maximum extent for spatial dimensions
-    .lengths = .getLengths(.scidb)
-    .scidb@nrows = as.integer(.lengths[getYDim(.scidb)])
-    .scidb@ncols = as.integer(.lengths[getXDim(.scidb)])
+    #get minimum and maximum extent for spatial dimensions in terms of dimension indices
+    .scidb@nrows = as.integer(nrow(.scidb))
+    .scidb@ncols = as.integer(ncol(.scidb))
+
+    # .lengths = .getLengths(.scidb) # this only refers to the total image (original coordinate system)
+    # .scidb@nrows = as.integer(.lengths[getYDim(.scidb)])
+    # .scidb@ncols = as.integer(.lengths[getXDim(.scidb)])
+
+
   }
 
   .attr = scidb_attributes(.scidb)
