@@ -9,7 +9,7 @@ setGeneric("getXDim",function(x) standardGeneric("getXDim"))
 #' @return The name of the spatia West-East dimension or the first dimension name
 #' @export
 setMethod("getXDim",signature(x="scidbst"),function(x){
-  if (x@isSpatial) {
+  if (length(x@spatial_dims) > 0 ) {
     return(x@spatial_dims$xdim)
   } else {
     return(dimensions(x)[2])
@@ -27,7 +27,7 @@ setGeneric("getYDim",function(x) standardGeneric("getYDim"))
 #' @return The name of the spatia North-South dimension or the first dimension name
 #' @export
 setMethod("getYDim",signature(x="scidbst"),function(x){
-  if (x@isSpatial) {
+  if (length(x@isSpatial) > 0) {
     return(x@spatial_dims$ydim)
   } else {
     return(dimensions(x)[1])
@@ -45,7 +45,7 @@ setGeneric("getTDim",function(x) standardGeneric("getTDim"))
 #' @return The temporal dimension name or the first dimension name
 #' @export
 setMethod("getTDim",signature(x="scidbst"),function(x){
-  if (x@isTemporal) {
+  if (length(x@temporal_dim) > 0) {
     return(x@temporal_dim)
   } else {
     return(dimensions(x)[1])
