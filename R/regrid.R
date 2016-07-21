@@ -42,8 +42,23 @@ NULL
 
   if (x@isSpatial && (grid[getXDim(x)] > 1 || grid[getYDim(x)] > 1)) {
     #adapt affine transformation
-    out@affine[1,2] = out@affine[1,2] * grid[getXDim(x)]
-    out@affine[2,3] = out@affine[2,3] * (-1) *grid[getYDim(x)]
+    scale_matrix = matrix(c(1,0,0,0,grid[getXDim(x)],0,0,0,grid[getYDim(x)]),ncol=3)
+    #scale
+    scaled_matrix = x@affine %*% scale_matrix
+
+    #calculate real world origin with min dim indices
+    .starts = as.numeric(scidb_coordinate_start(x))
+    names(.starts) = dimensions(x)
+    origin.rw = .transformToWorld(x@affine,.starts[getXDim(x)],.starts[getYDim(x)])
+
+    #create temporary matrix to calculate the new origin
+    help.matrix = cbin(origin.rw,-(scaled_matrix[,2:3]))
+    new.origin = help.matrix %*% c(1,.starts)
+
+    #bind new origin and the scaling parameter
+    out.affine = cbind(new.origin,scaled_matrix[,2:3])
+
+    out@affine = out.affine
   }
   out@ncols = as.integer(ncol(out))
   out@nrows = as.integer(nrow(out))
