@@ -117,10 +117,10 @@ scidbst = function(...){
 
   }
 
-  .attr = scidb_attributes(.scidb)
-  .scidb@data@names = .attr
-  .scidb@data@nlayers = length(.attr)
-  .scidb@data@fromdisk = TRUE
+  # .attr = scidb_attributes(.scidb)
+  # .scidb@data@names = .attr
+  # .scidb@data@nlayers = length(.attr)
+  # .scidb@data@fromdisk = FALSE
 
   return(.scidb)
 }
