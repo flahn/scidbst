@@ -25,9 +25,9 @@ if (!isGeneric("scidbsteval")) {
     # if references are kept (not dropped)
     schema = scidb_coordinate_bounds(expr)
     starts = as.double(schema$start)
-    starts[is.infinite(starts)] = as.double(scidb:::.scidb_DIM_MAX)-1
+    # starts[is.infinite(starts)] = scidb:::.scidb_DIM_MAX
     lengths = as.double(schema$length)
-    lengths[is.infinite(lengths)] = as.double(scidb:::.scidb_DIM_MAX)-1
+    # lengths[is.infinite(lengths)] = scidb:::.scidb_DIM_MAX
     dimnames = dimensions(expr)
     chunks = as.double(scidb_coordinate_chunksize(expr))
 
@@ -61,10 +61,11 @@ if (!isGeneric("scidbsteval")) {
         # set adapt temporal reference
       }
     }
-    scidb.obj = reshape_scidb(scidb.obj,shape=lengths,dimnames=dimnames,start=starts,chunks=chunks)
-    # D = scidb:::build_dim_schema(scidb.obj, newstart=starts, newnames=dimnames, newlen=lengths, newchunk=chunks)
-    # query = sprintf("reshape(%s,%s%s)", scidb.obj@name, scidb:::build_attr_schema(scidb.obj), D)
-    # scidb.obj = scidb:::.scidbeval(query,depend=list(scidb.obj))
+    browser()
+    # scidb.obj = reshape_scidb(scidb.obj,shape=lengths,dimnames=dimnames,start=starts,chunks=chunks)
+    D = scidb:::build_dim_schema(scidb.obj, newstart=starts, newnames=dimnames, newlen=lengths, newchunk=chunks)
+    query = sprintf("reshape(%s,%s%s)", scidb.obj@name, scidb:::build_attr_schema(scidb.obj), D)
+    scidb.obj = scidb:::.scidbeval(query,depend=list(scidb.obj))
 
     #second store to adapt none dropping changes
     scidb.obj = scidbeval(scidb.obj,eval,name, gc, temp)
