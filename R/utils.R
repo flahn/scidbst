@@ -106,9 +106,9 @@
 
     to@affine = from@affine
 
-    to@data@names = scidb_attributes(to)
-    to@data@nlayers = length(to@data@names)
-    to@data@fromdisk = TRUE
+    # to@data@names = scidb_attributes(to)
+    # to@data@nlayers = length(to@data@names)
+    # to@data@fromdisk = TRUE
 
 
     to@spatial_dims = from@spatial_dims
@@ -122,9 +122,9 @@
     to@sref = from@sref
     to@tref = from@tref
 
-    if (inMemory(from)) {
-      to@data@inmemory = FALSE
-    }
+    # if (inMemory(from)) {
+    #   to@data@inmemory = FALSE
+    # }
 
     return(to)
   }

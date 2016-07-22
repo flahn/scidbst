@@ -20,16 +20,13 @@ NULL
 #' @export
 setMethod("getValues", signature(x='scidbst', row='missing', nrows='missing'),
           function(x) {
-            if (length(dimnames(x)) > 2 ) {
+            ndims = length(dimnames(x))
+            if (ndims > 2 ) {
               stop("Too many dimensions detected. Try 'slice' to subset the image for example time.")
             }
 
-            if (! inMemory(x) ) {
-              if ( fromDisk(x) ) {
+            if (! hasValues(x) ) {
                 x <- readAll(x)
-              } else {
-                return( matrix(rep(NA, ncell(x) * nlayers(x)), ncol=nlayers(x)) )
-              }
             }
             #colnames(x@data@values) <- x@data@names
             x@data@names = scidb_attributes(x)

@@ -52,8 +52,8 @@ NULL
     origin.rw = .transformToWorld(x@affine,.starts[getXDim(x)],.starts[getYDim(x)])
 
     #create temporary matrix to calculate the new origin
-    help.matrix = cbin(origin.rw,-(scaled_matrix[,2:3]))
-    new.origin = help.matrix %*% c(1,.starts)
+    help.matrix = cbind(origin.rw,-(scaled_matrix[,2:3]))
+    new.origin = help.matrix %*% c(1,.starts[getXDim(x)],.starts[getYDim(x)])
 
     #bind new origin and the scaling parameter
     out.affine = cbind(new.origin,scaled_matrix[,2:3])
