@@ -33,7 +33,8 @@ evaluation of a scidbst object will also set the current spatial and/or temporal
 }
 \note{
 Using the similar function \code{scidbeval} function will also perform the storing operation, but it will not transfer
-the dimension references for space and/or time.
+the dimension references for space and/or time. Also, unbounded dimensions that are not dropped will be created
+as bounded dimensions by its minimum/maximum dimension value.
 }
 \examples{
 \dontrun{

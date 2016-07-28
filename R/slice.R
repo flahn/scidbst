@@ -35,6 +35,10 @@ if (!isGeneric("slice")) {
     # it remains temporal in R, but not in scidb => keep information, but set temporal to false
   }
 
+  if (d %in% x@spatial_dims) {
+    out@isSpatial = FALSE
+  }
+
   return(out)
 }
 
