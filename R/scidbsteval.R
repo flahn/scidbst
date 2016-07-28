@@ -76,7 +76,7 @@ if (!isGeneric("scidbsteval")) {
         # set adapt temporal reference
       }
     }
-    browser()
+
     D = paste(scidb:::build_attr_schema(scidb.obj),scidb:::build_dim_schema(scidb.obj, newstart=starts, newnames=dimnames, newlen=lengths, newchunk=chunks),sep="")
     scidb.obj = reshape_scidb(x=scidb.obj,schema=D)
 
