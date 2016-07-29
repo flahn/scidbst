@@ -14,6 +14,7 @@ Collate:
     'scidbst-class.R'
     'aggregate.R'
     'crop.R'
+    'cumulate.R'
     'getValues.R'
     'getterSetter.R'
     'names.R'
