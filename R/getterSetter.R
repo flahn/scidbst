@@ -53,20 +53,29 @@ setMethod("getTDim",signature(x="scidbst"),function(x){
 })
 
 
-setGeneric("getLayer",function(x,layer) standardGeneric("getLayer"))
+setGeneric("getLayer",function(x,layer,...) standardGeneric("getLayer"))
 #' Get Layer
 #'
 #' If the data is loaded as a raster brick, this function will replace the raster subset function, since scidb
 #' uses a function with the same name to subset directly from the scidb database.
-#' @rdname getLayer-method
+#'
+#' @param x scidbst object with raster data
+#' @param layer the name or index of the attribute
+#' @param ... additional parameters that are passed to \link{raster::subset}
+#'
+#' @return A RasterLayer object
+#' @seealso \code{\link{raster::subset}}
 #' @export
-setMethod("getLayer",signature(x="scidbst",layer="ANY"), function(x,layer) {
+setMethod("getLayer",signature(x="scidbst",layer="ANY"), function(x,layer,...) {
   if(!hasValues(x)) {
-    stop("No data loaded. Use 'subset' to filter for the correct attributes.")
+    stop("No data loaded. Use 'subset' to filter for the correct attributes or use 'readAll' first")
+  }
+  if (is.character(layer) && !(layer %in% scidb_attributes(x) )) {
+    stop("Cannot find layer name")
   }
 
   b = brick(c2)
   b@data = x@data
-  return(subset(b,layer))
+  return(subset(b,layer,...))
 
 })
