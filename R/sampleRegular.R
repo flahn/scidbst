@@ -36,10 +36,11 @@ setMethod('sampleRegular', signature(x='scidbst'),
               }
               rcut <- raster(x)
               firstrow <- 1
-              lastrow <- nrow(rcut)
+              # lastrow <- nrow(rcut) #take here nrow / ncols fields from raster
+              lastrow = x@nrows
               firstcol <- 1
-              lastcol <- ncol(rcut)
-
+              # lastcol <- ncol(rcut)
+              lastcol = x@ncols
             } else {
 
               rcut <- crop(raster(x), ext)

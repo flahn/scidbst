@@ -16,7 +16,7 @@ setGeneric("aggregate.t", function(x, ...) standardGeneric("aggregate.t"))
     out = .cpMetadata(x,out)
     out@data@names = scidb_attributes(out)
     out@tResolution = as.numeric(difftime(x@tExtent[["max"]],x@tExtent[["min"]],x@tUnit))+1
-    out@temporal_dim = ""
+    # out@temporal_dim = ""
     return(out)
   } else {
     stop("Cannot aggregate over time with no temporal reference on the object")
@@ -72,7 +72,7 @@ setGeneric("aggregate.sp", function(x, ...) standardGeneric("aggregate.sp"))
     out = .scidbst_class(agg)
     out = .cpMetadata(x,out)
     out@data@names = scidb_attributes(out)
-    out@spatial_dims = list()
+    # out@spatial_dims = list()
 
     out@affine = out@affine %*% matrix(c(1,0,0,0,old_ncol,0,0,0,old_nrow),ncol=3,nrow=3)
 

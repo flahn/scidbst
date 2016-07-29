@@ -7,7 +7,7 @@
 \title{Executes cascaded operations and stores data in scidb under a given name}
 \usage{
 \S4method{scidbsteval}{scidbst,character}(expr, name, eval = TRUE,
-  gc = TRUE, temp = FALSE)
+  gc = TRUE, temp = FALSE, drop = TRUE)
 }
 \arguments{
 \item{expr}{The scidbst object}
@@ -19,6 +19,8 @@
 \item{gc}{A flag whether or not the result should be tied to the R garbage collector}
 
 \item{temp}{A flag wheter or not the resulting scidb array is temporary}
+
+\item{drop}{Whether or not to drop spatial or temporal references, when dimension is removed from array}
 }
 \value{
 The modified scidbst object
@@ -31,7 +33,8 @@ evaluation of a scidbst object will also set the current spatial and/or temporal
 }
 \note{
 Using the similar function \code{scidbeval} function will also perform the storing operation, but it will not transfer
-the dimension references for space and/or time.
+the dimension references for space and/or time. Also, unbounded dimensions that are not dropped will be created
+as bounded dimensions by its minimum/maximum dimension value.
 }
 \examples{
 \dontrun{
