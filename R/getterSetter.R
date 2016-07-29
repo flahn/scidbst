@@ -51,3 +51,22 @@ setMethod("getTDim",signature(x="scidbst"),function(x){
     return(dimensions(x)[1])
   }
 })
+
+
+setGeneric("getLayer",function(x,layer) standardGeneric("getLayer"))
+#' Get Layer
+#'
+#' If the data is loaded as a raster brick, this function will replace the raster subset function, since scidb
+#' uses a function with the same name to subset directly from the scidb database.
+#' @rdname getLayer-method
+#' @export
+setMethod("getLayer",signature(x="scidbst",layer="ANY"), function(x,layer) {
+  if(!hasValues(x)) {
+    stop("No data loaded. Use 'subset' to filter for the correct attributes.")
+  }
+
+  b = brick(c2)
+  b@data = x@data
+  return(subset(b,layer))
+
+})
