@@ -18,6 +18,9 @@ setMethod("spplot", signature(obj="scidbst"),function (obj, maxpixels=50000, as.
   if (length(dimnames(obj)) > 2 ) {
     stop("Too many dimensions detected. Try 'slice' to make a 2D subset of the image.")
   }
+  if (!hasValues(obj)) {
+    obj = readAll(obj)
+  }
   attr_names = scidb_attributes(obj)
   #following: code from raster::spplot
   obj <- sampleRegular(obj, maxpixels, asRaster=TRUE, useGDAL=TRUE)

@@ -106,9 +106,9 @@
 
     to@affine = from@affine
 
-    to@data@names = scidb_attributes(to)
-    to@data@nlayers = length(to@data@names)
-    to@data@fromdisk = TRUE
+    # to@data@names = scidb_attributes(to)
+    # to@data@nlayers = length(to@data@names)
+    # to@data@fromdisk = TRUE
 
 
     to@spatial_dims = from@spatial_dims
@@ -122,9 +122,9 @@
     to@sref = from@sref
     to@tref = from@tref
 
-    if (inMemory(from)) {
-      to@data@inmemory = FALSE
-    }
+    # if (inMemory(from)) {
+    #   to@data@inmemory = FALSE
+    # }
 
     return(to)
   }
@@ -133,6 +133,8 @@
 # Calculates dimension indices from spatial real world coordinates given by an extent
 # object: scidbst object
 # extent: extent object
+#
+# returns extent object
 .calculateDimIndices = function(object, extent) {
   ll = c(xmin(extent),ymin(extent))
   ur = c(xmax(extent),ymax(extent))
@@ -164,6 +166,8 @@
 # function to create a scidb array from a scidbst array, this approach copies the environment content (object promises)
 # rather than querying the scidb instance anew for the same information
 # x: scidbst object
+#
+# returns scidb object
 .toScidb = function(x) {
   res = scidb("")
   res@name = x@name
