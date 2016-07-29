@@ -26,4 +26,5 @@ Collate:
     'scidbsteval.R'
     'slice.R'
     'spplot.R'
+    'transform-apply.R'
     'utils.R'

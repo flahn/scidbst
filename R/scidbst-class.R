@@ -33,7 +33,7 @@ setClass("scidb",
 #' @exportClass scidbst
 .scidbst_class = setClass("scidbst",
                           contains=list("scidb","RasterBrick"),
-                          representation=representation(
+                          slots=c(
                             affine = "matrix",
                             sref = "list",
                             tref = "list",
