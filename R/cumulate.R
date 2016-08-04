@@ -1,22 +1,26 @@
 if (!isGeneric("cumulate")) {
-  setGeneric("cumulate", function(x,...) {
-    standardGeneric("cumulate")
-  })
+  setGeneric("cumulate", function(x, ...) standardGeneric("cumulate"))
 }
 
+#' # Do this to make life with scidb::cumulate easier!
+#' cumulate.scidb = scidb::cumulate
+#'
+#' #' @importFrom scidb cumulate
+#' #' @export
+#' setMethod("cumulate", signature(x="scidb"), cumulate.scidb)
 
-cumulate.scidbst = function (x, expression, dimension) {
+.cumulate.scidbst = function (x, expression, dimension) {
 
   scidbst.obj = x
   scidb.obj = .toScidb(scidbst.obj)
-  scidb.obj = cumulate(scidb.obj, expression, dimension)
+  scidb.obj = scidb::cumulate(scidb.obj, expression, dimension)
   out = .scidbst_class(scidb.obj)
   out = .cpMetadata(scidbst.obj,out)
 
   return(out)
 }
 
-#' Cumulate function for scidbst
+#' Cumulate function for scidbst objects
 #'
 #' This function wraps scidbs cumulate function in order to maintain the scidbst object with the dimension references.
 #'
@@ -30,4 +34,6 @@ cumulate.scidbst = function (x, expression, dimension) {
 #'
 #' @seealso \link{scidb::cumulate}
 #' @export
-setMethod("cumulate", signature(x="scidbst"), cumulate.scidbst)
+setMethod("cumulate", signature(x="scidbst"), .cumulate.scidbst)
+
+

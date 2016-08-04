@@ -2,6 +2,10 @@
 NULL
 
 .crop.scidbst = function(x, y, snap='near', ...) {
+      if (!x@isSpatial) {
+        stop("The ")
+      }
+
       if (length(dimnames(x)) > 2 ) {
         stop("More than two dimensions")
       }
