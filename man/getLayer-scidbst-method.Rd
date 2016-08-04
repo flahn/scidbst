@@ -18,8 +18,10 @@
 A RasterLayer object
 }
 \description{
-If the data is loaded as a raster brick, this function will replace the raster subset function, since scidb
-uses a function with the same name to subset directly from the scidb database.
+If the data is loaded as a raster brick (e.g. with \code{readAll}), this function will replace the raster subset function, since scidb
+uses a function with the same name to subset directly from the scidb database. The scidbst object, however, is required to be limited
+to the two spatial dimensions, otherwise retrieving the data will fail. This function will return the selected layer of the raster part,
+which is equal to an attribute in scidb.
 }
 \seealso{
 \code{\link{raster::subset}}
