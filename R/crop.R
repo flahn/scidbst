@@ -1,10 +1,13 @@
 #' @include scidbst-class.R
 NULL
 
-.crop.scidbst = function(x, y, snap='near', ...) {
-      if (length(dimnames(x)) > 2 ) {
-        stop("More than two dimensions")
+.crop.scidbst = function(x, y, snap='near', ..., between=TRUE) {
+      ndim = length(dimensions(x))
+      if (!x@isSpatial) {
+        stop("The array does not have spatial dimensions to crop with a bounding box")
       }
+
+      limits = c(scidb_coordinate_start(x),scidb_coordinate_end(x))
 
       # as in the raster package, try to get the extent of object y
       y <- try ( extent(y), silent=TRUE )
@@ -18,16 +21,19 @@ NULL
 
       out = .calculateDimIndices(x,e)
 
-      limits = as.matrix(out)
+      xindex = which(dimensions(x)==getXDim(x)) #get position of "x" values
+      limits[xindex] = xmin(out)
+      limits[xindex+ndim] = xmax(out)
 
-      res = subarray(x=x,limits=limits[dimensions(x),],between=TRUE)
-      res = .scidbst_class(res)
-      res = .cpMetadata(x,res) #first copy all, then adapt
+      yindex = which(dimensions(x)==getYDim(x)) #position of "y" values
+      limits[yindex] = ymin(out)
+      limits[yindex+ndim] = ymax(out)
 
-      res@extent = e
-      nrow(res) = (ymax(out) - ymin(out))+1
-      ncol(res) = (xmax(out) - xmin(out))+1
-      # +1 because origin in scidb is 0,0
+      res = subarray(x=x,limits=limits,between=between) #use modified subarray version
+      if (between) {
+        res@extent = e
+      }
+
 
       return(res)
 }
@@ -35,17 +41,20 @@ NULL
 #' Crop / spatial subset function
 #'
 #' This function is based on the similar function in the raster package. It creates a spatial subset of a scidbst array and
-#' returns the subset scidbst object.
+#' returns the subset scidbst object. Internally, this function will calculate the spatial indices of the extent object and
+#' will use this as boundaries for the spatial dimensions. 'crop' will delegate the subset creation to the 'subarray' method.
 #'
-#' @note For proper use the new extent has to contain coordinates that are in the same reference
-#' system as the scidbst object.
+#' @note For proper use the new extent has to contain coordinates that have the same reference system as the scidbst object.
 #'
 #' @param x scidbst object
 #' @param y Extent object, or any object from which an Extent object can be extracted
 #' @param snap Character. One of 'near', 'in', or 'out', for use with alignExtent
 #' @param ...	Additional arguments as for writeRaster
+#' @param between (logical) whether or not to use 'between' or 'subarray' as scidb operation
 #'
 #' @return scidbst object with refined spatial extent
+#'
+#' @seealso \code{\link{crop,Raster-method}} or \code{\link{subarray,scidbst-method}}
 #' @examples
 #' \dontrun{
 #' scidbconnect(...)

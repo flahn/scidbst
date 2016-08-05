@@ -8,12 +8,17 @@
 #' @export
 setMethod("nrow",signature(x="scidbst"),function(x) {
   if (x@isSpatial) {
-    lengths = .getLengths(x)
-    if (length(lengths) == 1) {
-      return(1)
+    if (!hasValues(x)) {
+      lengths = .getLengths(x)
+      if (length(lengths) == 1) {
+        return(1)
+      } else {
+        return(lengths[getYDim(x)])
+      }
     } else {
-      return(lengths[getYDim(x)])
+      return(x@nrows)
     }
+
   } else if (x@isTemporal){
     return(1)
   }

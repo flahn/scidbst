@@ -187,3 +187,27 @@
   out = paste("P",x@tResolution,m[m[,"tunit"]==x@tUnit,"abbrev"],sep="")
   return(out)
 }
+
+# Calculates POSIX time from an temporal index
+# x: scidbst object
+# n: (numeric) the temporal index
+.calculatePOSIXfromIndex = function(x,n) {
+  baseTime = 0
+
+  if (x@tUnit == "weeks") {
+    baseTime = 7*24*60*60
+  } else if (x@tUnit == "days") {
+    baseTime = 24*60*60
+  } else if (x@tUnit == "hours") {
+    baseTime = 60 * 60
+  } else if (x@tUnit == "mins") {
+    baseTime = 60
+  } else if (x@tUnit == "secs") {
+    baseTime = 1
+  } else {
+    stop("currently no other temporal unit supported")
+  }
+
+  val = as.POSIXlt(as.character(x@startTime + n * x@tResolution * baseTime))
+  return(val)
+}

@@ -8,7 +8,7 @@ setClass("scidb",
          representation(name="character",
                         meta="environment",
                         gc="environment")
-         )
+)
 
 #' Class scidbst
 #'
@@ -33,7 +33,7 @@ setClass("scidb",
 #' @exportClass scidbst
 .scidbst_class = setClass("scidbst",
                           contains=list("scidb","RasterBrick"),
-                          representation=representation(
+                          slots=c(
                             affine = "matrix",
                             sref = "list",
                             tref = "list",
@@ -56,7 +56,6 @@ setClass("scidb",
 #' @param name a character string name of a stored SciDB array or a valid SciDB AFL expression
 #' @param gc a logical value, TRUE means connect the SciDB array to R's garbage collector
 #' @return scidbst object
-#' @import scidb
 #' @export
 scidbst = function(...){
   .scidb = .scidbst_class(scidb(...))
@@ -128,10 +127,10 @@ scidbst = function(...){
 setMethod("subset",signature(x="scidbst"), function(x, ...) scidb:::filter_scidb(x, ...))
 
 
-#' @export
-setMethod("show",signature(object="scidbst"), function(object){
-  s = .toScidb(object)
-  show(s)
-})
+#' #' @export
+#' setMethod("show",signature(object="scidbst"), function(object){
+#'   s = .toScidb(object)
+#'   show(s)
+#' })
 
 
