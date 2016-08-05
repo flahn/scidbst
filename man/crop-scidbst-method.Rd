@@ -5,7 +5,7 @@
 \alias{crop,scidbst-method}
 \title{Crop / spatial subset function}
 \usage{
-\S4method{crop}{scidbst}(x, y, snap = "near", ...)
+\S4method{crop}{scidbst}(x, y, snap = "near", ..., between = TRUE)
 }
 \arguments{
 \item{x}{scidbst object}
@@ -15,17 +15,19 @@
 \item{snap}{Character. One of 'near', 'in', or 'out', for use with alignExtent}
 
 \item{...}{Additional arguments as for writeRaster}
+
+\item{between}{(logical) whether or not to use 'between' or 'subarray' as scidb operation}
 }
 \value{
 scidbst object with refined spatial extent
 }
 \description{
 This function is based on the similar function in the raster package. It creates a spatial subset of a scidbst array and
-returns the subset scidbst object.
+returns the subset scidbst object. Internally, this function will calculate the spatial indices of the extent object and
+will use this as boundaries for the spatial dimensions. 'crop' will delegate the subset creation to the 'subarray' method.
 }
 \note{
-For proper use the new extent has to contain coordinates that are in the same reference
-system as the scidbst object.
+For proper use the new extent has to contain coordinates that have the same reference system as the scidbst object.
 }
 \examples{
 \dontrun{
@@ -36,5 +38,8 @@ ymax(e) = ymin(e)+((ymax(e)-ymin(e))/4)
 xmax(e) = xmin(e)+((xmax(e)-xmin(e))/4)
 cropped = crop(scidbst.obj,e)
 }
+}
+\seealso{
+\code{\link{crop,Raster-method}} or \code{\link{subarray,scidbst-method}}
 }
 

@@ -2,13 +2,6 @@ if (!isGeneric("cumulate")) {
   setGeneric("cumulate", function(x, ...) standardGeneric("cumulate"))
 }
 
-#' # Do this to make life with scidb::cumulate easier!
-#' cumulate.scidb = scidb::cumulate
-#'
-#' #' @importFrom scidb cumulate
-#' #' @export
-#' setMethod("cumulate", signature(x="scidb"), cumulate.scidb)
-
 .cumulate.scidbst = function (x, expression, dimension) {
 
   scidbst.obj = x
@@ -31,6 +24,16 @@ if (!isGeneric("cumulate")) {
 #' @param dimension optional parameter, the dimension along which the cumulative sum or product will be calculates
 #'
 #' @return a scidbst object
+#'
+#' @examples
+#' \dontrun{
+#'  scidbconnect(...)
+#'  chicago = scidbst("chicago_sts")
+#'  cumsum.band1 = cumulate.scidbst(chicago,"sum(band1)","t")
+#' }
+#'
+#' @note Please use scidb::cumulate, when you operate on pure scidb objects, since package 'scidb' does not export this function
+#' as a S4 method.
 #'
 #' @seealso \link{scidb::cumulate}
 #' @export
