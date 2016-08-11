@@ -110,7 +110,7 @@
     # to@data@nlayers = length(to@data@names)
     # to@data@fromdisk = TRUE
 
-
+    to@title = from@title
     to@spatial_dims = from@spatial_dims
     to@temporal_dim = from@temporal_dim
     to@startTime = from@startTime
@@ -210,4 +210,20 @@
 
   val = as.POSIXlt(as.character(x@startTime + n * x@tResolution * baseTime))
   return(val)
+}
+
+#' Lists all scidb arrays with a dimension reference
+#'
+#' This function will list all the SciDB arrays that have a special reference on one or more dimensions. It will also list the type of
+#' array: 's' for spatial, 't' for temporal, st for the combination of both
+#'
+#' @return data.frame with columns "name" and "setting"
+#'
+#' @seealso \code{\link{scidb::scidbls}}
+#' @export
+scidbst.ls = function() {
+  result=iquery("eo_arrays()",return=TRUE)
+  result = result[,-which("i"==names(result))]
+  names(result) = c("name","type")
+  return(result)
 }

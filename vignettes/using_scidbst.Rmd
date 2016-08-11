@@ -1,0 +1,56 @@
+---
+title: "Interacting with R and the spatio-temporal extension of SciDB"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteIndexEntry{Interacting with R and the spatio-temporal extension of SciDB}
+---
+```{r, include=FALSE}
+knitr::opts_chunk$set(collapse = T, comment = "#>")
+outputFolder = "./assests/"
+```
+
+## Introduction
+The package `scidbst` was implemented with the intention to make life easier to deal with operations in SciDB based on spatio-temporal imagery and maintaining their respective metadata. SciDB with the `scidb4geo` extension is currently capable to maintain spatial and/or temporal dimensions. The extension was developed with the intention to utilize GDAL as a data exchange tool and SciDB as a workhorse to perform calculation intensive operations on big data sets.
+With the release of a package for SciDB (`scidb`) it was possible to perform queries and calculations from R. This package provides the functionalities for the base version of SciDB, so this package will bridge the gap to the missing functionalities to the `scidb4geo` extension, namely the spatial and temporal referenciation.
+
+## Aim and Data
+The aim of this vignette is to illustrate the usage of the methods in this package with simple examples. Since this package requires a running instance of `scidb` with the `scidb4geo` extension, the examples stated here are not directly reproduceable. As data for this example we used:
+
+- SRTM data for Africa [SRTM_AFRICA]
+- Landsat 7 scene in the Brazilian Rainforest
+- Landsat 7 subset containing just the NDVI band for a scene in Ethopia [L7_SW_ETHOPIA]
+
+The data has already been loaded into scidb with its spatial and temporal reference. The import was done using the GDAL with the extension for scidb (scidb4gdal). A detailed tutorial with examples on how to import spatio-temporal images into SciDB was provided by Appel and Pebesma [1] and hence shall not be topic of this vignette.
+
+## Analysis with SRTM data
+As for every operation with `scidb` we need to establish a connection to the database first. `scidbconnect` will do exactly that. For SciDB versions 15.7 and greater the parameter `protocol` and `auth_type` are necessary to make good use of the new user authentication. Using `scidbst.ls` will result in a data frame object containing all the arrays that have a referenced dimension as well as their type.
+
+
+```{r, include=FALSE}
+source("/home/lahn/GitHub/scidbst/vignettes/assets/credentials.R")
+```
+
+```{r}
+
+
+scidbconnect(host=host,port=port,user=user,password=password,protocol="https",auth_type = "digest")
+scidbst.ls()
+```
+
+Next, we will create a array proxy in a similar way as for `scidb` objects by using the `scidbst` constructor. This will create a scidb object with the specialty that the spatial and temporal extent will be calculated and the references will be set. 
+
+```{r}
+l7_ethiopia = scidbst("L7_SW_ETHOPIA")
+l7_ethiopia
+extent(l7_ethiopia)
+crs(l7_ethiopia)
+t.extent(l7_ethiopia)
+```
+
+Calling the object by name returns an overview about the array structure with the dimension indices, whereas `extent` will return the spatial bounding box in coordinates according to the stated coordinate reference system (`crs`).
+
+## Analysis with Landsat data
+
+## References
+[1] Appel, M. and Pebesma, E. (2016). "Scalable Earth Observation analytics with R and SciDB". Web blog post. r-spatial.org, 11.05.2016. Online: <a href="http://r-spatial.org/r/2016/05/11/scalable-earth-observation-analytics.html">http://r-spatial.org/r/2016/05/11/scalable-earth-observation-analytics.html</a>

@@ -4,12 +4,17 @@ Title: Spatio Temporal Extension for SciDB (scidbst)
 Version: 0.2.0
 Author: Florian Lahn
 Maintainer: Florian Lahn <florian.lahn@uni-muenster.de>
-Description: This package extends the package scidb for spatial and temporal referenced dimensions. A set of functions were modified in order to maintain the correct references, when applying the functions in scidb.
+Description: This package extends the package scidb for spatial and temporal
+    referenced dimensions. A set of functions were modified in order to maintain the
+    correct references, when applying the functions in scidb.
 License: MIT
 LazyData: TRUE
 RoxygenNote: 5.0.1
+VignetteBuilder: knitr
 Depends:
     raster,scidb,rgdal
+Suggests:
+    knitr
 Collate:
     'scidbst-class.R'
     'aggregate.R'
@@ -28,5 +33,6 @@ Collate:
     'slice.R'
     'spplot.R'
     'subarray.R'
+    'textent.R'
     'transform-apply.R'
     'utils.R'
