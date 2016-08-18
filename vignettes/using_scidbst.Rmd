@@ -6,6 +6,11 @@ vignette: >
   %\VignetteIndexEntry{Interacting with R and the spatio-temporal extension of SciDB}
 ---
 ```{r, include=FALSE}
+library(scidb)
+library(raster)
+library(knitr)
+library(scidbst)
+
 knitr::opts_chunk$set(collapse = T, comment = "#>")
 outputFolder = "./assests/"
 ```
@@ -23,7 +28,7 @@ The aim of this vignette is to illustrate the usage of the methods in this packa
 
 The data has already been loaded into scidb with its spatial and temporal reference. The import was done using the GDAL with the extension for scidb (scidb4gdal). A detailed tutorial with examples on how to import spatio-temporal images into SciDB was provided by Appel and Pebesma [1] and hence shall not be topic of this vignette.
 
-## Analysis with SRTM data
+## The Basics
 As for every operation with `scidb` we need to establish a connection to the database first. `scidbconnect` will do exactly that. For SciDB versions 15.7 and greater the parameter `protocol` and `auth_type` are necessary to make good use of the new user authentication. Using `scidbst.ls` will result in a data frame object containing all the arrays that have a referenced dimension as well as their type.
 
 
@@ -32,13 +37,11 @@ source("/home/lahn/GitHub/scidbst/vignettes/assets/credentials.R")
 ```
 
 ```{r}
-
-
 scidbconnect(host=host,port=port,user=user,password=password,protocol="https",auth_type = "digest")
 scidbst.ls()
 ```
 
-Next, we will create a array proxy in a similar way as for `scidb` objects by using the `scidbst` constructor. This will create a scidb object with the specialty that the spatial and temporal extent will be calculated and the references will be set. 
+Next, we will create a array proxy in a similar way as for `scidb` objects by using the `scidbst` constructor. This will create a scidb object with the specialty that the spatial and temporal extent will be calculated and the references will be set. Calling the object by name returns an overview about the array structure with the dimension indices, whereas `extent` will return the spatial bounding box in coordinates according to the stated coordinate reference system (`crs`). If the array has a temporal dimension, then `t.extent` will return the temporal extent denoted by a list with the minimum and maximum POSIX date.
 
 ```{r}
 l7_ethiopia = scidbst("L7_SW_ETHOPIA")
@@ -48,7 +51,34 @@ crs(l7_ethiopia)
 t.extent(l7_ethiopia)
 ```
 
-Calling the object by name returns an overview about the array structure with the dimension indices, whereas `extent` will return the spatial bounding box in coordinates according to the stated coordinate reference system (`crs`).
+One typical task in the Geoscience domain is the creation of spatial subsets. In SciDB such subsets are created by using the dimension index values, which is complicated since it is not obvious which index refers to which real world coordinate. In this package we allow spatial subsetting with the `crop` method that was introduced by the `raster` package. Other subsetting operations that refer to the dimension index notion are `subarray` and `subset`.
+
+```{r, eval=FALSE}
+subset.extent = extent(35,36.5,6,8.5)
+ethiopia.subset = crop(l7_ethiopia,subset.extent)
+extent(ethiopia.subset)
+```
+
+In order to plot the image we need to further reduce the dimensionality to simply the two spatial dimensions, this can be done by `slice`, which sets the subset to a specific dimension value. This is interesting, when you want to extract an image at a certain point in time. In this example we take a slice from dimension "t" (the temporal dimension) and we set the selection value to a certain date, which is internally recalculated as the according dimension value. Instead of the timestamp, we could also have used the dimension index directly (e.g. 0).
+
+```{r, eval=FALSE}
+ethiopia.subset = slice(ethiopia.subset,"t","2003-07-21")
+```
+
+Now that we have a two dimensional subset, we can either plot the image or download its values. `spplot` is used to for the visualization purpose and `readAll` or `getValues` can be used to obtain the values and perform additional calculations locally. `getValues` returns the data as a data.frame with m columns (m = number of attributes) and n rows ("number spatial x dimension values" * "number spatial y dimension values").
+
+```{r, eval=FALSE}
+values = getValues(ethiopia.subset)
+ethiopia.subset = readAll(ethiopia.subset)
+spplot(ethiopia.subset)
+```
+
+
+
+- aggregate
+- transform
+- cumulate
+- regrid / resample
 
 ## Analysis with Landsat data
 
