@@ -124,8 +124,6 @@ scidbst = function(...){
   return(.scidb)
 }
 
-setMethod("subset",signature(x="scidbst"), function(x, ...) scidb:::filter_scidb(x, ...))
-
 
 #' #' @export
 #' setMethod("show",signature(object="scidbst"), function(object){

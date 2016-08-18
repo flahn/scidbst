@@ -77,7 +77,7 @@ setMethod("getLayer",signature(x="scidbst",layer="ANY"), function(x,layer,...) {
     stop("Cannot find layer name")
   }
 
-  b = brick(c2)
+  b = brick(x)
   b@data = x@data
   return(subset(b,layer,...))
 

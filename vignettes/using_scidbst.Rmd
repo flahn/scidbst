@@ -23,7 +23,7 @@ With the release of a package for SciDB (`scidb`) it was possible to perform que
 The aim of this vignette is to illustrate the usage of the methods in this package with simple examples. Since this package requires a running instance of `scidb` with the `scidb4geo` extension, the examples stated here are not directly reproduceable. As data for this example we used:
 
 - SRTM data for Africa [SRTM_AFRICA]
-- Landsat 7 scene in the Brazilian Rainforest
+- Landsat 7 scene in the Brazilian Rainforest (scene LS230063_2001088, band composition: 1,2,3,4,5,6a,6b,7, scaled onto Byte) [LS7_BRAZIL]
 - Landsat 7 subset containing just the NDVI band for a scene in Ethopia [L7_SW_ETHOPIA]
 
 The data has already been loaded into scidb with its spatial and temporal reference. The import was done using the GDAL with the extension for scidb (scidb4gdal). A detailed tutorial with examples on how to import spatio-temporal images into SciDB was provided by Appel and Pebesma [1] and hence shall not be topic of this vignette.
@@ -73,14 +73,39 @@ ethiopia.subset = readAll(ethiopia.subset)
 spplot(ethiopia.subset)
 ```
 
+## NDVI calculation
+In this use case we will calculate the NDVI of a Landsat 7 scene in the Brazilian rainforest. To make the image smaller and calculations faster, we will first resample the image and store selected bands. Then we will calculate the NDVI for this scene. Afterwards we will again store the calculated NDVI and plot the results.
+
+```{r, eval=FALSE}
+ls7_brazil = scidbst("LS7_BRAZIL")
+
+xres(ls7_brazil)
+yres(ls7_brazil)
+#we have a resolution of 30mx30m
+ls7_brazil_regrid = regrid(ls7_brazil,c(10,10,1),"avg(band3),avg(band4),avg(band5),avg(band8)")
+xres(ls7_brazil_regrid)
+yres(ls7_brazil_regrid)
+#now 300m x 300m
+ls7_brazil_regrid = scidbsteval(ls7_brazil_regrid,"LS7_BRAZIL_REGRID")
+ls7_brazil_regrid = scidbst("LS7_BRAZIL_REGRID")
+
+red = project(ls7_brazil_regrid,c("band3_avg"))
+spplot(slice(red,"t","2001-088"))
+
+ls7_calc = transform(ls7_brazil_regrid, ndvi = "(band5_avg - band3_avg) / (band5_avg + band3_avg)", mdvi = "(band8_avg - band5_avg) / (band8_avg + band5_avg)")
+ls7_calc = project(ls7_calc,c("ndvi","mdvi"))
+ls7_calc = scidbsteval(ls7_calc,"LS7_BRAZIL_REGRID_NDVI")
+ls7_calc_t0 = readAll(slice(ls7_calc,"t","2001-088"))
+
+spplot(getLayer(ls7_calc_t0,"ndvi"))
+spplot(getLayer(ls7_calc_t0,"mdvi"))
+```
+
+
 
 
 - aggregate
-- transform
 - cumulate
-- regrid / resample
-
-## Analysis with Landsat data
 
 ## References
 [1] Appel, M. and Pebesma, E. (2016). "Scalable Earth Observation analytics with R and SciDB". Web blog post. r-spatial.org, 11.05.2016. Online: <a href="http://r-spatial.org/r/2016/05/11/scalable-earth-observation-analytics.html">http://r-spatial.org/r/2016/05/11/scalable-earth-observation-analytics.html</a>
