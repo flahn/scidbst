@@ -67,7 +67,7 @@ setGeneric("getLayer",function(x,layer,...) standardGeneric("getLayer"))
 #' @param ... additional parameters that are passed to \link{raster::subset}
 #'
 #' @return A RasterLayer object
-#' @seealso \code{\link{raster::subset}}
+#' @seealso \code{\link[raster]{subset}}
 #' @export
 setMethod("getLayer",signature(x="scidbst",layer="ANY"), function(x,layer,...) {
   if(!hasValues(x)) {
