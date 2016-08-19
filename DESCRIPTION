@@ -14,10 +14,11 @@ VignetteBuilder: knitr
 Depends:
     raster,scidb,rgdal
 Suggests:
-    knitr
+    knitr,spacetime
 Collate:
     'scidbst-class.R'
     'aggregate.R'
+    'coerce.R'
     'crop.R'
     'cumulate.R'
     'getValues.R'

@@ -24,6 +24,6 @@ to the two spatial dimensions, otherwise retrieving the data will fail. This fun
 which is equal to an attribute in scidb.
 }
 \seealso{
-\code{\link{raster::subset}}
+\code{\link[raster]{subset}}
 }
 
