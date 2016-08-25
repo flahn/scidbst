@@ -78,6 +78,7 @@ spplot(ethiopia.subset)
 In this use case we will calculate the NDVI of a Landsat 7 scene in the Brazilian rainforest. To make the image smaller and calculations faster, we will first resample the image and store selected bands. Then we will calculate the NDVI for this scene. Afterwards we will again store the calculated NDVI and plot the results.
 
 ```{r, eval=FALSE}
+ls.brazil.name = "LS7_BRAZIL"
 regrid.name = "LS7_BRAZIL_REGRID"
 ndvi.name = "LS7_BRAZIL_REGRID_NDVI"
 ```
@@ -89,7 +90,7 @@ scidbrm(ndvi.name, force=TRUE)
 ```
 
 ```{r, eval=FALSE}
-ls7_brazil = scidbst("LS7_BRAZIL")
+ls7_brazil = scidbst(ls.brazil.name)
 xres(ls7_brazil)
 yres(ls7_brazil)
 ```
@@ -98,7 +99,7 @@ We loaded the Landsat 7 scene that is located in Brazil and checked the resoluti
 The downscaling is done using \code{regrid}. The function takes the scidbst array, the amount of cells to aggregate for each dimension and the aggregation function. The aggregation function statement we used is SciDB AFL styled syntax. We used is, because it is more reliable. As output we will get an scidbst array that has the same dimensions as the input image, but with a different granularity, as well as only the stated aggregated attributes as attributes.
 
 ```{r, eval=FALSE}
-ls7_brazil_regrid = regrid(ls7_brazil,c(10,10,1),"avg(band3),avg(band4),avg(band5),avg(band8)")
+ls7_brazil_regrid = regrid(ls7_brazil,c(10,10,1),"avg(band1),avg(band3),avg(band4),avg(band5),avg(band8)")
 xres(ls7_brazil_regrid)
 yres(ls7_brazil_regrid)
 ```
@@ -139,7 +140,36 @@ In this use case we highlighted the following functions:
 - selecting attributes with \code{project}
 - accessing the different attribute values as a Raster object with \code{getLayer}
 
+## Cloud mask
+In the next use case we will perform a very simplistic approach for cloud detection to showcase the the filter/subset function. In this case we assume that clouds appear as white objects in an image. This means that in the visual light spectrum they have a whiteish color. We can filter the array for all cells that have values around the maximum data type value. In the Brazilian Landsat scene this will relate to selecting each cell that has a value of 254 or 255 for bands 1 to 3.
 
+```{r, eval=FALSE}
+ls7_brazil = scidbst("LS7_BRAZIL")
+sliced.regridded = regrid(slice(ls7_brazil,"t",0),c(10,10),"avg(band1),avg(band2),avg(band3)")
+sliced.regridded = readAll(sliced.regridded)
+plotRGB(sliced.regridded,r=3,g=2,b=1)
+
+transformed = transform(sliced.regridded,cloud = "iif(band1_avg >= 252 and band2_avg >= 252 and band3_avg >= 252, 1 , 0)")
+p2 = project(transformed,c("cloud"))
+clouds = subset(p2,"cloud = 1")
+
+points = as(clouds,"SpatialPointsDataFrame")
+plot(points)
+
+brick = as(clouds,"RasterBrick")
+spplot(brick)
+```
+
+In this example we resampled the landsat image on the fly and selected just bands 1 to 3. To see the results as a RGB image, we used plotRGB to do so. After that we used \code{transform} to create a new attribute called 'cloud' with values 1 and 0 to mark whether or not the stated inline if-statement is met. To minimize data the attribute 'cloud' is selected as the only attribute for the result array. \code{subset} is used afterwards to selected cell values that have the value '1' (meeting the statement of transform).
+To visualize the results we coerce the scidbst object into a \code{SpatialPointsDataFrame} and into a \code{RasterBrick} to plot them afterwards. (Note: those two coercions methods work only with non temporal arrays)
+
+In this use case we highlighted the uses of:
+
+- selection of cell values by filtering \code{subset}
+- coercing a scidbst object to different objects \code{as}
+
+## Rainfall Data
+In this use case we are going to highlight the use of two aggregation functions - \code{aggregate} and \code{cumulate}.
 
 - aggregate
 - cumulate
