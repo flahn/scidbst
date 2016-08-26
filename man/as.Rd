@@ -9,5 +9,7 @@ Creates a SpatialPointsDataFrame from scidbst
 Creates a RasterBrick from scidbst
 
 Creates a STSDF from scidbst
+
+Creates a RasterBrick from scidbst
 }
 

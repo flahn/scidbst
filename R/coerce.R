@@ -6,9 +6,7 @@
 #' @importClassesFrom sp SpatialPointsDataFrame
 setAs("scidbst","SpatialPointsDataFrame",function(from,to) {
   if (!hasValues(from)) {
-    cat("Downloading data...")
-    .data = iquery(from@name,return=T) #query scidb for data
-    cat("\ndone.")
+    .data = .downloadData(from)
     if (nrow(.data) == 0) { #scidb does not return data. Stop here
       stop("Image is empty.")
     }
@@ -50,6 +48,7 @@ setAs("scidbst","RasterBrick",function(from,to) {
   return(b)
 })
 
+setOldClass("STSDF")
 
 #' Creates a STSDF from scidbst
 #'
@@ -59,7 +58,7 @@ setAs("scidbst","RasterBrick",function(from,to) {
 #' @importClassesFrom spacetime STSDF
 setAs("scidbst","STSDF",function(from,to) {
   if (!hasValues(from)) {
-    .data = iquery(from@name,return=T) #query scidb for data
+    .data = .downloadData(from)
     if (nrow(.data) == 0) { #scidb does not return data. Stop here
       stop("Image is empty.")
     }
@@ -103,5 +102,34 @@ setAs("scidbst","STSDF",function(from,to) {
 
   } else {
     stop("Array has no temporal or spatial reference")
+  }
+})
+
+setOldClass("xts")
+
+#' Creates a RasterBrick from scidbst
+#'
+#' @name as
+#' @family scidbst
+#' @importFrom xts xts
+setAs("scidbst","xts",function(from,to) {
+  if (from@isTemporal && !from@isSpatial) {
+    .data = .downloadData(from)
+
+    .attributes = as.data.frame(.data[,scidb_attributes((from))])
+    colnames(.attributes) = scidb_attributes(from)
+    ts = .data[,getTDim(from)]
+    if (from@tUnit == "days") {
+      dates = lapply(ts,function(x,y){as.Date(.calculatePOSIXfromIndex(y,x))},y=from)
+      dates = as.Date(unlist(dates),origin="1970-01-01")
+
+
+      return(xts(.attributes,dates))
+    } ese {
+      stop("Currently only tUnit = \"days\" is supported.")
+    }
+
+  } else {
+    stop("The scidbst object is either not temporal or it contains spatially dimensions.")
   }
 })

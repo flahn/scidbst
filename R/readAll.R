@@ -116,6 +116,13 @@ NULL
   return(object)
 }
 
+.downloadData = function(object) {
+  cat("Downloading data...\n")
+  .data = iquery(object@name,return=T) #query scidb for data
+  cat("\nDone.")
+  return(.data)
+}
+
 .materializeSCIDBValues = function(object, method="MATRIX") {
   if (length(dimensions(object))>2) {
     stop("Array has more than two dimensions to fetch data in a raster format")
@@ -127,8 +134,7 @@ NULL
 
   # extent = as.matrix(.calculateDimIndices(object,extent(object)))
 
-  cat("Downloading data...\n")
-  .data = iquery(object@name,return=T) #query scidb for data
+  .data = downloadData(object)
 
   if (nrow(.data) == 0) { #scidb does not return data. Stop here
     stop("Image is empty.")

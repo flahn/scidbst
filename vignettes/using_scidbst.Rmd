@@ -168,8 +168,21 @@ In this use case we highlighted the uses of:
 - selection of cell values by filtering \code{subset}
 - coercing a scidbst object to different objects \code{as}
 
-## Rainfall Data
-In this use case we are going to highlight the use of two aggregation functions - \code{aggregate} and \code{cumulate}.
+## TRMM Precipitation Data
+In this use case we are going to highlight the use of two aggregation functions - \code{aggregate} and \code{cumulate}. For the aggregation use case we will aggregate over space, which will leave us with a timeseries for a certain region. The TRMM data set contains daily precipitation values for the area -180° to 180° longitude and -50° to 50° latitude. We are going to use \code{crop} to make a spatial subset for the Landsat 7 scene in Ethiopia. Afterwards we are going to aggregate over the spatial domain with an averaging function.
+
+As a result we will get a time series, which is coerced into a \code{xts} object and plotted afterwards.
+
+```{r}
+trmm = scidbst("TRMM3B42_DAILY")
+trmm.prec = project(trmm,"band5")
+
+trmm.prec.crop = crop(trmm.prec,l7_ethiopia)
+daily.avg.ethiopia = aggregate(trmm.prec.crop,list("t"),FUN="avg(band5)")
+
+ts = as(daily.avg.ethiopia,"xts")
+plot(window(ts,start="2010-01-01",end="2013-01-01"),major.ticks="months",minor.ticks=FALSE,main="Average precipitation for Ethiopia Landsat scene from 2010 to 2013")
+```
 
 - aggregate
 - cumulate
