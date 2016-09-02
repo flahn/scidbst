@@ -119,7 +119,7 @@ NULL
 .downloadData = function(object) {
   cat("Downloading data...\n")
   .data = iquery(object@name,return=T) #query scidb for data
-  cat("\nDone.")
+  cat("Download done.")
   return(.data)
 }
 

@@ -13,7 +13,10 @@ subarray.scidbst = function (x, limits, between = FALSE) {
   #TODO limits = raster or extent (equals raster::crop)
   #TODO limits = temporal extent
 
-  if (length(limits) != 2*ndim) stop("limits do not match dimension description [#limits != (2*#dims)]")
+  if (length(limits) != 2*ndim) {
+    stop("limits do not match dimension description [#limits != (2*#dims)]")
+  }
+
   if (!between) { #subarray call
     if (x@isSpatial) {
       #image origin has been shifted towards limits
