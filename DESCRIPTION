@@ -16,6 +16,7 @@ Depends:
 Suggests:
     knitr,spacetime,xts
 Collate:
+    'TemporalExtent-class.R'
     'scidbst-class.R'
     'aggregate.R'
     'coerce.R'

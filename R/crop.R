@@ -44,8 +44,9 @@ NULL
 #' returns the subset scidbst object. Internally, this function will calculate the spatial indices of the extent object and
 #' will use this as boundaries for the spatial dimensions. 'crop' will delegate the subset creation to the 'subarray' method.
 #'
+#' @rdname crop-scidbst-method
+#' @name crop,scidbst
 #' @note For proper use the new extent has to contain coordinates that have the same reference system as the scidbst object.
-#'
 #' @param x scidbst object
 #' @param y Extent object, or any object from which an Extent object can be extracted
 #' @param snap Character. One of 'near', 'in', or 'out', for use with alignExtent
@@ -54,7 +55,7 @@ NULL
 #'
 #' @return scidbst object with refined spatial extent
 #'
-#' @seealso \code{\link{crop,Raster-method}} or \code{\link{subarray,scidbst-method}}
+#' @seealso \code{\link[raster]{crop}} or \code{\link[scidbst]{subarray,scidbst}}
 #' @examples
 #' \dontrun{
 #' scidbconnect(...)

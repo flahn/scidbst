@@ -23,7 +23,7 @@ With the release of a package for SciDB (`scidb`) it was possible to perform que
 The aim of this vignette is to illustrate the usage of the methods in this package with simple examples. Since this package requires a running instance of SciDB with the 'scidb4geo' extension, the examples stated here are not directly reproduceable. As data for this example we used:
 
 - SRTM data for Africa [SRTM_AFRICA]
-- Landsat 7 scene in the Brazilian Rainforest (scene LS230063_2001088, band composition: 1,2,3,4,5,6a,6b,7, scaled onto Byte) [LS7_BRAZIL]
+- Landsat 7 scene in the Brazilian Rainforest (scene LS230063_2001088, Level 1, band composition: 1,2,3,4,5,6a,6b,7, scaled onto Byte) [LS7_BRAZIL]
 - Landsat 7 subset containing just the NDVI band for a scene in Ethopia [L7_SW_ETHOPIA]
 
 The data has already been loaded into scidb with its spatial and temporal reference. The import was done using the GDAL with the extension for scidb (scidb4gdal). A detailed tutorial with examples on how to import spatio-temporal images into SciDB was provided by Appel and Pebesma [1] and hence shall not be topic of this vignette.

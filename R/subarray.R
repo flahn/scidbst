@@ -1,5 +1,5 @@
 if (!isGeneric("subarray")) {
-  setGeneric("subarray", function(x, ...) standardGeneric("subarray"))
+  setGeneric("subarray", function(x, limits, ...) standardGeneric("subarray"))
 }
 
 subarray.scidbst = function (x, limits, between = FALSE) {
@@ -83,20 +83,24 @@ subarray.scidbst = function (x, limits, between = FALSE) {
 #' and/or temporal references will not be changed, because the dimension values are not recalculated. If 'subarray' is used in scidb, then
 #' the dimension values are shifted to the new lower boundaries, which requires an adaption of the references (if necessary).
 #'
+#' @rdname subarray-scidbst-method
+#' @name subarray,scidbst
 #' @param x scidbst array object
-#' @param limits vector of coordinate ranges or a character string (see Details)
+#' @param limits vector of coordinate ranges or a character string (see Details) or Extent or TemporalExtent objects
 #' @param between (logical) Whether or not the \code{between} function shall be used in scidb instead of \code{subarray}
 #' @return scidbst array object with modified dimension references
 #'
-#' @details The \code{limits} parameter needs to be either a vector of numerics or characters or a character string. The vector needs to
+#' @details Like in the original \code{subarray} method \code{limits} parameter needs to be either a vector of numerics or characters or a character string. The vector needs to
 #' have two times the number of dimension as elements in it. This also applies to the character string, which shall contain the limits
 #' divided by commas (','). Examples: c(0,0,0,10,10,10); "0,0,0,10,10,10". Also unbounded dimension statements are supported. Use the
 #' asterisk ('*') to define an unbounded dimension value.
+#' The scidbst package also allows Extent and TemporalExtent objects as limits. Missing values regarding the spatial extent or temporal extent
+#' are kept as is.
 #'
 #' @note The package will provide this function as a generic S4 function. This means that the original subarray method from
 #' the scidb package will not be recognized as S4 function. Use scidb::subarray to call the original method.
 #'
-#' @seealso \code{\link{subarray}}
+#' @seealso \code{\link[scidb]{subarray}}, \code{\link[scidbst]{crop,scidbst}}
 #'
 #' @examples
 #' \dontrun{
@@ -106,8 +110,52 @@ subarray.scidbst = function (x, limits, between = FALSE) {
 #' expression2 = c("501","285","2","901","585","*")
 #' expression3 = "501,285,2,901,585,3"
 #'
-#' chicago_sub = subarray(chicago,expression,between=FALSE)
+#' chicago_sub = subarray(x=chicago,limits=expression,between=FALSE)
 #' }
 #'
 #' @export
-setMethod("subarray",signature(x="scidbst"), subarray.scidbst)
+setMethod("subarray",signature(x="scidbst",limits="numeric"), subarray.scidbst)
+
+#' @name subarray,scidbst
+#' @rdname subarray-scidbst-method
+#' @export
+setMethod("subarray",signature(x="scidbst",limits="character"), subarray.scidbst)
+
+#' @name subarray,scidbst
+#' @rdname subarray-scidbst-method
+#' @export
+setMethod("subarray",signature(x="scidbst",limits="Extent"),function(x, limits, between = FALSE) {
+  .crop(x,limits,between=between)
+})
+
+.subarray.TemporalExtent = function(x,limits,between=FALSE) {
+    if (!x@isTemporal) {
+      stop("Cannot set limit for time dimension. Array has no such dimension.")
+    }
+
+    tdim = getTDim(x)
+    dims = dimensions(x)
+    bounds = scidb_coordinate_bounds(x)
+
+    limitExpr = c(bounds$start,bounds$end)
+    tminPos = which(dims==tdim)
+    tmaxPos = 2*tminPos
+
+    tmin = scidbst:::.calcTDimIndex(x,tmin(limits))
+    tmax = scidbst:::.calcTDimIndex(x,tmax(limits))
+
+    if (tmax > x@tExtent$max) tmax = x@tExtent$max
+    if (tmin > x@tExtent$min) tmin = x@tExtent$min
+
+
+    limitExpr[tminPos] = tmin
+    limitExpr[tmaxPos] = tmax
+
+
+    return(subarray(x,limits=limitExpr,between=between))
+}
+
+#' @name subarray,scidbst
+#' @rdname subarray-scidbst-method
+#' @export
+setMethod("subarray",signature(x="scidbst",limit="TemporalExtent"), .subarray.TemporalExtent)
