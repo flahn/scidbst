@@ -6,7 +6,13 @@ vignette: >
   %\VignetteIndexEntry{Interacting with R and the spatio-temporal extension of SciDB}
 ---
 ```{r, include=FALSE}
-knitr::opts_chunk$set(collapse = T, comment = "#>")
+library(scidb)
+library(raster)
+library(knitr)
+library(scidbst)
+
+opts_chunk$set(collapse = T, comment = "#>")
+opts_chunk$set(cache.extra = list(R.version, sessionInfo(), format(Sys.Date(), '%Y-%m')))
 outputFolder = "./assests/"
 ```
 
@@ -15,32 +21,30 @@ The package `scidbst` was implemented with the intention to make life easier to 
 With the release of a package for SciDB (`scidb`) it was possible to perform queries and calculations from R. This package provides the functionalities for the base version of SciDB, so this package will bridge the gap to the missing functionalities to the `scidb4geo` extension, namely the spatial and temporal referenciation.
 
 ## Aim and Data
-The aim of this vignette is to illustrate the usage of the methods in this package with simple examples. Since this package requires a running instance of `scidb` with the `scidb4geo` extension, the examples stated here are not directly reproduceable. As data for this example we used:
+The aim of this vignette is to illustrate the usage of the methods in this package with simple examples. Since this package requires a running instance of SciDB with the 'scidb4geo' extension, the examples stated here are not directly reproduceable. As data for this example we used:
 
 - SRTM data for Africa [SRTM_AFRICA]
-- Landsat 7 scene in the Brazilian Rainforest
+- Landsat 7 scene in the Brazilian Rainforest (scene LS230063_2001088, Level 1, band composition: 1,2,3,4,5,6a,6b,7, scaled onto Byte) [LS7_BRAZIL]
 - Landsat 7 subset containing just the NDVI band for a scene in Ethopia [L7_SW_ETHOPIA]
 
 The data has already been loaded into scidb with its spatial and temporal reference. The import was done using the GDAL with the extension for scidb (scidb4gdal). A detailed tutorial with examples on how to import spatio-temporal images into SciDB was provided by Appel and Pebesma [1] and hence shall not be topic of this vignette.
 
-## Analysis with SRTM data
-As for every operation with `scidb` we need to establish a connection to the database first. `scidbconnect` will do exactly that. For SciDB versions 15.7 and greater the parameter `protocol` and `auth_type` are necessary to make good use of the new user authentication. Using `scidbst.ls` will result in a data frame object containing all the arrays that have a referenced dimension as well as their type.
+## The Basics
+As for every operation with \code{scidb} we need to establish a connection to the database first. \code{scidbconnect} will do exactly that. For SciDB versions 15.7 and greater the parameter 'protocol' and 'auth_type' are necessary to make good use of the new user authentication. Using \code{scidbst.ls} will result in a data frame object containing all the arrays that have a referenced dimension as well as their type.
 
 
-```{r, include=FALSE}
+```{r loadCredentials, include=FALSE}
 source("/home/lahn/GitHub/scidbst/vignettes/assets/credentials.R")
 ```
 
-```{r}
-
-
+```{r connect}
 scidbconnect(host=host,port=port,user=user,password=password,protocol="https",auth_type = "digest")
 scidbst.ls()
 ```
 
-Next, we will create a array proxy in a similar way as for `scidb` objects by using the `scidbst` constructor. This will create a scidb object with the specialty that the spatial and temporal extent will be calculated and the references will be set. 
+Next, we will create a array proxy in a similar way as for \code{scidb} objects by using the \code{scidbst} constructor. This will create a scidb object with the specialty that the spatial and temporal extent will be calculated and the references will be set. Calling the object by name returns an overview about the array structure with the dimension indices, whereas \code{extent} will return the spatial bounding box in coordinates according to the stated coordinate reference system (\code{crs}). If the array has a temporal dimension, then \code{t.extent} will return the temporal extent denoted by a list with the minimum and maximum POSIX date.
 
-```{r}
+```{r, cache=1}
 l7_ethiopia = scidbst("L7_SW_ETHOPIA")
 l7_ethiopia
 extent(l7_ethiopia)
@@ -48,9 +52,141 @@ crs(l7_ethiopia)
 t.extent(l7_ethiopia)
 ```
 
-Calling the object by name returns an overview about the array structure with the dimension indices, whereas `extent` will return the spatial bounding box in coordinates according to the stated coordinate reference system (`crs`).
+One typical task in the Geoscience domain is the creation of spatial subsets. In SciDB such subsets are created by using the dimension index values, which is complicated since it is not obvious which index refers to which real world coordinate. In this package we allow spatial subsetting with the \code{crop} method that was introduced by the \code{raster} package. Other subsetting operations that refer to the dimension index notion are \cdoe{subarray} and \code{subset}.
 
-## Analysis with Landsat data
+```{r ehtiopiaSubset, cache=1}
+subset.extent = extent(35,36.5,6,8.5)
+ethiopia.subset = crop(l7_ethiopia,subset.extent)
+extent(ethiopia.subset)
+```
+
+In order to plot the image we need to further reduce the dimensionality to simply the two spatial dimensions, this can be done by \code{slice}, which sets the subset to a specific dimension value. This is interesting, when you want to extract an image at a certain point in time. In this example we take a slice from dimension 't' (the temporal dimension) and we set the selection value to a certain date, which is internally recalculated as the according dimension value. Instead of the timestamp, we could also have used the dimension index directly (e.g. 0).
+
+```{r ethiopiaSlice, cache=1}
+ethiopia.subset = slice(ethiopia.subset,"t","2003-07-21")
+```
+
+Now that we have a two dimensional subset, we can either plot the image or download its values. \code{spplot} is used to for the visualization purpose and \code{readAll} or \code{getValues} can be used to obtain the values and perform additional calculations locally. \code{getValues} returns the data as a data.frame with m columns (m = number of attributes) and n rows ("number spatial x dimension values" * "number spatial y dimension values").
+
+```{r ethiopiaPlot, cache=1}
+#values = getValues(ethiopia.subset)
+ethiopia.subset = readAll(ethiopia.subset)
+spplot(ethiopia.subset)
+```
+
+
+## NDVI calculation
+In this use case we will calculate the NDVI of a Landsat 7 scene in the Brazilian rainforest. To make the image smaller and calculations faster, we will first resample the image and store selected bands. Then we will calculate the NDVI for this scene. Afterwards we will again store the calculated NDVI and plot the results.
+
+```{r ndviNames, cache=1}
+ls.brazil.name = "LS7_BRAZIL"
+regrid.name = "LS7_BRAZIL_REGRID"
+ndvi.name = "LS7_BRAZIL_REGRID_NDVI"
+```
+
+
+```{r ndviDeletes, include=FALSE,eval=FALSE}
+scidbrm(regrid.name,force=TRUE)
+scidbrm(ndvi.name, force=TRUE)
+```
+
+```{r ndviResolution, cache=1}
+ls7_brazil = scidbst(ls.brazil.name)
+xres(ls7_brazil)
+yres(ls7_brazil)
+```
+
+We loaded the Landsat 7 scene that is located in Brazil and checked the resolution with \code{xres} and \code{yres}. The usual resolution for Landsat scenes is 30m x 30m. To make computations faster and to show case the regrid (or resample) functionality we are going the downscale the image to 300m x 300m.
+The downscaling is done using \code{regrid}. The function takes the scidbst array, the amount of cells to aggregate for each dimension and the aggregation function. The aggregation function statement we used is SciDB AFL styled syntax. We used is, because it is more reliable. As output we will get an scidbst array that has the same dimensions as the input image, but with a different granularity, as well as only the stated aggregated attributes as attributes.
+
+```{r ndviRegrid, cache=1}
+ls7_brazil_regrid = regrid(ls7_brazil,c(10,10,1),"avg(band1),avg(band3),avg(band4),avg(band5),avg(band8)")
+xres(ls7_brazil_regrid)
+yres(ls7_brazil_regrid)
+```
+
+As it can be seen, we now got a scidbst array with a resolution of about 300m x 300m. As it is done in scidb, the results are neither stored nor calculated in SciDB unless the evaluation function is called explicitly. For scidb the function \code{scidbeval} is used and for scidbst arrays the according function is \code{scidbsteval}. 
+
+```{r ndviEval, cache=1}
+ls7_brazil_regrid = scidbsteval(ls7_brazil_regrid,regrid.name)
+```
+
+As the next steps we will calculate the NDVI and the MDVI of the image. The indices are calculated as follows:
+$$ NDVI = \frac{NIR-RED}{NIR+RED} $$ and $$ MDVI =\frac{MIR-NIR}{MIR+NIR} $$
+
+*NIR is the near infrared band, MIR the middle infrared band and RED the band for the visible red interval.*
+
+The calculated attributes are attached as new attributes. We will extract those new calculated attributes by using \code{project} and save them as a new scidbst array in SciDB.
+
+```{r ndviCalculation, cache=1}
+ls7_calc = transform(ls7_brazil_regrid, ndvi = "(band4_avg - band3_avg) / (band4_avg + band3_avg)", mdvi = "(band5_avg - band3_avg) / (band5_avg + band3_avg)")
+ls7_calc = project(ls7_calc,c("ndvi","mdvi"))
+ls7_calc = scidbsteval(ls7_calc,ndvi.name)
+```
+
+To show the results we will first download the data with \code{readAll} for one point in time and then we will plot each attribute.
+
+```{r ndviPlot, cache=1}
+ls7_calc_t0 = readAll(slice(ls7_calc,"t","2001-088"))
+spplot(getLayer(ls7_calc_t0,"ndvi"))
+spplot(getLayer(ls7_calc_t0,"mdvi"))
+```
+
+In this use case we highlighted the following functions:
+
+- extracting resolution information with \code{xres} and \code{yres}
+- resampling with \code{regrid}
+- storing arrays with \code{scidbsteval}
+- performing attribute calculations with \code{transform}
+- selecting attributes with \code{project}
+- accessing the different attribute values as a Raster object with \code{getLayer}
+
+## Cloud mask
+In the next use case we will perform a very simplistic approach for cloud detection to showcase the the filter/subset function. In this case we assume that clouds appear as white objects in an image. This means that in the visual light spectrum they have a whiteish color. We can filter the array for all cells that have values around the maximum data type value. In the Brazilian Landsat scene this will relate to selecting each cell that has a value of 254 or 255 for bands 1 to 3.
+
+```{r cloudMask, cache=1}
+ls7_brazil = scidbst("LS7_BRAZIL")
+sliced.regridded = regrid(slice(ls7_brazil,"t",0),c(10,10),"avg(band1),avg(band2),avg(band3)")
+sliced.regridded = readAll(sliced.regridded)
+plotRGB(sliced.regridded,r=3,g=2,b=1)
+
+transformed = transform(sliced.regridded,cloud = "iif(band1_avg >= 252 and band2_avg >= 252 and band3_avg >= 252, 1 , 0)")
+p2 = project(transformed,c("cloud"))
+clouds = subset(p2,"cloud = 1")
+
+points = as(clouds,"SpatialPointsDataFrame")
+plot(points)
+
+brick = as(clouds,"RasterBrick")
+spplot(brick)
+```
+
+In this example we resampled the landsat image on the fly and selected just bands 1 to 3. To see the results as a RGB image, we used plotRGB to do so. After that we used \code{transform} to create a new attribute called 'cloud' with values 1 and 0 to mark whether or not the stated inline if-statement is met. To minimize data the attribute 'cloud' is selected as the only attribute for the result array. \code{subset} is used afterwards to selected cell values that have the value '1' (meeting the statement of transform).
+To visualize the results we coerce the scidbst object into a \code{SpatialPointsDataFrame} and into a \code{RasterBrick} to plot them afterwards. (Note: those two coercions methods work only with non temporal arrays)
+
+In this use case we highlighted the uses of:
+
+- selection of cell values by filtering \code{subset}
+- coercing a scidbst object to different objects \code{as}
+
+## TRMM Precipitation Data
+In this use case we are going to highlight the use of two aggregation functions - \code{aggregate} and \code{cumulate}. For the aggregation use case we will aggregate over space, which will leave us with a timeseries for a certain region. The TRMM data set contains daily precipitation values for the area -180° to 180° longitude and -50° to 50° latitude. We are going to use \code{crop} to make a spatial subset for the Landsat 7 scene in Ethiopia. Afterwards we are going to aggregate over the spatial domain with an averaging function.
+
+As a result we will get a time series, which is coerced into a \code{xts} object and plotted afterwards.
+
+```{r trmmAggregation, cache=1}
+trmm = scidbst("TRMM3B42_DAILY")
+trmm.prec = project(trmm,"band5")
+
+trmm.prec.crop = crop(trmm.prec,l7_ethiopia)
+daily.avg.ethiopia = aggregate(trmm.prec.crop,list("t"),FUN="avg(band5)")
+
+ts = as(daily.avg.ethiopia,"xts")
+plot(window(ts,start="2010-01-01",end="2013-01-01"),major.ticks="months",minor.ticks=FALSE,main="Average precipitation for Ethiopia Landsat scene from 2010 to 2013")
+```
+
+- aggregate
+- cumulate
 
 ## References
 [1] Appel, M. and Pebesma, E. (2016). "Scalable Earth Observation analytics with R and SciDB". Web blog post. r-spatial.org, 11.05.2016. Online: <a href="http://r-spatial.org/r/2016/05/11/scalable-earth-observation-analytics.html">http://r-spatial.org/r/2016/05/11/scalable-earth-observation-analytics.html</a>

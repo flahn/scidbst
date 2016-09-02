@@ -134,7 +134,7 @@ NULL
 
   # extent = as.matrix(.calculateDimIndices(object,extent(object)))
 
-  .data = downloadData(object)
+  .data = .downloadData(object)
 
   if (nrow(.data) == 0) { #scidb does not return data. Stop here
     stop("Image is empty.")
