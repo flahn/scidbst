@@ -11,8 +11,8 @@ License: MIT
 LazyData: TRUE
 RoxygenNote: 5.0.1
 VignetteBuilder: knitr
-BuildVignettes: FALSE
 Encoding: UTF-8
+BuildVignette: FALSE
 Depends:
     raster,scidb,rgdal
 Imports:
