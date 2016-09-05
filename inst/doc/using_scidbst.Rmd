@@ -3,6 +3,7 @@ title: "Interacting with R and the spatio-temporal extension of SciDB"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
   %\VignetteIndexEntry{Interacting with R and the spatio-temporal extension of SciDB}
 ---
 ```{r, include=FALSE}
