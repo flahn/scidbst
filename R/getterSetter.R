@@ -45,8 +45,9 @@ setGeneric("getTDim",function(x) standardGeneric("getTDim"))
 #' @return The temporal dimension name or the first dimension name
 #' @export
 setMethod("getTDim",signature(x="scidbst"),function(x){
-  if (length(x@temporal_dim) > 0) {
-    return(x@temporal_dim)
+  dim = tdim(x@trs)
+  if (length(dim) > 0) {
+    return(dim)
   } else {
     return(dimensions(x)[1])
   }

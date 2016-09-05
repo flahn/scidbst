@@ -39,7 +39,7 @@ subarray.scidbst = function (x, limits, between = FALSE) {
 
       t0 = .calculatePOSIXfromIndex(x,tvals[1])
       if (tvals[2]==Inf) {
-        tEnd = x@tExtent[["max"]]
+        tEnd = tmax(x)
       } else {
         tEnd = .calculatePOSIXfromIndex(x,tvals[2])
       }
@@ -67,9 +67,10 @@ subarray.scidbst = function (x, limits, between = FALSE) {
     }
 
     if (x@isTemporal) {
-      out@startTime = t0
-      out@tExtent[["min"]] = t0
-      out@tExtent[["max"]] = tEnd
+      out@trs@t0 = t0
+
+      out@tExtent@min = t0
+      out@tExtent@max = tEnd
     }
   } #else leave as is since we do not change dimension values
 
@@ -144,8 +145,8 @@ setMethod("subarray",signature(x="scidbst",limits="Extent"),function(x, limits, 
     tmin = scidbst:::.calcTDimIndex(x,tmin(limits))
     tmax = scidbst:::.calcTDimIndex(x,tmax(limits))
 
-    if (tmax > x@tExtent$max) tmax = x@tExtent$max
-    if (tmin > x@tExtent$min) tmin = x@tExtent$min
+    if (tmax > tmax(x)) tmax = tmax(x)
+    if (tmin > tmin(x)) tmin = tmin(x)
 
 
     limitExpr[tminPos] = tmin

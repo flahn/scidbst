@@ -1,4 +1,5 @@
 
+
 #' Creates a SpatialPointsDataFrame from scidbst
 #'
 #' @name as-SpatialPointsDataFrame
@@ -53,7 +54,7 @@ setAs("scidbst","RasterBrick",function(from,to) {
 #'
 #' @name as-STSDF
 #' @family scidbst
-#' @import spacetime
+#' @importClassesFrom spacetime STSDF
 setAs("scidbst","STSDF",function(from,to) {
   if (from@isSpatial && from@isTemporal) {
     if (!hasValues(from)) {
@@ -148,7 +149,7 @@ setAs("scidbst","xts",function(from,to) {
     .attributes = as.data.frame(.data[,scidb_attributes((from))])
     colnames(.attributes) = scidb_attributes(from)
     ts = .data[,getTDim(from)]
-    if (from@tUnit == "days") {
+    if (tunit(from) == "days") {
       dates = lapply(ts,function(x,y){as.Date(.calculatePOSIXfromIndex(y,x))},y=from)
       dates = as.Date(unlist(dates),origin="1970-01-01")
 

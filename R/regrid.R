@@ -64,8 +64,8 @@ NULL
   out@nrows = as.integer(nrow(out))
   if (x@isTemporal && (grid[getTDim(x) > 1])) {
     #adapt temporal reference
-    tres = round(out@tResolution * grid[getTDim(x)])
-    out@tResolution = tres
+    tres = round(tres(out) * grid[getTDim(x)])
+    out@trs@tResolution = tres
   }
   return(out)
 }

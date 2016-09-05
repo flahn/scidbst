@@ -11,11 +11,19 @@ License: MIT
 LazyData: TRUE
 RoxygenNote: 5.0.1
 VignetteBuilder: knitr
+BuildVignettes: FALSE
+Encoding: UTF-8
 Depends:
     raster,scidb,rgdal
+Imports:
+    spacetime,xts
 Suggests:
-    knitr,spacetime,xts
+    knitr
 Collate:
+    'TRS-class-decl.R'
+    'TemporalExtent-class-decl.R'
+    'scidbst-class-decl.R'
+    'TRS-class.R'
     'TemporalExtent-class.R'
     'scidbst-class.R'
     'aggregate.R'

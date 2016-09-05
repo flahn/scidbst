@@ -64,7 +64,7 @@ if (!isGeneric("scidbsteval")) {
 
     # 2. check if there is some sort of temporal reference left (isTemporal just refers to the scidb array)
     if (!expr@isTemporal) {
-      if (length(expr@temporal_dim) > 0) {
+      if (length(tdim(expr)) > 0) {
         # yes: merge the old temporal dimension back to array,
         # set values to 0 and
         starts = c(starts, 0)
@@ -105,7 +105,7 @@ if (!isGeneric("scidbsteval")) {
   }
 
   if (expr@isTemporal) {
-    cmd = paste("eo_settrs(",name,",'",getTDim(expr),"','",as.character(expr@startTime),"','",.getRefPeriod(expr),"'",")",sep="")
+    cmd = paste("eo_settrs(",name,",'",tdim(expr),"','",as.character(t0(expr)),"','",.getRefPeriod(expr),"'",")",sep="")
     iquery(cmd)
   }
 

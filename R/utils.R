@@ -4,16 +4,16 @@
 # returns temporal index
 .calcTDimIndex = function (x, time) {
   if (is.character(time)) {
-    time = as.POSIXlt(.getDateTime(time,x@tUnit))
+    time = as.POSIXlt(.getDateTime(time,tunit(x)))
   } else {
     #is this called?
     time = as.POSIXlt(time) #assuming valid POSIX string
   }
 
-  if (time >= x@tExtent$min && time <= x@tExtent$max) {
-    t0 = x@startTime
-    dt = x@tResolution
-    unit = x@tUnit
+  if (time >= tmin(x) && time <= tmax(x)) {
+    t0 = t0(x)
+    dt = tres(x)
+    unit = tunit(x)
     index  = floor(as.numeric(difftime(time,t0,unit))/dt)
 
     return(index)
@@ -112,11 +112,14 @@
 
     to@title = from@title
     to@spatial_dims = from@spatial_dims
-    to@temporal_dim = from@temporal_dim
-    to@startTime = from@startTime
+
+    # to@temporal_dim = from@temporal_dim
+    # to@startTime = from@startTime
+    # to@tResolution = from@tResolution
+    # to@tUnit = from@tUnit
+    to@trs = from@trs
     to@tExtent = from@tExtent
-    to@tResolution = from@tResolution
-    to@tUnit = from@tUnit
+
     to@isSpatial = from@isSpatial
     to@isTemporal = from@isTemporal
     to@sref = from@sref
@@ -184,7 +187,7 @@
                    c("D","M","Y","W","h","m","s")),ncol=3)
   colnames(m)=c("regexp","tunit","abbrev")
 
-  out = paste("P",x@tResolution,m[m[,"tunit"]==x@tUnit,"abbrev"],sep="")
+  out = paste("P",tres(x),m[m[,"tunit"]==tunit(x),"abbrev"],sep="")
   return(out)
 }
 
@@ -194,21 +197,21 @@
 .calculatePOSIXfromIndex = function(x,n) {
   baseTime = 0
 
-  if (x@tUnit == "weeks") {
+  if (tunit(x) == "weeks") {
     baseTime = 7*24*60*60
-  } else if (x@tUnit == "days") {
+  } else if (tunit(x)  == "days") {
     baseTime = 24*60*60
-  } else if (x@tUnit == "hours") {
+  } else if (tunit(x)  == "hours") {
     baseTime = 60 * 60
-  } else if (x@tUnit == "mins") {
+  } else if (tunit(x)  == "mins") {
     baseTime = 60
-  } else if (x@tUnit == "secs") {
+  } else if (tunit(x)  == "secs") {
     baseTime = 1
   } else {
     stop("currently no other temporal unit supported")
   }
 
-  val = as.POSIXlt(as.character(x@startTime + n * x@tResolution * baseTime))
+  val = as.POSIXlt(as.character(t0(x) + n * tres(x) * baseTime))
   return(val)
 }
 

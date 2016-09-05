@@ -1,6 +1,9 @@
 #' @import methods
 #' @import scidb
 #' @import raster
+#' @include TemporalExtent-class.R
+#' @include scidbst-class-decl.R
+#' @include TRS-class.R
 NULL
 
 # just a precaution, since the class was not exported in the package SciDBR (remved S3Methods for now)
@@ -8,44 +11,6 @@ setClass("scidb",
          representation(name="character",
                         meta="environment",
                         gc="environment")
-)
-
-#' Class scidbst
-#'
-#' Class \code{scidbst} inherits from class \code{scidb}
-#'
-#' @name scidbst-class
-#' @rdname scidbst-class
-#' @slot CRS The coordinate reference system used as class 'CRS' that represents a Proj.4 string
-#' @slot extent The outer boundary of the SciDB array in referenced coordinates
-#' @slot affine The affine transformation used to convert real-world coordinates into image frame coordinates
-#' @slot spatial_dims the names of the spatial dimensions as a named list. 'xdim' describes the west-east axis and 'ydim' the north-south axis.
-#' @slot temporal_dim the name of the temporal dimension
-#' @slot startTime the start time as a POSIXlt object
-#' @slot tResolution The temporal resolution as a numeric
-#' @slot tExtent the temporal extent (min/max) as a list
-#' @slot tUnit the temporal base unit for this timeseries
-#' @slot isSpatial A flag whether or not this object has a spatial reference
-#' @slot isTemporal A flag whether or not this object has a temporal reference
-#' @slot sref A named list of elements that represent the spatial reference as specified in scidb by eo_getsrs
-#' @slot tref A named list with the elements retrieved by eo_gettrs function
-#' @aliases scidbst
-#' @exportClass scidbst
-.scidbst_class = setClass("scidbst",
-                          contains=list("scidb","RasterBrick"),
-                          slots=c(
-                            affine = "matrix",
-                            sref = "list",
-                            tref = "list",
-                            spatial_dims = "list",
-                            temporal_dim = "character",
-                            startTime = "ANY",
-                            tExtent = "list",
-                            tResolution = "numeric",
-                            tUnit = "character",
-                            isSpatial ="logical",
-                            isTemporal = "logical"
-                          )
 )
 
 
@@ -91,11 +56,15 @@ scidbst = function(...){
   .scidb@isTemporal = (nrow(.trs) > 0)
 
   if (.scidb@isTemporal) { #make sure that there is actually a temporal reference
-    .scidb@temporal_dim = .trs[,"tdim"]
-    .scidb@tResolution = as.numeric(unlist(regmatches(.trs[,"dt"],gregexpr("(\\d)+",.trs[,"dt"]))))
-    .scidb@tUnit = .findTUnit(.trs[,"dt"])
-    .scidb@startTime = .getDateTime(.trs[,"t0"],.scidb@tUnit)
-    .scidb@tExtent = list(min=.getDateTime(.extent[,"tmin"],.scidb@tUnit),max=.getDateTime(.extent[,"tmax"],.scidb@tUnit))
+    temporal_dim = .trs[,"tdim"]
+    tResolution = as.numeric(unlist(regmatches(.trs[,"dt"],gregexpr("(\\d)+",.trs[,"dt"]))))
+    tUnit = .findTUnit(.trs[,"dt"])
+    startTime = .getDateTime(.trs[,"t0"],tUnit)
+    .scidb@trs = TRS(temporal_dim,startTime,tResolution,tUnit)
+
+    tmin = .getDateTime(.extent[,"tmin"],tunit(.scidb))
+    tmax = .getDateTime(.extent[,"tmax"],tunit(.scidb))
+    .scidb@tExtent = textent(tmin,tmax)
   }
 
 
@@ -108,18 +77,7 @@ scidbst = function(...){
     #get minimum and maximum extent for spatial dimensions in terms of dimension indices
     .scidb@nrows = as.integer(nrow(.scidb))
     .scidb@ncols = as.integer(ncol(.scidb))
-
-    # .lengths = .getLengths(.scidb) # this only refers to the total image (original coordinate system)
-    # .scidb@nrows = as.integer(.lengths[getYDim(.scidb)])
-    # .scidb@ncols = as.integer(.lengths[getXDim(.scidb)])
-
-
   }
-
-  # .attr = scidb_attributes(.scidb)
-  # .scidb@data@names = .attr
-  # .scidb@data@nlayers = length(.attr)
-  # .scidb@data@fromdisk = FALSE
 
   return(.scidb)
 }

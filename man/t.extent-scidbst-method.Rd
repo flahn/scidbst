@@ -11,7 +11,7 @@
 \item{x}{a scidbst object}
 }
 \value{
-The temporal extent as a list of POSIXlt values
+The temporal extent as a \link{\code{TemporalExtent}} object
 }
 \description{
 This method will return the stored temporal extent that contains the minimum and maximum date values in a list. The list will be

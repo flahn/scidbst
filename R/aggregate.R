@@ -15,8 +15,7 @@ setGeneric("aggregate.t", function(x, ...) standardGeneric("aggregate.t"))
     #manage metadata
     out = .cpMetadata(x,out)
     out@data@names = scidb_attributes(out)
-    out@tResolution = as.numeric(difftime(x@tExtent[["max"]],x@tExtent[["min"]],x@tUnit))+1
-    # out@temporal_dim = ""
+    out@trs@tResolution = as.numeric(difftime(tmax(x),tmin(x),tunit(x)))+1
     return(out)
   } else {
     stop("Cannot aggregate over time with no temporal reference on the object")
@@ -57,7 +56,7 @@ setGeneric("aggregate.sp", function(x, ...) standardGeneric("aggregate.sp"))
 .aggregate.sp.scidbst = function(x, by, ...) {
   dots = list(...)
 
-  selection = as.list(x@temporal_dim)
+  selection = as.list(tdim(x))
   if (!missing(by)) {
     dots["by"] <- NULL
   }
@@ -127,7 +126,7 @@ setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
     aggregate_by_time = all(x@spatial_dims %in% by)
   }
   if (x@isSpatial) {
-    aggregate_by_space = all(x@temporal_dim %in% by)
+    aggregate_by_space = all(tdim(x) %in% by)
   }
 
   if (aggregate_by_time && !aggregate_by_space) { #all spatial dimensions are present
@@ -164,8 +163,8 @@ setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
 
     # set tResolution to complete temporal extent
 
-    out@tResolution = as.numeric(difftime(x@tExtent[["max"]],x@tExtent[["min"]],x@tUnit))+1
-    out@temporal_dim = ""
+    out@trs@tResolution = as.numeric(difftime(tmax(x),tmin(x),tunit(x)))+1
+    out@trs@dimname = ""
     # set space Resolution in affine transformation to total spatial extent
     out@spatial_dims = list()
 

@@ -20,6 +20,6 @@ setMethod("ncol",signature(x="scidbst"),function(x) {
     }
 
   } else if (x@isTemporal) {
-    return(as.numeric(difftime(x@tExtent[["max"]],x@tExtent[["min"]],x@tUnit))+1)
+    return(as.numeric(difftime(tmax(x),tmin(x),tunit(x)))+1)
   }
 })
