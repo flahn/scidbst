@@ -111,6 +111,7 @@ if (!isGeneric("scidbsteval")) {
 
   # rename the array, since the name was changed due to store
   expr@name = name
+  expr@title = name
   return(expr)
 }
 

@@ -110,7 +110,7 @@
     # to@data@nlayers = length(to@data@names)
     # to@data@fromdisk = TRUE
 
-
+    to@title = from@title
     to@spatial_dims = from@spatial_dims
     to@temporal_dim = from@temporal_dim
     to@startTime = from@startTime
@@ -210,4 +210,70 @@
 
   val = as.POSIXlt(as.character(x@startTime + n * x@tResolution * baseTime))
   return(val)
+}
+
+#' Lists all scidb arrays with a dimension reference
+#'
+#' This function will list all the SciDB arrays that have a special reference on one or more dimensions. It will also list the type of
+#' array: 's' for spatial, 't' for temporal, st for the combination of both
+#'
+#' @return data.frame with columns "name" and "setting"
+#'
+#' @seealso \code{\link{scidb::scidbls}}
+#' @export
+scidbst.ls = function() {
+  result=iquery("eo_arrays()",return=TRUE)
+  result = result[,-which("i"==names(result))]
+  names(result) = c("name","type")
+  return(result)
+}
+
+#' Transform all spatial indices to spatial coordinates
+#'
+#' @param obj The scidbst object
+#' @param df A data.frame derived from an scidbst object
+#' @return data.frame with spatial coordinates
+#'
+#' @export
+transformAllSpatialIndices = function(obj,df) {
+  .data = df
+  from = obj
+
+  coords = rbind(rep(1,nrow(.data)),.data[,getXDim(from)],.data[,getYDim(from)])
+  res = t(from@affine %*% coords) #(x,y)
+  .data[,getXDim(from)] = res[,1]
+  .data[,getYDim(from)] = res[,2]
+
+  return(.data)
+}
+
+#' Transforms a given data.frame with temporal dimension into dates by a given scidbst object
+#'
+#' This function transforms the temporal indices of a data.frame that was derived from a scidbst object into the actual
+#' dates.
+#'
+#' @param obj The scidbst object
+#' @param df A data.frame derived from an scidbst object
+#' @return data.frame with temporal coordinates
+#'
+#' @export
+transformAllTemporalIndices = function(obj,df) {
+  .data=df
+  from=obj
+
+  tdim = getTDim(from)
+  tindex = unique(.data[,tdim])
+  dates = lapply(tindex,function(x,y) {
+    as.Date(.calculatePOSIXfromIndex(y,x))
+  },y=from)
+  time = .data[,tdim]
+
+  for (i in tindex) {
+    pos = which(tindex==i)
+    time[time==i] = dates[[pos]]
+  }
+  time = as.Date(time,origin="1970-01-01")
+
+  .data[,tdim] = time
+  return(.data)
 }

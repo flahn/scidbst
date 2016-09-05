@@ -59,7 +59,7 @@ setClass("scidb",
 #' @export
 scidbst = function(...){
   .scidb = .scidbst_class(scidb(...))
-
+  .scidb@title = .scidb@name
   .srs = iquery(paste("eo_getsrs(",.scidb@name,")",sep=""),return=TRUE)
 
   .scidb@sref = list()
@@ -123,8 +123,6 @@ scidbst = function(...){
 
   return(.scidb)
 }
-
-setMethod("subset",signature(x="scidbst"), function(x, ...) scidb:::filter_scidb(x, ...))
 
 
 #' #' @export
