@@ -26,6 +26,7 @@ The aim of this vignette is to illustrate the usage of the methods in this packa
 - SRTM data for Africa [SRTM_AFRICA]
 - Landsat 7 scene in the Brazilian Rainforest (scene LS230063_2001088, Level 1, band composition: 1,2,3,4,5,6a,6b,7, scaled onto Byte) [LS7_BRAZIL]
 - Landsat 7 subset containing just the NDVI band for a scene in Ethopia [L7_SW_ETHOPIA]
+- daily Tropical Rainfall measurement data (TRMM) from 1998 to 2015
 
 The data has already been loaded into scidb with its spatial and temporal reference. The import was done using the GDAL with the extension for scidb (scidb4gdal). A detailed tutorial with examples on how to import spatio-temporal images into SciDB was provided by Appel and Pebesma [1] and hence shall not be topic of this vignette.
 
@@ -170,7 +171,7 @@ In this use case we highlighted the uses of:
 - coercing a scidbst object to different objects \code{as}
 
 ## TRMM Precipitation Data
-In this use case we are going to highlight the use of two aggregation functions - \code{aggregate} and \code{cumulate}. For the aggregation use case we will aggregate over space, which will leave us with a timeseries for a certain region. The TRMM data set contains daily precipitation values for the area -180° to 180° longitude and -50° to 50° latitude. We are going to use \code{crop} to make a spatial subset for the Landsat 7 scene in Ethiopia. Afterwards we are going to aggregate over the spatial domain with an averaging function.
+In this use case we are going to highlight the use of the aggregation function\code{aggregate}. For the aggregation use case we will aggregate over space, which will leave us with a timeseries for a certain region. The TRMM data set contains daily precipitation values for the area -180° to 180° longitude and -50° to 50° latitude. We are going to use \code{crop} to make a spatial subset for the Landsat 7 scene in Ethiopia. Afterwards we are going to aggregate over the spatial domain with an averaging function.
 
 As a result we will get a time series, which is coerced into a \code{xts} object and plotted afterwards.
 
@@ -184,9 +185,6 @@ daily.avg.ethiopia = aggregate(trmm.prec.crop,list("t"),FUN="avg(band5)")
 ts = as(daily.avg.ethiopia,"xts")
 plot(window(ts,start="2010-01-01",end="2013-01-01"),major.ticks="months",minor.ticks=FALSE,main="Average precipitation for Ethiopia Landsat scene from 2010 to 2013")
 ```
-
-- aggregate
-- cumulate
 
 ## References
 [1] Appel, M. and Pebesma, E. (2016). "Scalable Earth Observation analytics with R and SciDB". Web blog post. r-spatial.org, 11.05.2016. Online: <a href="http://r-spatial.org/r/2016/05/11/scalable-earth-observation-analytics.html">http://r-spatial.org/r/2016/05/11/scalable-earth-observation-analytics.html</a>
