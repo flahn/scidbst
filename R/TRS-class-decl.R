@@ -2,7 +2,8 @@
 #'
 #' This object holds information regarding a temporal reference system. In particular this reference system consists of a datum (t0), a
 #' resolution (tres), a dimension name (dimname) and a measurement unit (tUnit) which is connected to the resolution.
-#'
+#' @rdname TRS-class
+#' @name TRS
 #' @slot t0 POSIXt derivative as the datum for this TRS
 #' @slot tUnit character - The unit definition as used in \link{\code{difftime}}
 #' @slot tResolution numeric - The amount of tUnits that make up the resolution

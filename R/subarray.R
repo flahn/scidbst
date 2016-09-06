@@ -20,10 +20,10 @@ subarray.scidbst = function (x, limits, between = FALSE) {
   if (!between) { #subarray call
     if (x@isSpatial) {
       #image origin has been shifted towards limits
-      xindex = which(dimensions(x)==getXDim(x)) #get position of "x" values
+      xindex = which(dimensions(x)==xdim(x)) #get position of "x" values
       xvals = c(limits[xindex],limits[xindex+ndim]) #min/max for xdim
 
-      yindex = which(dimensions(x)==getYDim(x)) #position of "y" values
+      yindex = which(dimensions(x)==ydim(x)) #position of "y" values
       yvals = c(limits[yindex],limits[yindex+ndim]) #min/max for ydim
 
       #calculate upper left coordinate (origin of image coordinate system)
@@ -34,7 +34,7 @@ subarray.scidbst = function (x, limits, between = FALSE) {
     }
 
     if (x@isTemporal) {
-      tindex = which(dimensions(x)==getTDim(x))
+      tindex = which(dimensions(x)==tdim(x))
       tvals = c(limits[tindex],limits[tindex+ndim]) #min/max for xdim
 
       t0 = .calculatePOSIXfromIndex(x,tvals[1])
@@ -134,7 +134,7 @@ setMethod("subarray",signature(x="scidbst",limits="Extent"),function(x, limits, 
       stop("Cannot set limit for time dimension. Array has no such dimension.")
     }
 
-    tdim = getTDim(x)
+    tdim = tdim(x)
     dims = dimensions(x)
     bounds = scidb_coordinate_bounds(x)
 

@@ -17,7 +17,7 @@ setAs("scidbst","SpatialPointsDataFrame",function(from,to) {
 
   if (from@isSpatial) {
     if (!from@isTemporal) {
-      coords = rbind(rep(1,nrow(.data)),.data[,getXDim(from)],.data[,getYDim(from)])
+      coords = rbind(rep(1,nrow(.data)),.data[,xdim(from)],.data[,ydim(from)])
       res = t(from@affine %*% coords) #much faster than the previous
       colnames(res) = c("sx","sy")
 
@@ -75,7 +75,7 @@ setAs("scidbst","STSDF",function(from,to) {
       # time
 
       .data = transformAllTemporalIndices(from,.data)
-      uniqueDates = unique(.data[,getTDim(from)])
+      uniqueDates = unique(.data[,tdim(from)])
       xtsDates = xts(1:length(uniqueDates),order.by=uniqueDates) # no data just time
 
       # index
@@ -84,9 +84,9 @@ setAs("scidbst","STSDF",function(from,to) {
       # second col refers to the dates
       for (pos in 1:length(uniqueDates)) {
         d = as.numeric(uniqueDates[pos])
-        indices[as.numeric(.data[,getTDim(from)])==d,2] = pos
+        indices[as.numeric(.data[,tdim(from)])==d,2] = pos
       }
-      sp = SpatialPoints(.data[,c(getXDim(from),getYDim(from))])
+      sp = SpatialPoints(.data[,c(xdim(from),ydim(from))])
       crs(sp) = crs(from)
       gridded(sp) = TRUE
       # data
@@ -103,38 +103,6 @@ setAs("scidbst","STSDF",function(from,to) {
   }
 })
 
-
-# .oldCode = function() {
-#   coords = rbind(rep(1,nrow(.data)),.data[,getXDim(from)],.data[,getYDim(from)])
-#   res = t(from@affine %*% coords) #much faster than the previous
-#   colnames(res) = c("sx","sy")
-#
-#   res = as.data.frame(res)
-#   coordinates(res) <- ~sx+sy
-#   crs(res) <- crs(from)
-#   # res done (spatial component)
-#   tdim = getTDim(from)
-#   tindex = unique(.data[,tdim])
-#   dates = lapply(tindex,function(x,y) {
-#     as.Date(.calculatePOSIXfromIndex(y,x))
-#   },y=from)
-#   time = .data[,tdim]
-#
-#   for (i in tindex) {
-#     pos = which(tindex==i)
-#     time[time==i] = dates[[pos]]
-#   }
-#   time = as.Date(time,origin="1970-01-01")
-#   endTime = max(time)+1
-#   #time done (temporal component)
-#
-#   IDs = paste("ID",1:length(time),sep="_")
-#
-#   mydata = cbind(IDs,.data[,scidb_attributes(from)])
-#   stfdf = STFDF(res,time,endTime=as.POSIXct(time),mydata)
-#   return(as(stfdf,"STSDF"))
-# }
-
 setOldClass("xts")
 
 #' Creates a RasterBrick from scidbst
@@ -148,7 +116,7 @@ setAs("scidbst","xts",function(from,to) {
 
     .attributes = as.data.frame(.data[,scidb_attributes((from))])
     colnames(.attributes) = scidb_attributes(from)
-    ts = .data[,getTDim(from)]
+    ts = .data[,tdim(from)]
     if (tunit(from) == "days") {
       dates = lapply(ts,function(x,y){as.Date(.calculatePOSIXfromIndex(y,x))},y=from)
       dates = as.Date(unlist(dates),origin="1970-01-01")

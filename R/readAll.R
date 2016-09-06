@@ -16,8 +16,8 @@ NULL
     if (!all(is.na(data[,lname]))) {
 
       if (ndims == 2) {
-        ydim = getYDim(object)
-        xdim = getXDim(object)
+        ydim = ydim(object)
+        xdim = xdim(object)
 
         tmp = matrix(nrow=(nrow(object)),ncol=(ncol(object)))
         m = .data[order(data[,ydim],data[,xdim]),]
@@ -35,7 +35,7 @@ NULL
         restruct = as.vector(t(tmp))
         result[,b] = restruct
       } else { #number of dimensions is 1
-        tdim = getTDim(object)
+        tdim = tdim(object)
 
         tmp = matrix(nrow=1,ncol=(max(data[,tdim])-min(data[,tdim])+1))
         m = data[order(data[,tdim]),]
@@ -62,13 +62,7 @@ NULL
 .spatialpointsStrategy = function(object,data) {
 
   if (object@isSpatial) {
-    # res = t(apply(data,1,function(row) {
-    #   trans = .transformToWorld(affine,row[getXDim(object)],row[getYDim(object)])
-    #   row["sx"] = trans[1]
-    #   row["sy"] = trans[2]
-    #   return(row)
-    # })) #--- ~18s
-    coords = rbind(rep(1,nrow(data)),data[,getXDim(object)],data[,getYDim(object)])
+    coords = rbind(rep(1,nrow(data)),data[,xdim(object)],data[,ydim(object)])
     res = t(object@affine %*% coords) #much faster than the previous
     colnames(res) = c("sx","sy")
 
@@ -92,7 +86,7 @@ NULL
       for (b in 1:object@data@nlayers) {
         lname = object@data@names[b]
 
-        tdim = getTDim(object)
+        tdim = tdim(object)
 
         tmp = matrix(nrow=1,ncol=(max(data[,tdim])-min(data[,tdim])+1))
         m = data[order(data[,tdim]),]

@@ -13,7 +13,7 @@ setMethod("ncol",signature(x="scidbst"),function(x) {
       if (length(lengths) == 1) {
         return(lengths[1])
       } else {
-        return(lengths[getXDim(x)])
+        return(lengths[xdim(x)])
       }
     } else {
       return(x@ncols)

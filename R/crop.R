@@ -21,11 +21,11 @@ NULL
 
       out = .calculateDimIndices(x,e)
 
-      xindex = which(dimensions(x)==getXDim(x)) #get position of "x" values
+      xindex = which(dimensions(x)==xdim(x)) #get position of "x" values
       limits[xindex] = xmin(out)
       limits[xindex+ndim] = xmax(out)
 
-      yindex = which(dimensions(x)==getYDim(x)) #position of "y" values
+      yindex = which(dimensions(x)==ydim(x)) #position of "y" values
       limits[yindex] = ymin(out)
       limits[yindex+ndim] = ymax(out)
 

@@ -4,6 +4,7 @@
 #' @include TemporalExtent-class.R
 #' @include scidbst-class-decl.R
 #' @include TRS-class.R
+#' @include SRS-class.R
 NULL
 
 # just a precaution, since the class was not exported in the package SciDBR (remved S3Methods for now)
@@ -70,8 +71,12 @@ scidbst = function(...){
 
   if (.scidb@isSpatial) {
     .scidb@affine <- .createAffineTransformation(.srs)
-    .scidb@crs <- CRS(.srs$proj4text)
-    .scidb@spatial_dims = list(xdim=.srs[,"xdim"],ydim=.srs[,"ydim"])
+
+
+    .scidb@srs = SRS(.srs$proj4text,dimnames=c(.srs[,"ydim"],.srs[,"xdim"]))
+
+
+
     .scidb@extent = extent(.extent[,"xmin"],.extent[,"xmax"],.extent[,"ymin"],.extent[,"ymax"])
 
     #get minimum and maximum extent for spatial dimensions in terms of dimension indices

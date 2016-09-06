@@ -2,6 +2,15 @@
 #' @include TRS-class-decl.R
 NULL
 
+#' TRS constructor
+#'
+#' This function creates a new temporal reference object
+#' @rdname TRS-class
+#' @param dimension character - the dimension name
+#' @param t0 POSIXt - the datum
+#' @param tres numeric - the temporal resolution
+#' @param tunit character - The temporal unit
+#' @export
 TRS = function(dimension,t0, tres, tunit) {
   if (! inherits(t0,"POSIXt")) {
     if (inherits(t0,"character")) {
@@ -77,15 +86,29 @@ setMethod("t0",signature(x="TRS"),function(x) {
 setMethod("t0",signature(x="scidbst"),function(x) {
   return(t0(x@trs))
 })
+
+#' Get temporal dimension name
+#'
+#' Returns the name of the temporal dimension of a scidbst array. If the object is not temporal it will
+#' return the first dimension name.
+#' @name tdim
+#' @rdname tdim-method
+#' @param x scidbst object
+#' @return The temporal dimension name or the first dimension name
+#' @export
 #' @export
 setMethod("tdim",signature(x="TRS"),function(x) {
   return(x@dimname)
 })
+
+#' @rdname tdim-method
 #' @export
 setMethod("tdim",signature(x="scidbst"),function(x) {
   if (x@isTemporal) {
     return(tdim(x@trs))
   } else {
-    stop("scidbst object has no temporal reference.")
+    warning("scidbst object has no temporal reference. Returning first dimension.")
+    return(dimensions(x)[1])
   }
 })
+

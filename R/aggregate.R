@@ -4,7 +4,7 @@ NULL
 setGeneric("aggregate.t", function(x, ...) standardGeneric("aggregate.t"))
 
 .aggregate.t.scidbst = function(x, by, ...) {
-  selection = x@spatial_dims
+  selection = list(ydim(x),xdim(x))
 
   if (x@isTemporal) {
     x@isTemporal = FALSE
@@ -28,7 +28,8 @@ setGeneric("aggregate.t", function(x, ...) standardGeneric("aggregate.t"))
 #' the temporal dimension and the values on the temporal dimension will be aggregated.
 #'
 #' @note The aggregated scidbst object will loose its temporal reference after aggregation, due to the fact that the spatial
-#' dimensions are removed
+#' dimensions are removed. However if scidbsteval with parameter \code{drop=FALSE} is executed, then the aggregated dimensions are preserved.
+#'
 #' @aliases aggregate.t
 #' @usage
 #' aggregate(x, by, FUN, window, variable_window)
@@ -48,6 +49,7 @@ setGeneric("aggregate.t", function(x, ...) standardGeneric("aggregate.t"))
 #' scidbst.obj = scidbst(array_name)
 #' aggt = aggregate.t(scidbst.obj,FUN="avg(attribute1)") # returns something similar to a raster with aggregated values over the temporal dimension
 #' }
+#' @seealso \code{\link{scidbsteval}}
 #' @export
 setMethod("aggregate.t", signature(x="scidbst"), .aggregate.t.scidbst)
 
@@ -71,7 +73,6 @@ setGeneric("aggregate.sp", function(x, ...) standardGeneric("aggregate.sp"))
     out = .scidbst_class(agg)
     out = .cpMetadata(x,out)
     out@data@names = scidb_attributes(out)
-    # out@spatial_dims = list()
 
     out@affine = out@affine %*% matrix(c(1,0,0,0,old_ncol,0,0,0,old_nrow),ncol=3,nrow=3)
 
@@ -123,7 +124,7 @@ setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
   }
 
   if (x@isTemporal) {
-    aggregate_by_time = all(x@spatial_dims %in% by)
+    aggregate_by_time = all(x@srs@dimnames %in% by)
   }
   if (x@isSpatial) {
     aggregate_by_space = all(tdim(x) %in% by)
@@ -164,9 +165,11 @@ setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
     # set tResolution to complete temporal extent
 
     out@trs@tResolution = as.numeric(difftime(tmax(x),tmin(x),tunit(x)))+1
-    out@trs@dimname = ""
+    #out@trs@dimname = ""
+
     # set space Resolution in affine transformation to total spatial extent
-    out@spatial_dims = list()
+
+    #out@spatial_dims = list()
 
     out@affine = out@affine %*% matrix(c(1,0,0,0,old_ncol,0,0,0,old_nrow),ncol=3,nrow=3)
     out@isSpatial = FALSE
@@ -176,7 +179,7 @@ setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
 
   # at this point either no or just one spatial dimension is present
 
-  if (!aggregate_by_time && !aggregate_by_space && !any(x@spatial_dims %in% by)) { # no referenced dimension involved
+  if (!aggregate_by_time && !aggregate_by_space && !any(x@srs@dimnames %in% by)) { # no referenced dimension involved
     #aggregate as scidb object
     arr = aggregate(.toScidb(x),by,...)
     #and then transform to scidbst

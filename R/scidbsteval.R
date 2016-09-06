@@ -47,14 +47,14 @@ if (!isGeneric("scidbsteval")) {
     # 1. check if there is some sort of spatial reference left (isSpatial is not enough)
     # hint: normally the spatial dimensions are not unbounded
     if (!expr@isSpatial) { #not spatial in scidb, but in R
-      if (length(expr@spatial_dims) >= 2) {
+      if (length(expr@srs@dimnames) >= 2) {
         # yes: merge old spatial dimensions back to the array,
         # set values to 0 and
         # set new spatial reference (adapted resolution for example)
         starts = c(starts, 0,0)
         ends = c(ends, 0,0)
         lengths = c(lengths, 1,1)
-        dimnames = c(dimnames,getYDim(expr),getXDim(expr))
+        dimnames = c(dimnames,ydim(expr),xdim(expr))
         chunks = c(chunks,1,1)
         expr@isSpatial = TRUE
       } else {
@@ -70,7 +70,7 @@ if (!isGeneric("scidbsteval")) {
         starts = c(starts, 0)
         ends = c(ends,0)
         lengths = c(lengths, 1)
-        dimnames = c(dimnames,getTDim(expr))
+        dimnames = c(dimnames,tdim(expr))
         chunks = c(chunks,1)
         expr@isTemporal = TRUE
         # set adapt temporal reference
@@ -100,7 +100,7 @@ if (!isGeneric("scidbsteval")) {
   # set spatial and temporal references if applicable
   if (expr@isSpatial) {
     #eo_setsrs:  {name,xdim,ydim,authname,authsrid,affine_str}
-    cmd = paste("eo_setsrs(",name,",'",getXDim(expr),"','",getYDim(expr),"','",expr@sref$auth_name,"',",expr@sref$auth_srid,",'","x0=",expr@affine[1,1]," y0=",expr@affine[2,1]," a11=",expr@affine[1,2]," a22=",expr@affine[2,3]," a12=",expr@affine[1,3]," a21=",expr@affine[2,2],"'",")",sep="")
+    cmd = paste("eo_setsrs(",name,",'",xdim(expr),"','",ydim(expr),"','",expr@sref$auth_name,"',",expr@sref$auth_srid,",'","x0=",expr@affine[1,1]," y0=",expr@affine[2,1]," a11=",expr@affine[1,2]," a22=",expr@affine[2,3]," a12=",expr@affine[1,3]," a21=",expr@affine[2,2],"'",")",sep="")
     iquery(cmd)
   }
 

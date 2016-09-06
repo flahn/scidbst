@@ -21,8 +21,8 @@ NULL
 
           #replace spatial grid sizes
           if(x@isSpatial) {
-              grid[getXDim(x)] = xsize
-              grid[getYDim(x)] = ysize
+              grid[xdim(x)] = xsize
+              grid[ydim(x)] = ysize
           }
       }
       return(grid)
@@ -40,20 +40,20 @@ NULL
   out = .scidbst_class(sci.obj)
   out = .cpMetadata(x,out)
 
-  if (x@isSpatial && (grid[getXDim(x)] > 1 || grid[getYDim(x)] > 1)) {
+  if (x@isSpatial && (grid[xdim(x)] > 1 || grid[ydim(x)] > 1)) {
     #adapt affine transformation
-    scale_matrix = matrix(c(1,0,0,0,grid[getXDim(x)],0,0,0,grid[getYDim(x)]),ncol=3)
+    scale_matrix = matrix(c(1,0,0,0,grid[xdim(x)],0,0,0,grid[ydim(x)]),ncol=3)
     #scale
     scaled_matrix = x@affine %*% scale_matrix
 
     #calculate real world origin with min dim indices
     .starts = as.numeric(scidb_coordinate_start(x))
     names(.starts) = dimensions(x)
-    origin.rw = .transformToWorld(x@affine,.starts[getXDim(x)],.starts[getYDim(x)])
+    origin.rw = .transformToWorld(x@affine,.starts[xdim(x)],.starts[ydim(x)])
 
     #create temporary matrix to calculate the new origin
     help.matrix = cbind(origin.rw,-(scaled_matrix[,2:3]))
-    new.origin = help.matrix %*% c(1,.starts[getXDim(x)],.starts[getYDim(x)])
+    new.origin = help.matrix %*% c(1,.starts[xdim(x)],.starts[ydim(x)])
 
     #bind new origin and the scaling parameter
     out.affine = cbind(new.origin,scaled_matrix[,2:3])
@@ -62,9 +62,9 @@ NULL
   }
   out@ncols = as.integer(ncol(out))
   out@nrows = as.integer(nrow(out))
-  if (x@isTemporal && (grid[getTDim(x) > 1])) {
+  if (x@isTemporal && (grid[tdim(x) > 1])) {
     #adapt temporal reference
-    tres = round(tres(out) * grid[getTDim(x)])
+    tres = round(tres(out) * grid[tdim(x)])
     out@trs@tResolution = tres
   }
   return(out)

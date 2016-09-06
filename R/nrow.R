@@ -13,7 +13,7 @@ setMethod("nrow",signature(x="scidbst"),function(x) {
       if (length(lengths) == 1) {
         return(1)
       } else {
-        return(lengths[getYDim(x)])
+        return(lengths[ydim(x)])
       }
     } else {
       return(x@nrows)

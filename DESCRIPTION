@@ -20,9 +20,11 @@ Imports:
 Suggests:
     knitr
 Collate:
+    'SRS-class-decl.R'
     'TRS-class-decl.R'
     'TemporalExtent-class-decl.R'
     'scidbst-class-decl.R'
+    'SRS-class.R'
     'TRS-class.R'
     'TemporalExtent-class.R'
     'scidbst-class.R'
@@ -40,7 +42,6 @@ Collate:
     'project.R'
     'readAll.R'
     'regrid.R'
-    'resolution.R'
     'sampleRegular.R'
     'scidbsteval.R'
     'slice.R'

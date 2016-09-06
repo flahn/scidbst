@@ -111,7 +111,7 @@
     # to@data@fromdisk = TRUE
 
     to@title = from@title
-    to@spatial_dims = from@spatial_dims
+    to@srs = from@srs
 
     # to@temporal_dim = from@temporal_dim
     # to@startTime = from@startTime
@@ -242,10 +242,10 @@ transformAllSpatialIndices = function(obj,df) {
   .data = df
   from = obj
 
-  coords = rbind(rep(1,nrow(.data)),.data[,getXDim(from)],.data[,getYDim(from)])
+  coords = rbind(rep(1,nrow(.data)),.data[,xdim(from)],.data[,ydim(from)])
   res = t(from@affine %*% coords) #(x,y)
-  .data[,getXDim(from)] = res[,1]
-  .data[,getYDim(from)] = res[,2]
+  .data[,xdim(from)] = res[,1]
+  .data[,ydim(from)] = res[,2]
 
   return(.data)
 }
@@ -264,7 +264,7 @@ transformAllTemporalIndices = function(obj,df) {
   .data=df
   from=obj
 
-  tdim = getTDim(from)
+  tdim = tdim(from)
   tindex = unique(.data[,tdim])
   dates = lapply(tindex,function(x,y) {
     as.Date(.calculatePOSIXfromIndex(y,x))
