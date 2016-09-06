@@ -10,10 +10,12 @@ transform.scidbst = function (`_data`, ...) {
   scidbst.obj = `_data`
   scidb.obj = .toScidb(scidbst.obj)
   scidb.obj = transform(scidb.obj,...)
-  out = .scidbst_class(scidb.obj)
-  out = .cpMetadata(scidbst.obj,out)
+  # out = .scidbst_class(scidb.obj)
+  # out = .cpMetadata(scidbst.obj,out)
+  scidbst.obj@proxy = scidb.obj
 
-  return(out)
+  # return(out)
+  return(scidbst.obj)
 }
 
 #' Transform / Apply function for scidbst object

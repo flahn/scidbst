@@ -6,9 +6,13 @@ if (!isGeneric("slice")) {
 }
 
 .slice = function (x,d,n) {
-  out = .scidbst_class(scidb::slice(x,d,n))
+  .scidb.obj = .toScidb(x)
 
-  out = .cpMetadata(x,out)
+  # .scidb.obj = .scidbst_class(slice(.scidb.obj,d,n))
+  .scidb.obj = slice(.scidb.obj,d,n)
+
+  # out = .cpMetadata(x,out)
+  x@proxy = .scidb.obj
   if (d %in% tdim(x)) {
     baseTime = 0
 
@@ -29,17 +33,17 @@ if (!isGeneric("slice")) {
     #adapt temporal extent
     newStart = as.POSIXlt(as.character(t0(x) + n * tres(x) * baseTime))
     newEnd = as.POSIXlt(as.character(t0(x) + (n+1) * tres(x) * baseTime))
-    out@tExtent@min = newStart
-    out@tExtent@max = newEnd
-    out@isTemporal = FALSE
+    x@tExtent@min = newStart
+    x@tExtent@max = newEnd
+    x@isTemporal = FALSE
     # it remains temporal in R, but not in scidb => keep information, but set temporal to false
   }
 
-  if (d %in% x@spatial_dims) {
-    out@isSpatial = FALSE
+  if (d %in% x@srs@dimnames) {
+    x@isSpatial = FALSE
   }
 
-  return(out)
+  return(x)
 }
 
 #' Slice a scidbst object at a particular dimension value

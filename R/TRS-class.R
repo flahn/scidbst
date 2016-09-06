@@ -22,7 +22,7 @@ TRS = function(dimension,t0, tres, tunit) {
   if (!inherits(tunit,"character") && !tunit %in% c("days","weeks","secs","mins","hours")) {
     stop("Cannot recognize temporal unit")
   }
-  if (! is.numeric(tResolution)) {
+  if (! is.numeric(tres)) {
     stop("Cannot establish the temporal resolution")
   }
 
@@ -39,6 +39,8 @@ TRS = function(dimension,t0, tres, tunit) {
   .trs@t0 = t0
   .trs@tResolution = tres
   .trs@tUnit = tunit
+
+  return(.trs)
 }
 
 if (!isGeneric("tres")) {

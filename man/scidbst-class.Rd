@@ -9,9 +9,7 @@
 scidbst(...)
 }
 \arguments{
-\item{name}{a character string name of a stored SciDB array or a valid SciDB AFL expression}
-
-\item{gc}{a logical value, TRUE means connect the SciDB array to R's garbage collector}
+\item{...}{parameter that are passed on to \code{\link[scidb]{scidb}}}
 }
 \value{
 scidbst object
@@ -41,5 +39,10 @@ Constructor for scidbst
 \item{\code{trs}}{The temporal reference object (\code{\link{TRS}})}
 
 \item{\code{srs}}{The spatial reference object \code{\link{SRS}}}
+
+\item{\code{proxy}}{scidb proxy \code{\link[scidb]{scidb}}}
 }}
+\note{
+At least parameter \code{name} should be provided
+}
 

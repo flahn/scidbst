@@ -13,7 +13,7 @@ setGeneric("t.extent", function(x, ...) standardGeneric("t.extent"))
 #' @export
 setMethod("t.extent",signature(x="scidbst"), function(x) {
   if (!x@isTemporal) {
-    stop(paste("Array",x@title,"does not have a temporal dimension."))
+    stop(paste("Array",x@proxy@name,"does not have a temporal dimension."))
   }
   return(x@tExtent)
 })

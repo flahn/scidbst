@@ -10,13 +10,14 @@ setGeneric("aggregate.t", function(x, ...) standardGeneric("aggregate.t"))
     x@isTemporal = FALSE
     sobj = .toScidb(x)
     agg = aggregate(sobj, by=selection,...) #delegate operation to scidb package
-    out = .scidbst_class(agg)
+    x@proxy = agg
+    # out = .scidbst_class(agg)
 
     #manage metadata
-    out = .cpMetadata(x,out)
-    out@data@names = scidb_attributes(out)
-    out@trs@tResolution = as.numeric(difftime(tmax(x),tmin(x),tunit(x)))+1
-    return(out)
+    #out = .cpMetadata(x,out)
+    x@data@names = scidb_attributes(out)
+    x@trs@tResolution = as.numeric(difftime(tmax(x),tmin(x),tunit(x)))+1
+    return(x)
   } else {
     stop("Cannot aggregate over time with no temporal reference on the object")
   }
@@ -70,13 +71,14 @@ setGeneric("aggregate.sp", function(x, ...) standardGeneric("aggregate.sp"))
     old_ncol = ncol(x)
     sobj = .toScidb(x)
     agg = aggregate(sobj, by=selection, dots) # delegate operation to scidb package
-    out = .scidbst_class(agg)
-    out = .cpMetadata(x,out)
-    out@data@names = scidb_attributes(out)
+    x@proxy = agg
+    # out = .scidbst_class(agg)
+    # out = .cpMetadata(x,out)
+    x@data@names = scidb_attributes(out)
 
-    out@affine = out@affine %*% matrix(c(1,0,0,0,old_ncol,0,0,0,old_nrow),ncol=3,nrow=3)
+    x@affine = x@affine %*% matrix(c(1,0,0,0,old_ncol,0,0,0,old_nrow),ncol=3,nrow=3)
 
-    return(out)
+    return(x)
   } else {
     stop("Cannot aggregate over space with no spatial reference on the object")
   }
@@ -131,13 +133,13 @@ setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
   }
 
   if (aggregate_by_time && !aggregate_by_space) { #all spatial dimensions are present
-    out = aggregate.t(x, by, ...)
-    return(out)
+    x = aggregate.t(x, by, ...)
+    return(x)
   }
 
   if (aggregate_by_space && !aggregate_by_time) { # all temporal dimensions are present
-    out = aggregate.sp(x, by, ...)
-    return(out)
+    x = aggregate.sp(x, by, ...)
+    return(x)
   }
 
   if (aggregate_by_time && aggregate_by_space) { #aggregation over space and time
@@ -146,46 +148,47 @@ setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
     old_nrow = nrow(x)
 
     if (length(by) != length(dimensions(x))) {
-      out = aggregate(.toScidb(x),by,...)
+      x@proxy = aggregate(.toScidb(x),by,...)
     } else {
-      out = aggregate(.toScidb(x), by="", ...)
+      x@proxy = aggregate(.toScidb(x), by="", ...)
     }
 
 
-    if (is.null(out)) {
+    if (is.null(x@proxy)) {
       # this should basically never happen, because dimension 'i' will be used if every other dimension
       # is gone.
       stop("No dimensions left.")
     }
     # copy metadata
-    out = .scidbst_class(out)
-    out = .cpMetadata(x,out)
-    out@data@names = scidb_attributes(out)
+    # out = .scidbst_class(out)
+    # out = .cpMetadata(x,out)
+    x@data@names = scidb_attributes(x@proxy)
 
     # set tResolution to complete temporal extent
 
-    out@trs@tResolution = as.numeric(difftime(tmax(x),tmin(x),tunit(x)))+1
+    x@trs@tResolution = as.numeric(difftime(tmax(x),tmin(x),tunit(x)))+1
     #out@trs@dimname = ""
 
     # set space Resolution in affine transformation to total spatial extent
 
     #out@spatial_dims = list()
 
-    out@affine = out@affine %*% matrix(c(1,0,0,0,old_ncol,0,0,0,old_nrow),ncol=3,nrow=3)
-    out@isSpatial = FALSE
-    out@isTemporal = FALSE
-    return(out)
+    x@affine = x@affine %*% matrix(c(1,0,0,0,old_ncol,0,0,0,old_nrow),ncol=3,nrow=3)
+    x@isSpatial = FALSE
+    x@isTemporal = FALSE
+    return(x)
   }
 
   # at this point either no or just one spatial dimension is present
 
   if (!aggregate_by_time && !aggregate_by_space && !any(x@srs@dimnames %in% by)) { # no referenced dimension involved
     #aggregate as scidb object
-    arr = aggregate(.toScidb(x),by,...)
+    x@proxy = aggregate(.toScidb(x),by,...)
     #and then transform to scidbst
-    arr = .scidbst_class(arr)
-    arr = .cpMetadata(x,arr)
-    return(arr)
+    # arr = .scidbst_class(arr)
+    # arr = .cpMetadata(x,arr)
+    # return(arr)
+    return(x)
   } else {
     stop("Aggregation over one spatial dimension currently not allowed")
   }

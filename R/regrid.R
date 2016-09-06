@@ -29,16 +29,16 @@ NULL
 }
 
 .regrid.scidbst = function(x, grid, expr) {
-  names(grid) = dimensions(x)
+  names(grid) = dimensions(x@proxy)
 
   #feed parameter to scidb::regrid
   sci.obj = .toScidb(x)
   sci.obj = regrid(x=sci.obj,grid=grid, expr=expr)
-
+  x@proxy = sci.obj
 
   #copy and adapt metadata
-  out = .scidbst_class(sci.obj)
-  out = .cpMetadata(x,out)
+  # out = .scidbst_class(sci.obj)
+  # out = .cpMetadata(x,out)
 
   if (x@isSpatial && (grid[xdim(x)] > 1 || grid[ydim(x)] > 1)) {
     #adapt affine transformation
@@ -47,8 +47,8 @@ NULL
     scaled_matrix = x@affine %*% scale_matrix
 
     #calculate real world origin with min dim indices
-    .starts = as.numeric(scidb_coordinate_start(x))
-    names(.starts) = dimensions(x)
+    .starts = as.numeric(scidb_coordinate_start(x@proxy))
+    names(.starts) = dimensions(x@proxy)
     origin.rw = .transformToWorld(x@affine,.starts[xdim(x)],.starts[ydim(x)])
 
     #create temporary matrix to calculate the new origin
@@ -58,16 +58,16 @@ NULL
     #bind new origin and the scaling parameter
     out.affine = cbind(new.origin,scaled_matrix[,2:3])
 
-    out@affine = out.affine
+    x@affine = out.affine
   }
-  out@ncols = as.integer(ncol(out))
-  out@nrows = as.integer(nrow(out))
+  x@ncols = as.integer(ncol(x))
+  x@nrows = as.integer(nrow(x))
   if (x@isTemporal && (grid[tdim(x) > 1])) {
     #adapt temporal reference
-    tres = round(tres(out) * grid[tdim(x)])
-    out@trs@tResolution = tres
+    tres = round(tres(x) * grid[tdim(x)])
+    x@trs@tResolution = tres
   }
-  return(out)
+  return(x)
 }
 
 #' Regrid / Resample operator for scidbst objects

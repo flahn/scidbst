@@ -6,9 +6,11 @@ if (!isGeneric("project")) {
   .scidb.object = .toScidb(x)
 
   .scidb.object = scidb::project(x=.scidb.object, attributes=attributes)
-  out = .scidbst_class(.scidb.object)
-  out = .cpMetadata(x,out)
-  return(out)
+  # out = .scidbst_class(.scidb.object)
+  # out = .cpMetadata(x,out)
+  # return(out)
+  x@proxy = .scidb.object
+  return(x)
 }
 
 #' Project onto a subset of attributes in a scidbst object

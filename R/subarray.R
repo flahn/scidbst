@@ -3,15 +3,14 @@ if (!isGeneric("subarray")) {
 }
 
 subarray.scidbst = function (x, limits, between = FALSE) {
-  ndim = length(dimensions(x))
+  proxy = x@proxy
+  ndim = length(dimensions(proxy))
 
   if (is.character(limits)) {
     limits = gsub("\\*","Inf",limits)
     limits = as.numeric(unlist(strsplit(limits,",")))
   }
   #TODO limits = scidbst object
-  #TODO limits = raster or extent (equals raster::crop)
-  #TODO limits = temporal extent
 
   if (length(limits) != 2*ndim) {
     stop("limits do not match dimension description [#limits != (2*#dims)]")
@@ -47,34 +46,34 @@ subarray.scidbst = function (x, limits, between = FALSE) {
     }
   }
 
-  scidbst.obj = x
-  scidb.obj = .toScidb(scidbst.obj)
+  scidb.obj = .toScidb(x)
   scidb.obj = scidb::subarray(scidb.obj, limits, between)
-  out = .scidbst_class(scidb.obj)
-  out = .cpMetadata(scidbst.obj,out)
+  # out = .scidbst_class(scidb.obj)
+  # out = .cpMetadata(scidbst.obj,out)
+  x@proxy = scidb.obj
 
 
   if (!between) {
     if (x@isSpatial) {
       #limits are the new coordinates in the old image reference
       # 1) adapt new extent
-      out@extent = newExtent
+      x@extent = newExtent
 
       # 2) adapt transformation parameter (origin)
       # we can simply overwrite the origin, since the array dimension indices are also recalculated
-      out@affine[1,1] = ul[1]
-      out@affine[2,1] = ul[2]
+      x@affine[1,1] = ul[1]
+      x@affine[2,1] = ul[2]
     }
 
     if (x@isTemporal) {
-      out@trs@t0 = t0
+      x@trs@t0 = t0
 
-      out@tExtent@min = t0
-      out@tExtent@max = tEnd
+      x@tExtent@min = t0
+      x@tExtent@max = tEnd
     }
   } #else leave as is since we do not change dimension values
 
-  return(out)
+  return(x)
 }
 
 #' Subarray function for scidbst object
@@ -135,15 +134,16 @@ setMethod("subarray",signature(x="scidbst",limits="Extent"),function(x, limits, 
     }
 
     tdim = tdim(x)
-    dims = dimensions(x)
-    bounds = scidb_coordinate_bounds(x)
+    proxy = x@proxy
+    dims = dimensions(proxy)
+    bounds = scidb_coordinate_bounds(proxy)
 
     limitExpr = c(bounds$start,bounds$end)
     tminPos = which(dims==tdim)
     tmaxPos = 2*tminPos
 
-    tmin = scidbst:::.calcTDimIndex(x,tmin(limits))
-    tmax = scidbst:::.calcTDimIndex(x,tmax(limits))
+    tmin = .calcTDimIndex(x,tmin(limits))
+    tmax = .calcTDimIndex(x,tmax(limits))
 
     if (tmax > tmax(x)) tmax = tmax(x)
     if (tmin > tmin(x)) tmin = tmin(x)
@@ -151,12 +151,11 @@ setMethod("subarray",signature(x="scidbst",limits="Extent"),function(x, limits, 
 
     limitExpr[tminPos] = tmin
     limitExpr[tmaxPos] = tmax
-
-
+    # now call subarray again with a list of indices
     return(subarray(x,limits=limitExpr,between=between))
 }
 
 #' @name subarray,scidbst
 #' @rdname subarray-scidbst-method
 #' @export
-setMethod("subarray",signature(x="scidbst",limit="TemporalExtent"), .subarray.TemporalExtent)
+setMethod("subarray",signature(x="scidbst",limits="TemporalExtent"), .subarray.TemporalExtent)

@@ -9,12 +9,14 @@ if (!isGeneric("scidbsteval")) {
   if (missing(name)) {
     stop("No target array name specified. Please use parameter 'name' to state the target arrays name.")
   }
-  if (inherits(expr,"scidb")) {
+  if (inherits(expr,"scidbst")) {
     scidb.obj = .toScidb(expr)
-  } else {
+  } else if (is.character(expr)){
     # if this is an expression (string), then we try to create a scidbst object from that
     expr = scidbst(expr)
     scidb.obj = .toScidb(expr)
+  } else {
+    stop(paste("Cannot invoke scidb with parameter 'expr' of type ",class(expr),sep=""))
   }
 
   if (!drop) {
@@ -85,8 +87,9 @@ if (!isGeneric("scidbsteval")) {
 
 
     # recreate the spatial/temporal references in R
-    scidbst.obj = .scidbst_class(scidb.obj)
-    expr = .cpMetadata(expr,scidbst.obj)
+    # scidbst.obj = .scidbst_class(scidb.obj)
+    # expr = .cpMetadata(expr,scidbst.obj)
+
 
     #clean up
     scidbrm(temp_name,force=TRUE)
@@ -95,7 +98,7 @@ if (!isGeneric("scidbsteval")) {
     scidb.obj = scidbeval(scidb.obj,eval,name, gc, temp)
     # no need to copy elements, just use the expr object that was passed to this function and change name later
   }
-
+  expr@proxy = scidb.obj
 
   # set spatial and temporal references if applicable
   if (expr@isSpatial) {
@@ -110,7 +113,7 @@ if (!isGeneric("scidbsteval")) {
   }
 
   # rename the array, since the name was changed due to store
-  expr@name = name
+  expr@proxy@name = name
   expr@title = name
   return(expr)
 }

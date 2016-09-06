@@ -158,8 +158,8 @@
 
 # Returns the lengths of each individual dimension
 .getLengths = function(obj) {
-  dimnames = dimensions(obj)
-  dimbounds = scidb_coordinate_bounds(obj)
+  dimnames = dimensions(obj@proxy)
+  dimbounds = scidb_coordinate_bounds(obj@proxy)
   v = as.numeric(dimbounds$length)
   names(v) = dimnames
 
@@ -172,11 +172,12 @@
 #
 # returns scidb object
 .toScidb = function(x) {
-  res = scidb("")
-  res@name = x@name
-  res@gc = x@gc
-  res@meta = suppressWarnings(x@meta)
-  return(res)
+  # res = scidb("")
+  # res@name = x@name
+  # res@gc = x@gc
+  # res@meta = suppressWarnings(x@meta)
+  # return(res)
+  return(x@proxy)
 }
 
 # Returns the reference period of a scidbst object, e.g. P1D, P16D or P1M

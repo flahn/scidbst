@@ -9,9 +9,11 @@ subset.scidbst = function(x, ...) {
   .scidb.object = .toScidb(x)
 
   .scidb.object = scidb:::filter_scidb(.scidb.object, ...)
-  out = .scidbst_class(.scidb.object)
-  out = .cpMetadata(x,out)
-  return(out)
+  # out = .scidbst_class(.scidb.object)
+  # out = .cpMetadata(x,out)
+  # return(out)
+  x@proxy = .scidb.object
+  return(x)
 }
 
 

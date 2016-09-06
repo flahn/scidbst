@@ -18,10 +18,11 @@ NULL
 #' @slot tref A named list with the elements retrieved by eo_gettrs function
 #' @slot trs The temporal reference object (\code{\link{TRS}})
 #' @slot srs The spatial reference object \code{\link{SRS}}
+#' @slot proxy scidb proxy \code{\link[scidb]{scidb}}
 #' @aliases scidbst
 #' @exportClass scidbst
 .scidbst_class = setClass("scidbst",
-                          contains=list("scidb","RasterBrick"),
+                          contains=list("RasterBrick"),
                           slots=c(
                             affine = "matrix",
                             sref = "list",
@@ -30,6 +31,7 @@ NULL
                             isSpatial ="logical",
                             isTemporal = "logical",
                             trs = "TRS",
-                            srs = "SRS"
+                            srs = "SRS",
+                            proxy = "ANY"
                           )
 )

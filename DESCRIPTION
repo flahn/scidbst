@@ -43,6 +43,7 @@ Collate:
     'readAll.R'
     'regrid.R'
     'sampleRegular.R'
+    'scidb-basic.R'
     'scidbsteval.R'
     'slice.R'
     'spplot.R'
