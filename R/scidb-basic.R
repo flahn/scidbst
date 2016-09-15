@@ -4,9 +4,17 @@ if (!isGeneric("dimensions")) {
   })
 }
 
+#' @importMethodsFrom sp dimensions
 #' @export
 setMethod("dimensions",signature(obj="scidbst"), function(obj) {
-  return(scidb::dimensions(obj@proxy))
+  .scidb = as(obj,"scidb")
+  dims = scidb::dimensions(.scidb)
+  return(dims)
+})
+
+#' @export
+setMethod("dimensions",signature(obj="scidb"), function(obj) {
+  scidb::dimensions(obj)
 })
 
 
@@ -17,8 +25,13 @@ if (!isGeneric("scidb_attributes")) {
 }
 #' @export
 setMethod("scidb_attributes",signature(x="scidbst"), function(x) {
-  return(scidb::scidb_attributes(x@proxy))
+  .scidb = as(x,"scidb")
+  return(scidb::scidb_attributes(.scidb))
 })
+
+#' @export
+setMethod("scidb_attributes",signature(x="scidb"), scidb::scidb_attributes)
+
 
 if (!isGeneric("scidb_coordinate_bounds")) {
   setGeneric("scidb_coordinate_bounds",function(x) {
@@ -28,8 +41,12 @@ if (!isGeneric("scidb_coordinate_bounds")) {
 
 #' @export
 setMethod("scidb_coordinate_bounds",signature(x="scidbst"), function(x) {
-  return(scidb::scidb_coordinate_bounds(x@proxy))
+  .scidb = as(x,"scidb")
+  return(scidb::scidb_coordinate_bounds(.scidb))
 })
+
+#' @export
+setMethod("scidb_coordinate_bounds",signature(x="scidb"),scidb::scidb_coordinate_bounds)
 
 if (!isGeneric("scidb_coordinate_start")) {
   setGeneric("scidb_coordinate_start",function(x) {
@@ -39,8 +56,12 @@ if (!isGeneric("scidb_coordinate_start")) {
 
 #' @export
 setMethod("scidb_coordinate_start",signature(x="scidbst"), function(x) {
-  return(scidb::scidb_coordinate_start(x@proxy))
+  .scidb = as(x,"scidb")
+  return(scidb::scidb_coordinate_start(.scidb))
 })
+
+#' @export
+setMethod("scidb_coordinate_start",signature(x="scidb"), scidb::scidb_coordinate_start)
 
 if (!isGeneric("scidb_coordinate_end")) {
   setGeneric("scidb_coordinate_end",function(x) {
@@ -50,8 +71,12 @@ if (!isGeneric("scidb_coordinate_end")) {
 
 #' @export
 setMethod("scidb_coordinate_end",signature(x="scidbst"), function(x) {
-  return(scidb::scidb_coordinate_end(x@proxy))
+  .scidb = as(x,"scidb")
+  return(scidb::scidb_coordinate_end(.scidb))
 })
+
+#' @export
+setMethod("scidb_coordinate_end",signature(x="scidb"), scidb::scidb_coordinate_end)
 
 if (!isGeneric("scidb_coordinate_overlap")) {
   setGeneric("scidb_coordinate_overlap",function(x) {
@@ -61,8 +86,12 @@ if (!isGeneric("scidb_coordinate_overlap")) {
 
 #' @export
 setMethod("scidb_coordinate_overlap",signature(x="scidbst"), function(x) {
-  return(scidb::scidb_coordinate_overlap(x@proxy))
+  .scidb = as(x,"scidb")
+  return(scidb::scidb_coordinate_overlap(.scidb))
 })
+
+#' @export
+setMethod("scidb_coordinate_overlap",signature(x="scidb"),scidb::scidb_coordinate_overlap)
 
 if (!isGeneric("scidb_coordinate_chunksize")) {
   setGeneric("scidb_coordinate_chunksize",function(x) {
@@ -72,5 +101,9 @@ if (!isGeneric("scidb_coordinate_chunksize")) {
 
 #' @export
 setMethod("scidb_coordinate_chunksize",signature(x="scidbst"), function(x) {
-  return(scidb::scidb_coordinate_chunksize(x@proxy))
+  .scidb = as(x,"scidb")
+  return(scidb::scidb_coordinate_chunksize(.scidb))
 })
+
+#' @export
+setMethod("scidb_coordinate_chunksize",signature(x="scidb"),scidb::scidb_coordinate_chunksize)

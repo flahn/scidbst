@@ -158,10 +158,10 @@
 
 # Returns the lengths of each individual dimension
 .getLengths = function(obj) {
-  dimnames = dimensions(obj@proxy)
-  dimbounds = scidb_coordinate_bounds(obj@proxy)
-  v = as.numeric(dimbounds$length)
-  names(v) = dimnames
+  .dimnames = dimensions(obj)
+  .dimbounds = scidb_coordinate_bounds(obj)
+  v = as.numeric(.dimbounds$length)
+  names(v) = .dimnames
 
   return(v)
 }
@@ -280,4 +280,16 @@ transformAllTemporalIndices = function(obj,df) {
 
   .data[,tdim] = time
   return(.data)
+}
+
+#' @export
+clear = function(x) {
+  if (hasValues(x)) {
+    x@data@inmemory = FALSE
+    x@data@fromdisk = FALSE
+    x@data@values = matrix()
+    x@data@names = vector("character",length=0)
+    x@data@nlayers = as.integer(0)
+    return(x)
+  }
 }

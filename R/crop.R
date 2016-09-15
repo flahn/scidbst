@@ -3,12 +3,13 @@ NULL
 
 .crop.scidbst = function(x, y, snap='near', ..., between=TRUE) {
       proxy = x@proxy
-      ndim = length(dimensions(proxy))
+      .dims = dimensions(x)
+      ndim = length(.dims)
       if (!x@isSpatial) {
         stop("The array does not have spatial dimensions to crop with a bounding box")
       }
 
-      limits = c(scidb_coordinate_start(proxy),scidb_coordinate_end(proxy))
+      limits = c(scidb_coordinate_start(x),scidb_coordinate_end(x))
 
       # as in the raster package, try to get the extent of object y
       y <- try ( extent(y), silent=TRUE )
@@ -23,11 +24,11 @@ NULL
       # make list of dimension indices and use subarray again
       out = .calculateDimIndices(x,e)
 
-      xindex = which(dimensions(proxy)==xdim(x)) #get position of "x" values
+      xindex = which(.dims==xdim(x)) #get position of "x" values
       limits[xindex] = xmin(out)
       limits[xindex+ndim] = xmax(out)
 
-      yindex = which(dimensions(proxy)==ydim(x)) #position of "y" values
+      yindex = which(.dims==ydim(x)) #position of "y" values
       limits[yindex] = ymin(out)
       limits[yindex+ndim] = ymax(out)
 

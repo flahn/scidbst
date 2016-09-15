@@ -96,10 +96,23 @@ scidbst = function(...){
 }
 
 
-#' #' @export
-#' setMethod("show",signature(object="scidbst"), function(object){
-#'   s = .toScidb(object)
-#'   show(s)
-#' })
+#' @export
+setMethod("show",signature(object="scidbst"), function(object){
+  s = as(object,"scidb")
+  cat(paste("Title:\t\t",object@title,"\n",sep=""))
+  if (object@isSpatial){
+    cat(paste("Spatial Extent:\n"))
+    cat(paste("\txmin:\t",xmin(object),"\n",sep=""))
+    cat(paste("\txmax:\t",xmax(object),"\n",sep=""))
+    cat(paste("\tymin:\t",ymin(object),"\n",sep=""))
+    cat(paste("\tymax:\t",ymax(object),"\n",sep=""))
+    cat("CRS:\n")
+    cat(paste("\t",crs(object),"\n",sep=""))
+  }
+  if (object@isTemporal) {
+    show(t.extent(object))
+  }
+  show(s)
+})
 
 

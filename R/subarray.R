@@ -4,7 +4,8 @@ if (!isGeneric("subarray")) {
 
 subarray.scidbst = function (x, limits, between = FALSE) {
   proxy = x@proxy
-  ndim = length(dimensions(proxy))
+  .dims = dimensions(x)
+  ndim = length(.dims)
 
   if (is.character(limits)) {
     limits = gsub("\\*","Inf",limits)
@@ -134,9 +135,8 @@ setMethod("subarray",signature(x="scidbst",limits="Extent"),function(x, limits, 
     }
 
     tdim = tdim(x)
-    proxy = x@proxy
-    dims = dimensions(proxy)
-    bounds = scidb_coordinate_bounds(proxy)
+    dims = dimensions(x)
+    bounds = scidb_coordinate_bounds(x)
 
     limitExpr = c(bounds$start,bounds$end)
     tminPos = which(dims==tdim)

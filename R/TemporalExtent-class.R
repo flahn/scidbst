@@ -91,7 +91,7 @@ setMethod("tmax",signature(x="scidbst"),function(x) {
 #'
 #' @export
 setMethod("show",signature(object="TemporalExtent"),function(object){
-  cat("Class: TemporalExtent\n")
-  cat(paste("From:\t",object@min,"\n",sep=""))
-  cat(paste("To:\t",object@max,"\n",sep=""))
+  cat("Temporal Extent:\n")
+  cat(paste("\tFrom:\t",object@min,"\n",sep=""))
+  cat(paste("\tTo:\t",object@max,"\n",sep=""))
 })

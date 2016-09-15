@@ -10,11 +10,11 @@ if (!isGeneric("scidbsteval")) {
     stop("No target array name specified. Please use parameter 'name' to state the target arrays name.")
   }
   if (inherits(expr,"scidbst")) {
-    scidb.obj = .toScidb(expr)
+    scidb.obj = as(expr,"scidb")
   } else if (is.character(expr)){
     # if this is an expression (string), then we try to create a scidbst object from that
     expr = scidbst(expr)
-    scidb.obj = .toScidb(expr)
+    scidb.obj = as(expr,"scidb")
   } else {
     stop(paste("Cannot invoke scidb with parameter 'expr' of type ",class(expr),sep=""))
   }
@@ -23,20 +23,21 @@ if (!isGeneric("scidbsteval")) {
     temp_name = paste(name,"_temp",sep="")
     #store evaluated array temporary
     scidb.obj = scidbeval(scidb.obj,eval=TRUE,name=temp_name,gc=TRUE,temp=TRUE) #probably takes time
+    expr@proxy = scidb.obj
     bounds=iquery(sprintf("dimensions(%s)",temp_name),return=T) # required to find the true
 
     # there are problems with reshape and unbounded coordinates -> scidbeval runs infinitely, so replace
     # infinites with highs and lows
     # if references are kept (not dropped)
-    starts = scidb_coordinate_start(scidb.obj)
+    starts = scidb_coordinate_start(expr)
     starts[starts=="*"] = bounds$low[starts=="*"]
     starts = as.double(starts)
 
-    lengths = scidb_coordinate_bounds(scidb.obj)$length
+    lengths = scidb_coordinate_bounds(expr)$length
     lengths = as.double(lengths)
     lengths[is.infinite(lengths)] = bounds[is.infinite(lengths),"high"] -bounds[is.infinite(lengths),"low"]+1
 
-    ends = scidb_coordinate_end(scidb.obj)
+    ends = scidb_coordinate_end(expr)
     ends[ends=="*"] = bounds$high[ends=="*"]
     ends = as.double(ends)
 
@@ -84,6 +85,7 @@ if (!isGeneric("scidbsteval")) {
 
     #second store to adapt none dropping changes
     scidb.obj = scidbeval(expr=scidb.obj,eval=eval,name=name, gc=gc, temp=temp)
+    expr@proxy = scidb.obj
 
 
     # recreate the spatial/temporal references in R
@@ -96,9 +98,10 @@ if (!isGeneric("scidbsteval")) {
   } else {
     # store / evaluate array
     scidb.obj = scidbeval(scidb.obj,eval,name, gc, temp)
+    expr@proxy = scidb.obj
     # no need to copy elements, just use the expr object that was passed to this function and change name later
   }
-  expr@proxy = scidb.obj
+
 
   # set spatial and temporal references if applicable
   if (expr@isSpatial) {

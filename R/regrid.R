@@ -4,8 +4,9 @@ NULL
 # prepares the grid statement for the scidb call, which reflects the new resolution in dimension
 # indice units
 .prepareGrid = function (x, y) {
-      grid = rep(1,length(dimensions(x)))
-      names(grid) = dimensions(x)
+      .dims = dimensions(x)
+      grid = rep(1,length(.dims))
+      names(grid) = .dims
       if (!missing(y)) {
           oldnx = ncol(x)
           oldny = nrow(x)
@@ -29,10 +30,11 @@ NULL
 }
 
 .regrid.scidbst = function(x, grid, expr) {
-  names(grid) = dimensions(x@proxy)
+  .dims = dimensions(x)
+  names(grid) = .dims
 
   #feed parameter to scidb::regrid
-  sci.obj = .toScidb(x)
+  sci.obj = as(x,"scidb")
   sci.obj = regrid(x=sci.obj,grid=grid, expr=expr)
   x@proxy = sci.obj
 
@@ -47,8 +49,8 @@ NULL
     scaled_matrix = x@affine %*% scale_matrix
 
     #calculate real world origin with min dim indices
-    .starts = as.numeric(scidb_coordinate_start(x@proxy))
-    names(.starts) = dimensions(x@proxy)
+    .starts = as.numeric(scidb_coordinate_start(x))
+    names(.starts) = dimensions(x)
     origin.rw = .transformToWorld(x@affine,.starts[xdim(x)],.starts[ydim(x)])
 
     #create temporary matrix to calculate the new origin

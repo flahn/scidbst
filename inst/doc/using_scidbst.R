@@ -2,6 +2,8 @@
 library(scidb)
 library(raster)
 library(knitr)
+library(zoo)
+library(xts)
 library(scidbst)
 
 opts_chunk$set(collapse = T, comment = "#>")
@@ -41,8 +43,8 @@ regrid.name = "LS7_BRAZIL_REGRID"
 ndvi.name = "LS7_BRAZIL_REGRID_NDVI"
 
 ## ----ndviDeletes, include=FALSE,eval=FALSE-------------------------------
- # scidbrm(regrid.name,force=TRUE)
- # scidbrm(ndvi.name, force=TRUE)
+# scidbrm(regrid.name,force=TRUE)
+# scidbrm(ndvi.name, force=TRUE)
 
 ## ----ndviResolution, cache=1---------------------------------------------
 ls7_brazil = scidbst(ls.brazil.name)
@@ -64,8 +66,8 @@ ls7_calc = scidbsteval(ls7_calc,ndvi.name)
 
 ## ----ndviPlot, cache=1---------------------------------------------------
 ls7_calc_t0 = readAll(slice(ls7_calc,"t","2001-088"))
-spplot(getLayer(ls7_calc_t0,"ndvi"))
-spplot(getLayer(ls7_calc_t0,"mdvi"))
+spplot(getLayer(ls7_calc_t0,"ndvi"),main="NDVI calculation")
+spplot(getLayer(ls7_calc_t0,"mdvi"),main="MDVI calculation")
 
 ## ----cloudMask, cache=1--------------------------------------------------
 ls7_brazil = scidbst("LS7_BRAZIL")
@@ -73,7 +75,7 @@ sliced.regridded = regrid(slice(ls7_brazil,"t",0),c(10,10),"avg(band1),avg(band2
 sliced.regridded = readAll(sliced.regridded)
 plotRGB(sliced.regridded,r=3,g=2,b=1)
 
-transformed = transform(sliced.regridded,cloud = "iif(band1_avg >= 252 and band2_avg >= 252 and band3_avg >= 252, 1 , 0)")
+transformed = transform(sliced.regridded,cloud = "iif(band1_avg >= 240 and band2_avg >= 240 and band3_avg >= 240, 1 , 0)")
 p2 = project(transformed,c("cloud"))
 clouds = subset(p2,"cloud = 1")
 
@@ -88,7 +90,7 @@ trmm = scidbst("TRMM3B42_DAILY")
 trmm.prec = project(trmm,"band5")
 
 trmm.prec.crop = crop(trmm.prec,l7_ethiopia)
-daily.avg.ethiopia = aggregate(trmm.prec.crop,list("t"),FUN="avg(band5)")
+daily.avg.ethiopia = aggregate(trmm.prec.crop,list("t"),FUN="sum(band5)")
 
 ts = as(daily.avg.ethiopia,"xts")
 plot(window(ts,start="2010-01-01",end="2013-01-01"),major.ticks="months",minor.ticks=FALSE,main="Average precipitation for Ethiopia Landsat scene from 2010 to 2013")

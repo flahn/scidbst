@@ -15,7 +15,7 @@ setGeneric("aggregate.t", function(x, ...) standardGeneric("aggregate.t"))
 
     #manage metadata
     #out = .cpMetadata(x,out)
-    x@data@names = scidb_attributes(out)
+    x@data@names = scidb_attributes(x)
     x@trs@tResolution = as.numeric(difftime(tmax(x),tmin(x),tunit(x)))+1
     return(x)
   } else {
@@ -74,7 +74,7 @@ setGeneric("aggregate.sp", function(x, ...) standardGeneric("aggregate.sp"))
     x@proxy = agg
     # out = .scidbst_class(agg)
     # out = .cpMetadata(x,out)
-    x@data@names = scidb_attributes(out)
+    x@data@names = scidb_attributes(x)
 
     x@affine = x@affine %*% matrix(c(1,0,0,0,old_ncol,0,0,0,old_nrow),ncol=3,nrow=3)
 
@@ -147,10 +147,11 @@ setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
     old_ncol = ncol(x)
     old_nrow = nrow(x)
 
+    .scidb = as(x,"scidb")
     if (length(by) != length(dimensions(x))) {
-      x@proxy = aggregate(.toScidb(x),by,...)
+      x@proxy = aggregate(.scidb,by,...)
     } else {
-      x@proxy = aggregate(.toScidb(x), by="", ...)
+      x@proxy = aggregate(.scidb, by="", ...)
     }
 
 
@@ -162,7 +163,7 @@ setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
     # copy metadata
     # out = .scidbst_class(out)
     # out = .cpMetadata(x,out)
-    x@data@names = scidb_attributes(x@proxy)
+    x@data@names = scidb_attributes(x)
 
     # set tResolution to complete temporal extent
 

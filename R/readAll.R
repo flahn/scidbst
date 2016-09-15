@@ -69,8 +69,8 @@ NULL
     res = as.data.frame(res)
     coordinates(res) <- ~sx+sy
     crs(res) <- crs(object)
-    res = suppressWarnings(SpatialPixelsDataFrame(res,as.data.frame(data[,names(data) %in% scidb_attributes(object@proxy)])))
-    names(res@data) = scidb_attributes(object@proxy)
+    res = suppressWarnings(SpatialPixelsDataFrame(res,as.data.frame(data[,names(data) %in% scidb_attributes(object)])))
+    names(res@data) = scidb_attributes(object)
     r = brick(res)
 
     #copy all attributes from r to object
@@ -104,7 +104,7 @@ NULL
         result[,b] = restruct
 
       }
-    colnames(result) = scidb_attributes(object@proxy)
+    colnames(result) = scidb_attributes(object)
     object@data@values = result
   }
   return(object)
@@ -112,7 +112,7 @@ NULL
 
 .downloadData = function(object) {
   cat("Downloading data...\n")
-  .data = iquery(object@name,return=T) #query scidb for data
+  .data = iquery(object@proxy@name,return=T) #query scidb for data
   cat("Download done.")
   return(.data)
 }
@@ -134,7 +134,7 @@ NULL
     stop("Image is empty.")
   }
 
-  object@data@names = scidb_attributes(object@proxy)
+  object@data@names = scidb_attributes(object)
   object@data@nlayers = length(object@data@names)
 
   if (toupper(method)=="MATRIX") {

@@ -139,3 +139,11 @@ setAs("scidbst","xts",function(from,to) {
 setAs("scidbst","data.frame",function(from,to) {
   return(.downloadData(from))
 })
+
+#' Returns the scidb proxy part of the scidbst object
+#'
+#' @name as-scidb
+#' @family scidbst
+setAs("scidbst","scidb",function(from,to) {
+  return(from@proxy)
+})
