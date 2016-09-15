@@ -41,8 +41,8 @@ regrid.name = "LS7_BRAZIL_REGRID"
 ndvi.name = "LS7_BRAZIL_REGRID_NDVI"
 
 ## ----ndviDeletes, include=FALSE,eval=FALSE-------------------------------
-#  scidbrm(regrid.name,force=TRUE)
-#  scidbrm(ndvi.name, force=TRUE)
+ # scidbrm(regrid.name,force=TRUE)
+ # scidbrm(ndvi.name, force=TRUE)
 
 ## ----ndviResolution, cache=1---------------------------------------------
 ls7_brazil = scidbst(ls.brazil.name)
