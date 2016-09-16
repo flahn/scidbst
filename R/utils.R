@@ -99,39 +99,39 @@
 
 
 # Copies metadata from a scidbst class to a scidbst class
-.cpMetadata = function(from,to) {
-  if (class(from) == "scidbst" && class(to) == "scidbst") {
-    to@extent = from@extent
-    crs(to) = crs(from)
-
-    to@affine = from@affine
-
-    # to@data@names = scidb_attributes(to)
-    # to@data@nlayers = length(to@data@names)
-    # to@data@fromdisk = TRUE
-
-    to@title = from@title
-    to@srs = from@srs
-
-    # to@temporal_dim = from@temporal_dim
-    # to@startTime = from@startTime
-    # to@tResolution = from@tResolution
-    # to@tUnit = from@tUnit
-    to@trs = from@trs
-    to@tExtent = from@tExtent
-
-    to@isSpatial = from@isSpatial
-    to@isTemporal = from@isTemporal
-    to@sref = from@sref
-    to@tref = from@tref
-
-    # if (inMemory(from)) {
-    #   to@data@inmemory = FALSE
-    # }
-
-    return(to)
-  }
-}
+# .cpMetadata = function(from,to) {
+#   if (class(from) == "scidbst" && class(to) == "scidbst") {
+#     to@extent = from@extent
+#     crs(to) = crs(from)
+#
+#     to@affine = from@affine
+#
+#     # to@data@names = scidb_attributes(to)
+#     # to@data@nlayers = length(to@data@names)
+#     # to@data@fromdisk = TRUE
+#
+#     to@title = from@title
+#     to@srs = from@srs
+#
+#     # to@temporal_dim = from@temporal_dim
+#     # to@startTime = from@startTime
+#     # to@tResolution = from@tResolution
+#     # to@tUnit = from@tUnit
+#     to@trs = from@trs
+#     to@tExtent = from@tExtent
+#
+#     to@isSpatial = from@isSpatial
+#     to@isTemporal = from@isTemporal
+#     # to@sref = from@sref
+#     to@tref = from@tref
+#
+#     # if (inMemory(from)) {
+#     #   to@data@inmemory = FALSE
+#     # }
+#
+#     return(to)
+#   }
+# }
 
 # Calculates dimension indices from spatial real world coordinates given by an extent
 # object: scidbst object

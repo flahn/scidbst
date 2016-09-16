@@ -38,10 +38,6 @@ NULL
   sci.obj = regrid(x=sci.obj,grid=grid, expr=expr)
   x@proxy = sci.obj
 
-  #copy and adapt metadata
-  # out = .scidbst_class(sci.obj)
-  # out = .cpMetadata(x,out)
-
   if (x@isSpatial && (grid[xdim(x)] > 1 || grid[ydim(x)] > 1)) {
     #adapt affine transformation
     scale_matrix = matrix(c(1,0,0,0,grid[xdim(x)],0,0,0,grid[ydim(x)]),ncol=3)

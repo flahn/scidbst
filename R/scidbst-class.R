@@ -29,37 +29,51 @@ scidbst = function(...){
   .scidbst@proxy = .scidb
   .scidbst@title = .scidb@name
 
-  .srs = iquery(paste("eo_getsrs(",.scidb@name,")",sep=""),return=TRUE)
-
-  .scidbst@sref = list()
-  for (n in names(.srs)) {
-    if (n %in% c("i")) {
-      next
-    } else {
-      .scidbst@sref[n] = .srs[1,n]
-    }
-  }
-
-  .trs = iquery(paste("eo_gettrs(",.scidb@name,")",sep=""),return=TRUE)
-  .scidbst@tref = list()
-  for (n in names(.trs)) {
-    if (n %in% c("i")) {
-      next
-    } else {
-      .scidbst@tref[n] = .trs[1,n]
-    }
-  }
-
   .extent = iquery(paste("eo_extent(",.scidb@name,")",sep=""),return=TRUE)
 
   if (nrow(.extent) == 0) {
     stop("There is no spatial or temporal extent for this array.")
   }
 
+  .srs = iquery(paste("eo_getsrs(",.scidb@name,")",sep=""),return=TRUE)
   .scidbst@isSpatial = (nrow(.srs) > 0)
+
+  if (.scidbst@isSpatial) {
+    .scidbst@affine <- .createAffineTransformation(.srs)
+    .scidbst@srs = SRS(.srs$proj4text,dimnames=c(.srs[,"ydim"],.srs[,"xdim"]))
+    .scidbst@srs@authority = .srs$auth_name
+    .scidbst@srs@srid =.srs$auth_srid
+    .scidbst@srs@srtext = .srs$srtext
+
+    .scidbst@extent = extent(.extent[,"xmin"],.extent[,"xmax"],.extent[,"ymin"],.extent[,"ymax"])
+
+    #get minimum and maximum extent for spatial dimensions in terms of dimension indices
+    .scidbst@nrows = as.integer(nrow(.scidbst))
+    .scidbst@ncols = as.integer(ncol(.scidbst))
+
+    for (n in names(.srs)) {
+      if (n %in% c("i")) {
+        next
+      } else {
+        .scidbst@sref[n] = .srs[1,n]
+      }
+    }
+  }
+
+
+  .trs = iquery(paste("eo_gettrs(",.scidb@name,")",sep=""),return=TRUE)
   .scidbst@isTemporal = (nrow(.trs) > 0)
 
   if (.scidbst@isTemporal) {
+    .scidbst@tref = list()
+    for (n in names(.trs)) {
+      if (n %in% c("i")) {
+        next
+      } else {
+        .scidbst@tref[n] = .trs[1,n]
+      }
+    }
+
     # TRS variables
     temporal_dim = .trs[,"tdim"]
     tResolution = as.numeric(unlist(regmatches(.trs[,"dt"],gregexpr("(\\d)+",.trs[,"dt"]))))
@@ -72,22 +86,6 @@ scidbst = function(...){
 
     .scidbst@trs = TRS(temporal_dim,startTime,tResolution,tUnit)
     .scidbst@tExtent = textent(tmin,tmax)
-  }
-
-
-  if (.scidbst@isSpatial) {
-    .scidbst@affine <- .createAffineTransformation(.srs)
-
-
-    .scidbst@srs = SRS(.srs$proj4text,dimnames=c(.srs[,"ydim"],.srs[,"xdim"]))
-
-
-
-    .scidbst@extent = extent(.extent[,"xmin"],.extent[,"xmax"],.extent[,"ymin"],.extent[,"ymax"])
-
-    #get minimum and maximum extent for spatial dimensions in terms of dimension indices
-    .scidbst@nrows = as.integer(nrow(.scidbst))
-    .scidbst@ncols = as.integer(ncol(.scidbst))
   }
 
 

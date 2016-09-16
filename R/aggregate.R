@@ -11,10 +11,6 @@ setGeneric("aggregate.t", function(x, ...) standardGeneric("aggregate.t"))
     sobj = as(x,"scidb")
     agg = aggregate(sobj, by=selection,...) #delegate operation to scidb package
     x@proxy = agg
-    # out = .scidbst_class(agg)
-
-    #manage metadata
-    #out = .cpMetadata(x,out)
     x@data@names = scidb_attributes(x)
     x@trs@tResolution = as.numeric(difftime(tmax(x),tmin(x),tunit(x)))+1
     return(x)
@@ -72,8 +68,6 @@ setGeneric("aggregate.sp", function(x, ...) standardGeneric("aggregate.sp"))
     sobj = as(x,"scidb")
     agg = aggregate(sobj, by=selection, dots) # delegate operation to scidb package
     x@proxy = agg
-    # out = .scidbst_class(agg)
-    # out = .cpMetadata(x,out)
     x@data@names = scidb_attributes(x)
 
     x@affine = affine(x) %*% matrix(c(1,0,0,0,old_ncol,0,0,0,old_nrow),ncol=3,nrow=3)
@@ -160,20 +154,13 @@ setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
       # is gone.
       stop("No dimensions left.")
     }
-    # copy metadata
-    # out = .scidbst_class(out)
-    # out = .cpMetadata(x,out)
+
     x@data@names = scidb_attributes(x)
 
     # set tResolution to complete temporal extent
-
     x@trs@tResolution = as.numeric(difftime(tmax(x),tmin(x),tunit(x)))+1
-    #out@trs@dimname = ""
 
     # set space Resolution in affine transformation to total spatial extent
-
-    #out@spatial_dims = list()
-
     x@affine = affine(x) %*% matrix(c(1,0,0,0,old_ncol,0,0,0,old_nrow),ncol=3,nrow=3)
     x@isSpatial = FALSE
     x@isTemporal = FALSE
@@ -185,10 +172,7 @@ setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
   if (!aggregate_by_time && !aggregate_by_space && !any(x@srs@dimnames %in% by)) { # no referenced dimension involved
     #aggregate as scidb object
     x@proxy = aggregate(as(x,"scidb"),by,...)
-    #and then transform to scidbst
-    # arr = .scidbst_class(arr)
-    # arr = .cpMetadata(x,arr)
-    # return(arr)
+
     return(x)
   } else {
     stop("Aggregation over one spatial dimension currently not allowed")

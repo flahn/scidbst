@@ -14,7 +14,6 @@ NULL
 #' @slot tExtent the temporal extent as a \code{\link{TemporalExtent}} object
 #' @slot isSpatial A flag whether or not this object has a spatial reference
 #' @slot isTemporal A flag whether or not this object has a temporal reference
-#' @slot sref A named list of elements that represent the spatial reference as specified in scidb by eo_getsrs
 #' @slot tref A named list with the elements retrieved by eo_gettrs function
 #' @slot trs The temporal reference object (\code{\link{TRS}})
 #' @slot srs The spatial reference object \code{\link{SRS}}
@@ -25,7 +24,6 @@ NULL
                           contains=list("RasterBrick"),
                           slots=c(
                             affine = "matrix",
-                            sref = "list",
                             tref = "list",
                             tExtent = "TemporalExtent",
                             isSpatial ="logical",
