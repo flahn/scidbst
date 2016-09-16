@@ -18,7 +18,7 @@ setAs("scidbst","SpatialPointsDataFrame",function(from,to) {
   if (from@isSpatial) {
     if (!from@isTemporal) {
       coords = rbind(rep(1,nrow(.data)),.data[,xdim(from)],.data[,ydim(from)])
-      res = t(from@affine %*% coords) #much faster than the previous
+      res = t(affine(from) %*% coords) #much faster than the previous
       colnames(res) = c("sx","sy")
 
       res = as.data.frame(res)

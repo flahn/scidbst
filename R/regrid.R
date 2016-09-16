@@ -46,12 +46,12 @@ NULL
     #adapt affine transformation
     scale_matrix = matrix(c(1,0,0,0,grid[xdim(x)],0,0,0,grid[ydim(x)]),ncol=3)
     #scale
-    scaled_matrix = x@affine %*% scale_matrix
+    scaled_matrix = affine(x) %*% scale_matrix
 
     #calculate real world origin with min dim indices
     .starts = as.numeric(scidb_coordinate_start(x))
     names(.starts) = dimensions(x)
-    origin.rw = .transformToWorld(x@affine,.starts[xdim(x)],.starts[ydim(x)])
+    origin.rw = .transformToWorld(affine(x),.starts[xdim(x)],.starts[ydim(x)])
 
     #create temporary matrix to calculate the new origin
     help.matrix = cbind(origin.rw,-(scaled_matrix[,2:3]))

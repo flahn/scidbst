@@ -142,8 +142,8 @@
   ll = c(xmin(extent),ymin(extent))
   ur = c(xmax(extent),ymax(extent))
 
-  origin = object@affine[,1]
-  sub = object@affine[,2:3]
+  origin = affine(object)[,1]
+  sub = affine(object)[,2:3]
 
   img1 = (solve(sub) %*% (ll - origin))
   img2 = (solve(sub) %*% (ur - origin))
@@ -239,7 +239,7 @@ transformAllSpatialIndices = function(obj,df) {
   from = obj
 
   coords = rbind(rep(1,nrow(.data)),.data[,xdim(from)],.data[,ydim(from)])
-  res = t(from@affine %*% coords) #(x,y)
+  res = t(affine(from) %*% coords) #(x,y)
   .data[,xdim(from)] = res[,1]
   .data[,ydim(from)] = res[,2]
 

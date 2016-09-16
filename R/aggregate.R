@@ -76,7 +76,7 @@ setGeneric("aggregate.sp", function(x, ...) standardGeneric("aggregate.sp"))
     # out = .cpMetadata(x,out)
     x@data@names = scidb_attributes(x)
 
-    x@affine = x@affine %*% matrix(c(1,0,0,0,old_ncol,0,0,0,old_nrow),ncol=3,nrow=3)
+    x@affine = affine(x) %*% matrix(c(1,0,0,0,old_ncol,0,0,0,old_nrow),ncol=3,nrow=3)
 
     return(x)
   } else {
@@ -174,7 +174,7 @@ setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
 
     #out@spatial_dims = list()
 
-    x@affine = x@affine %*% matrix(c(1,0,0,0,old_ncol,0,0,0,old_nrow),ncol=3,nrow=3)
+    x@affine = affine(x) %*% matrix(c(1,0,0,0,old_ncol,0,0,0,old_nrow),ncol=3,nrow=3)
     x@isSpatial = FALSE
     x@isTemporal = FALSE
     return(x)

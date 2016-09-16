@@ -63,7 +63,7 @@ NULL
 
   if (object@isSpatial) {
     coords = rbind(rep(1,nrow(data)),data[,xdim(object)],data[,ydim(object)])
-    res = t(object@affine %*% coords) #much faster than the previous
+    res = t(affine(object) %*% coords) #much faster than the previous
     colnames(res) = c("sx","sy")
 
     res = as.data.frame(res)

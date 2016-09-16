@@ -106,7 +106,7 @@ if (!isGeneric("scidbsteval")) {
   # set spatial and temporal references if applicable
   if (expr@isSpatial) {
     #eo_setsrs:  {name,xdim,ydim,authname,authsrid,affine_str}
-    cmd = paste("eo_setsrs(",name,",'",xdim(expr),"','",ydim(expr),"','",expr@sref$auth_name,"',",expr@sref$auth_srid,",'","x0=",expr@affine[1,1]," y0=",expr@affine[2,1]," a11=",expr@affine[1,2]," a22=",expr@affine[2,3]," a12=",expr@affine[1,3]," a21=",expr@affine[2,2],"'",")",sep="")
+    cmd = paste("eo_setsrs(",name,",'",xdim(expr),"','",ydim(expr),"','",expr@sref$auth_name,"',",expr@sref$auth_srid,",'","x0=",affine(expr)[1,1]," y0=",affine(expr)[2,1]," a11=",affine(expr)[1,2]," a22=",affine(expr)[2,3]," a12=",affine(expr)[1,3]," a21=",affine(expr)[2,2],"'",")",sep="")
     iquery(cmd)
   }
 

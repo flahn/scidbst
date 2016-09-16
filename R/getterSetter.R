@@ -28,3 +28,10 @@ setMethod("getLayer",signature(x="scidbst",layer="ANY"), function(x,layer,...) {
   return(subset(b,layer,...))
 
 })
+
+setGeneric("affine", function(x) standardGeneric("affine"))
+
+#' @export
+setMethod("affine",signature(x="scidbst"),function(x) {
+  return(x@affine)
+})

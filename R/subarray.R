@@ -27,9 +27,9 @@ subarray.scidbst = function (x, limits, between = FALSE) {
       yvals = c(limits[yindex],limits[yindex+ndim]) #min/max for ydim
 
       #calculate upper left coordinate (origin of image coordinate system)
-      ul = .transformToWorld(x@affine,xvals[1],yvals[1]) #note: image coordinate system trans(i0) > trans(iEnd)
+      ul = .transformToWorld(affine(x),xvals[1],yvals[1]) #note: image coordinate system trans(i0) > trans(iEnd)
 
-      lr = .transformToWorld(x@affine,xvals[2],yvals[2]) #to get an extent
+      lr = .transformToWorld(affine(x),xvals[2],yvals[2]) #to get an extent
       newExtent = extent(ul[1],lr[1],lr[2],ul[2])
     }
 
