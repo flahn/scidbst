@@ -19,7 +19,10 @@ NULL
       validObject(y)
 
       e <- intersect(extent(x), extent(y))
-      e <- alignExtent(e, x, snap=snap)
+      rasterStruct = raster(x=extent(x),crs=crs(x))
+      nrow(rasterStruct) = as.integer(nrow(x))
+      ncol(rasterStruct) = as.integer(ncol(x))
+      e <- alignExtent(e, rasterStruct, snap=snap)
 
       # make list of dimension indices and use subarray again
       out = .calculateDimIndices(x,e)

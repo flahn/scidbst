@@ -1,4 +1,5 @@
-
+#' @include utils.R
+NULL
 
 #' Creates a SpatialPointsDataFrame from scidbst
 #'
@@ -6,17 +7,14 @@
 #' @family scidbst
 #' @importClassesFrom sp SpatialPointsDataFrame
 setAs("scidbst","SpatialPointsDataFrame",function(from,to) {
-  if (!hasValues(from)) {
-    .data = .downloadData(from)
-    if (nrow(.data) == 0) { #scidb does not return data. Stop here
-      stop("Image is empty.")
-    }
-  } else {
-    stop("Object has data already.")
-  }
 
   if (from@isSpatial) {
     if (!from@isTemporal) {
+      .data = .downloadData(from)
+      if (nrow(.data) == 0) { #scidb does not return data. Stop here
+        stop("Image is empty.")
+      }
+
       coords = rbind(rep(1,nrow(.data)),.data[,xdim(from)],.data[,ydim(from)])
       res = t(affine(from) %*% coords) #much faster than the previous
       colnames(res) = c("sx","sy")
@@ -57,47 +55,43 @@ setAs("scidbst","RasterBrick",function(from,to) {
 #' @importClassesFrom spacetime STSDF
 setAs("scidbst","STSDF",function(from,to) {
   if (from@isSpatial && from@isTemporal) {
-    if (!hasValues(from)) {
-      .data = .downloadData(from)
-      if (nrow(.data) == 0) { #scidb does not return data. Stop here
-        stop("Image is empty.")
-      }
-
-      # sp
-      .data = transformAllSpatialIndices(from,.data)
-      #uniqueLocations = unique(cbind(y=spdata["y"],x=spdata[,"x"]))
-
-      # coordinates(.data) = ~x+y
-      # crs(.data) = crs(from)
-      # in principle it would be great to use unique locations, but it is hard to assign the indices of the tuples (with 'which')
-      # so we are going to try out if it works with redundant points
-
-      # time
-
-      .data = transformAllTemporalIndices(from,.data)
-      uniqueDates = unique(.data[,tdim(from)])
-      xtsDates = xts(1:length(uniqueDates),order.by=uniqueDates) # no data just time
-
-      # index
-      indices = matrix(cbind(1:nrow(.data),rep(NA,nrow(.data))),nrow=nrow(.data),ncol=2)
-      # first col refers to spatialpoints
-      # second col refers to the dates
-      for (pos in 1:length(uniqueDates)) {
-        d = as.numeric(uniqueDates[pos])
-        indices[as.numeric(.data[,tdim(from)])==d,2] = pos
-      }
-      sp = SpatialPoints(.data[,c(xdim(from),ydim(from))])
-      crs(sp) = crs(from)
-      gridded(sp) = TRUE
-      # data
-
-      stsdf = STSDF(sp=sp,time=xtsDates,data=.data[,scidb_attributes(from),drop=FALSE],index=indices)
-
-      return(stsdf)
-
-    } else {
-      stop("Object has data already.")
+    .data = .downloadData(from)
+    if (nrow(.data) == 0) { #scidb does not return data. Stop here
+      stop("Image is empty.")
     }
+
+    # sp
+    .data = transformAllSpatialIndices(from,.data)
+    #uniqueLocations = unique(cbind(y=spdata["y"],x=spdata[,"x"]))
+
+    # coordinates(.data) = ~x+y
+    # crs(.data) = crs(from)
+    # in principle it would be great to use unique locations, but it is hard to assign the indices of the tuples (with 'which')
+    # so we are going to try out if it works with redundant points
+
+    # time
+
+    .data = transformAllTemporalIndices(from,.data)
+    uniqueDates = unique(.data[,tdim(from)])
+    xtsDates = xts(1:length(uniqueDates),order.by=uniqueDates) # no data just time
+
+    # index
+    indices = matrix(cbind(1:nrow(.data),rep(NA,nrow(.data))),nrow=nrow(.data),ncol=2)
+    # first col refers to spatialpoints
+    # second col refers to the dates
+    for (pos in 1:length(uniqueDates)) {
+      d = as.numeric(uniqueDates[pos])
+      indices[as.numeric(.data[,tdim(from)])==d,2] = pos
+    }
+    sp = SpatialPoints(.data[,c(xdim(from),ydim(from))])
+    crs(sp) = crs(from)
+    gridded(sp) = TRUE
+    # data
+
+    stsdf = STSDF(sp=sp,time=xtsDates,data=.data[,scidb_attributes(from),drop=FALSE],index=indices)
+
+    return(stsdf)
+
   } else {
     stop("Array has no temporal or spatial reference")
   }

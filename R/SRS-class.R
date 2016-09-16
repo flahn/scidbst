@@ -80,21 +80,45 @@ setMethod("ydim",signature(x="SRS"),function(x){
   return(x@dimnames[1])
 })
 
+#' @importFrom raster xres
 #' @export
 setMethod("xres", signature(x="scidbst"), function(x) {
   e = extent(x)
-  dx = xmax(x)-xmin(x)
+  dx = xmax(e)-xmin(e)
   return(dx/ncol(x))
 })
 
+#' @importFrom raster yres
 #' @export
 setMethod("yres", signature(x="scidbst"), function(x) {
   e = extent(x)
-  dy = ymax(x)-ymin(x)
+  dy = ymax(e)-ymin(e)
   return(dy/nrow(x))
 })
 
+#' @importFrom raster res
 #' @export
 setMethod("res", signature(x="scidbst"), function(x) {
   return(c(xres(x),yres(x)))
 })
+
+#' @export
+setMethod("xmin",signature(x="scidbst"),function(x) {
+  return(xmin(x@extent))
+})
+
+#' @export
+setMethod("ymin",signature(x="scidbst"),function(x) {
+  return(ymin(x@extent))
+})
+
+#' @export
+setMethod("xmax",signature(x="scidbst"),function(x) {
+  return(xmax(x@extent))
+})
+
+#' @export
+setMethod("ymax",signature(x="scidbst"),function(x) {
+  return(ymax(x@extent))
+})
+

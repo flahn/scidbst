@@ -8,18 +8,19 @@
 #' @export
 setMethod("ncol",signature(x="scidbst"),function(x) {
   if (x@isSpatial) {
-    if (!hasValues(x)) {
+    # if (!hasValues(x)) {
       lengths = .getLengths(x)
       if (length(lengths) == 1) {
         return(lengths[1])
       } else {
         return(lengths[xdim(x)])
       }
-    } else {
-      return(x@ncols)
-    }
+    # } else {
+    #   return(x@ncols)
+    # }
 
   } else if (x@isTemporal) {
-    return(as.numeric(difftime(tmax(x),tmin(x),tunit(x)))+1)
+    # delta_t/t_res
+    return((as.numeric(difftime(tmax(x),tmin(x),tunit(x)))+1)/tres(x))
   }
 })

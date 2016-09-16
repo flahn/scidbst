@@ -48,16 +48,16 @@ scidbst = function(...){
     .scidbst@extent = extent(.extent[,"xmin"],.extent[,"xmax"],.extent[,"ymin"],.extent[,"ymax"])
 
     #get minimum and maximum extent for spatial dimensions in terms of dimension indices
-    .scidbst@nrows = as.integer(nrow(.scidbst))
-    .scidbst@ncols = as.integer(ncol(.scidbst))
+    # .scidbst@nrows = as.integer(nrow(.scidbst))
+    # .scidbst@ncols = as.integer(ncol(.scidbst))
 
-    for (n in names(.srs)) {
-      if (n %in% c("i")) {
-        next
-      } else {
-        .scidbst@sref[n] = .srs[1,n]
-      }
-    }
+    # for (n in names(.srs)) {
+    #   if (n %in% c("i")) {
+    #     next
+    #   } else {
+    #     .scidbst@sref[n] = .srs[1,n]
+    #   }
+    # }
   }
 
 

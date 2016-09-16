@@ -29,6 +29,7 @@ Collate:
     'TemporalExtent-class.R'
     'scidbst-class.R'
     'aggregate.R'
+    'utils.R'
     'coerce.R'
     'crop.R'
     'cumulate.R'
@@ -51,4 +52,3 @@ Collate:
     'subset.R'
     'textent.R'
     'transform-apply.R'
-    'utils.R'

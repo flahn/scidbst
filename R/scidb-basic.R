@@ -4,17 +4,12 @@ if (!isGeneric("dimensions")) {
   })
 }
 
-#' @importMethodsFrom sp dimensions
+#' @importFrom sp dimensions
 #' @export
 setMethod("dimensions",signature(obj="scidbst"), function(obj) {
   .scidb = as(obj,"scidb")
   dims = scidb::dimensions(.scidb)
   return(dims)
-})
-
-#' @export
-setMethod("dimensions",signature(obj="scidb"), function(obj) {
-  scidb::dimensions(obj)
 })
 
 

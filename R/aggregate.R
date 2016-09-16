@@ -11,7 +11,7 @@ setGeneric("aggregate.t", function(x, ...) standardGeneric("aggregate.t"))
     sobj = as(x,"scidb")
     agg = aggregate(sobj, by=selection,...) #delegate operation to scidb package
     x@proxy = agg
-    x@data@names = scidb_attributes(x)
+    # x@data@names = scidb_attributes(x)
     x@trs@tResolution = as.numeric(difftime(tmax(x),tmin(x),tunit(x)))+1
     return(x)
   } else {
@@ -68,7 +68,7 @@ setGeneric("aggregate.sp", function(x, ...) standardGeneric("aggregate.sp"))
     sobj = as(x,"scidb")
     agg = aggregate(sobj, by=selection, dots) # delegate operation to scidb package
     x@proxy = agg
-    x@data@names = scidb_attributes(x)
+    # x@data@names = scidb_attributes(x)
 
     x@affine = affine(x) %*% matrix(c(1,0,0,0,old_ncol,0,0,0,old_nrow),ncol=3,nrow=3)
 
@@ -155,7 +155,7 @@ setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
       stop("No dimensions left.")
     }
 
-    x@data@names = scidb_attributes(x)
+    # x@data@names = scidb_attributes(x)
 
     # set tResolution to complete temporal extent
     x@trs@tResolution = as.numeric(difftime(tmax(x),tmin(x),tunit(x)))+1

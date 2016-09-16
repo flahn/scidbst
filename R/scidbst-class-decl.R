@@ -18,13 +18,17 @@ NULL
 #' @slot trs The temporal reference object (\code{\link{TRS}})
 #' @slot srs The spatial reference object \code{\link{SRS}}
 #' @slot proxy scidb proxy \code{\link[scidb]{scidb}}
+#' @slot extent spatial \code{\link[raster]{Extent}}
+#' @slot title The name of the original array
 #' @aliases scidbst
+#' @importClassesFrom raster Extent
 #' @exportClass scidbst
 .scidbst_class = setClass("scidbst",
-                          contains=list("RasterBrick"),
                           slots=c(
                             affine = "matrix",
                             tref = "list",
+                            title = "character",
+                            extent = "Extent",
                             tExtent = "TemporalExtent",
                             isSpatial ="logical",
                             isTemporal = "logical",

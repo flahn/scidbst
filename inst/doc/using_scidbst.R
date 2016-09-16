@@ -34,8 +34,9 @@ ethiopia.subset = slice(ethiopia.subset,"t","2003-07-21")
 
 ## ----ethiopiaPlot, cache=1-----------------------------------------------
 #values = getValues(ethiopia.subset)
-ethiopia.subset = readAll(ethiopia.subset)
-spplot(ethiopia.subset)
+# ethiopia.subset = readAll(ethiopia.subset)
+ethiopia.brick = as(ethiopia.subset,"RasterBrick")
+spplot(ethiopia.brick)
 
 ## ----ndviNames, cache=1--------------------------------------------------
 ls.brazil.name = "LS7_BRAZIL"
@@ -43,8 +44,8 @@ regrid.name = "LS7_BRAZIL_REGRID"
 ndvi.name = "LS7_BRAZIL_REGRID_NDVI"
 
 ## ----ndviDeletes, include=FALSE,eval=FALSE-------------------------------
-# scidbrm(regrid.name,force=TRUE)
-# scidbrm(ndvi.name, force=TRUE)
+scidbrm(regrid.name,force=TRUE)
+scidbrm(ndvi.name, force=TRUE)
 
 ## ----ndviResolution, cache=1---------------------------------------------
 ls7_brazil = scidbst(ls.brazil.name)
@@ -65,23 +66,27 @@ ls7_calc = project(ls7_calc,c("ndvi","mdvi"))
 ls7_calc = scidbsteval(ls7_calc,ndvi.name)
 
 ## ----ndviPlot, cache=1---------------------------------------------------
-ls7_calc_t0 = readAll(slice(ls7_calc,"t","2001-088"))
-spplot(getLayer(ls7_calc_t0,"ndvi"),main="NDVI calculation")
-spplot(getLayer(ls7_calc_t0,"mdvi"),main="MDVI calculation")
+# ls7_calc_t0 = readAll(slice(ls7_calc,"t","2001-088"))
+ndvi = slice(project(ls7_calc,c("ndvi")),"t","2001-088")
+mdvi = slice(project(ls7_calc,c("mdvi")),"t","2001-088")
+spplot(ndvi,main="NDVI calculation")
+spplot(mdvi,main="MDVI calculation")
 
 ## ----cloudMask, cache=1--------------------------------------------------
 ls7_brazil = scidbst("LS7_BRAZIL")
 sliced.regridded = regrid(slice(ls7_brazil,"t",0),c(10,10),"avg(band1),avg(band2),avg(band3)")
-sliced.regridded = readAll(sliced.regridded)
-plotRGB(sliced.regridded,r=3,g=2,b=1)
+# sliced.regridded = readAll(sliced.regridded)
+brazil.brick = as(sliced.regridded,"RasterBrick")
 
-transformed = transform(sliced.regridded,cloud = "iif(band1_avg >= 240 and band2_avg >= 240 and band3_avg >= 240, 1 , 0)")
+
+transformed = transform(sliced.regridded,cloud = "iif(band1_avg >= 225 and band2_avg >= 225 and band3_avg >= 225, 1 , 0)")
 p2 = project(transformed,c("cloud"))
 clouds = subset(p2,"cloud = 1")
 
 points = as(clouds,"SpatialPointsDataFrame")
-plot(points)
+spplot(points)
 
+plotRGB(brazil.brick,r=3,g=2,b=1)
 brick = as(clouds,"RasterBrick")
 spplot(brick)
 

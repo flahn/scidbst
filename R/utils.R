@@ -157,6 +157,9 @@
 }
 
 # Returns the lengths of each individual dimension
+# obj: scidbst object
+#
+# returns: numeric vector with dimension names and lengths
 .getLengths = function(obj) {
   .dimnames = dimensions(obj)
   .dimbounds = scidb_coordinate_bounds(obj)
@@ -277,14 +280,20 @@ transformAllTemporalIndices = function(obj,df) {
   return(.data)
 }
 
-#' @export
-clear = function(x) {
-  if (hasValues(x)) {
-    x@data@inmemory = FALSE
-    x@data@fromdisk = FALSE
-    x@data@values = matrix()
-    x@data@names = vector("character",length=0)
-    x@data@nlayers = as.integer(0)
-    return(x)
-  }
+.downloadData = function(object) {
+  cat("Downloading data...\n")
+  .data = iquery(object@proxy@name,return=T) #query scidb for data
+  cat("Download done.")
+  return(.data)
 }
+
+# clear = function(x) {
+#   if (hasValues(x)) {
+#     x@data@inmemory = FALSE
+#     x@data@fromdisk = FALSE
+#     x@data@values = matrix()
+#     x@data@names = vector("character",length=0)
+#     x@data@nlayers = as.integer(0)
+#     return(x)
+#   }
+# }

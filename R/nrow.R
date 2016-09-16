@@ -8,19 +8,19 @@
 #' @export
 setMethod("nrow",signature(x="scidbst"),function(x) {
   if (x@isSpatial) {
-    if (!hasValues(x)) {
+    # if (!hasValues(x)) {
       lengths = .getLengths(x)
       if (length(lengths) == 1) {
         return(1)
       } else {
         return(lengths[ydim(x)])
       }
-    } else {
-      return(x@nrows)
-    }
+    # } else {
+    #   return(x@nrows)
+    # }
 
   } else if (x@isTemporal){
     return(1)
   }
-  stop("Did not expect to go here.")
+  stop("Did not expect to go here. Probably no spatial or temporal reference")
 })
