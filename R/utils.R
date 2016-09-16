@@ -171,14 +171,9 @@
 # x: scidbst object
 #
 # returns scidb object
-.toScidb = function(x) {
-  # res = scidb("")
-  # res@name = x@name
-  # res@gc = x@gc
-  # res@meta = suppressWarnings(x@meta)
-  # return(res)
-  return(x@proxy)
-}
+# .toScidb = function(x) {
+#   return(x@proxy)
+# }
 
 # Returns the reference period of a scidbst object, e.g. P1D, P16D or P1M
 # x: scidbst object

@@ -8,7 +8,7 @@ setGeneric("aggregate.t", function(x, ...) standardGeneric("aggregate.t"))
 
   if (x@isTemporal) {
     x@isTemporal = FALSE
-    sobj = .toScidb(x)
+    sobj = as(x,"scidb")
     agg = aggregate(sobj, by=selection,...) #delegate operation to scidb package
     x@proxy = agg
     # out = .scidbst_class(agg)
@@ -69,7 +69,7 @@ setGeneric("aggregate.sp", function(x, ...) standardGeneric("aggregate.sp"))
     x@isSpatial = FALSE
     old_nrow = nrow(x)
     old_ncol = ncol(x)
-    sobj = .toScidb(x)
+    sobj = as(x,"scidb")
     agg = aggregate(sobj, by=selection, dots) # delegate operation to scidb package
     x@proxy = agg
     # out = .scidbst_class(agg)
@@ -184,7 +184,7 @@ setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
 
   if (!aggregate_by_time && !aggregate_by_space && !any(x@srs@dimnames %in% by)) { # no referenced dimension involved
     #aggregate as scidb object
-    x@proxy = aggregate(.toScidb(x),by,...)
+    x@proxy = aggregate(as(x,"scidb"),by,...)
     #and then transform to scidbst
     # arr = .scidbst_class(arr)
     # arr = .cpMetadata(x,arr)

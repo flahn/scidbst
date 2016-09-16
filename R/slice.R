@@ -6,12 +6,10 @@ if (!isGeneric("slice")) {
 }
 
 .slice = function (x,d,n) {
-  .scidb.obj = .toScidb(x)
+  .scidb.obj = as(x,"scidb")
 
-  # .scidb.obj = .scidbst_class(slice(.scidb.obj,d,n))
   .scidb.obj = slice(.scidb.obj,d,n)
 
-  # out = .cpMetadata(x,out)
   x@proxy = .scidb.obj
   if (d %in% tdim(x)) {
     baseTime = 0

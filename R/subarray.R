@@ -47,10 +47,8 @@ subarray.scidbst = function (x, limits, between = FALSE) {
     }
   }
 
-  scidb.obj = .toScidb(x)
+  scidb.obj = as(x,"scidb")
   scidb.obj = scidb::subarray(scidb.obj, limits, between)
-  # out = .scidbst_class(scidb.obj)
-  # out = .cpMetadata(scidbst.obj,out)
   x@proxy = scidb.obj
 
 

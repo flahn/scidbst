@@ -3,12 +3,9 @@ if (!isGeneric("project")) {
 }
 
 .project.scidbst = function(x,attributes) {
-  .scidb.object = .toScidb(x)
+  .scidb.object = as(x,"scidb")
 
   .scidb.object = scidb::project(x=.scidb.object, attributes=attributes)
-  # out = .scidbst_class(.scidb.object)
-  # out = .cpMetadata(x,out)
-  # return(out)
   x@proxy = .scidb.object
   return(x)
 }

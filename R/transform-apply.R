@@ -8,7 +8,7 @@ if (!isGeneric("transform")) {
 transform.scidbst = function (`_data`, ...) {
 
   scidbst.obj = `_data`
-  scidb.obj = .toScidb(scidbst.obj)
+  scidb.obj = as(scidbst.obj,"scidb")
   scidb.obj = transform(scidb.obj,...)
   # out = .scidbst_class(scidb.obj)
   # out = .cpMetadata(scidbst.obj,out)
