@@ -17,7 +17,8 @@ subarray.scidbst = function (x, limits, between = FALSE) {
     stop("limits do not match dimension description [#limits != (2*#dims)]")
   }
 
-  if (!between) { #subarray call
+  # adapt extent
+  # if (!between) { #subarray call
     if (x@isSpatial) {
       #image origin has been shifted towards limits
       xindex = which(dimensions(x)==xdim(x)) #get position of "x" values
@@ -45,7 +46,7 @@ subarray.scidbst = function (x, limits, between = FALSE) {
       }
 
     }
-  }
+  # }
 
   scidb.obj = as(x,"scidb")
   scidb.obj = scidb::subarray(scidb.obj, limits, between)
@@ -70,8 +71,15 @@ subarray.scidbst = function (x, limits, between = FALSE) {
       x@tExtent@min = t0
       x@tExtent@max = tEnd
     }
-  } #else leave as is since we do not change dimension values
-
+  } else {#else leave as is since we do not change dimension values <- wrong we dont mess with TRS or SRS but still with the extent
+    if (x@isSpatial) {
+      x@extent = newExtent
+    }
+    if (x@isTemporal) {
+      x@tExtent@min = t0
+      x@tExtent@max = tEnd
+    }
+  }
   return(x)
 }
 

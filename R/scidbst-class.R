@@ -121,7 +121,7 @@ setGeneric("affine", function(x) standardGeneric("affine"))
 #' @return a numeric matrix containing the affine transformation parameter
 #' @export
 setMethod("affine",signature(x="scidbst"),function(x) {
-  if (x@isSpatial) {
+  if (x@isSpatial || !is.null(x@affine)) {
     return(x@affine)
   } else {
     stop("The array is not spatial. There is no affine transformation.")

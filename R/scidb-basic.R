@@ -12,6 +12,20 @@ setMethod("dimensions",signature(obj="scidbst"), function(obj) {
   return(dims)
 })
 
+#' Reports the current scidb operation cascade
+#'
+#' The internal scidb proxy object contains the current AFL query string. scidb_op returns the AFL query string.
+#'
+#' @param x scidbst object
+#' @return character - AFL query
+#' @export
+scidb_op = function(x) {
+  if (inherits(x,"scidbst")) {
+    return(x@proxy@name)
+  } else {
+    stop("parameter x is no scidbst object.")
+  }
+}
 
 if (!isGeneric("scidb_attributes")) {
   setGeneric("scidb_attributes",function(x) {
@@ -102,3 +116,4 @@ setMethod("scidb_coordinate_chunksize",signature(x="scidbst"), function(x) {
 
 #' @export
 setMethod("scidb_coordinate_chunksize",signature(x="scidb"),scidb::scidb_coordinate_chunksize)
+

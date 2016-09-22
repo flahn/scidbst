@@ -1,13 +1,14 @@
 ## ---- include=FALSE------------------------------------------------------
 library(scidb)
 library(raster)
-library(knitr)
 library(zoo)
 library(xts)
+library(knitr)
 library(scidbst)
 
 opts_chunk$set(collapse = T, comment = "#>")
 opts_chunk$set(cache.extra = list(R.version, sessionInfo(), format(Sys.Date(), '%Y-%m')))
+opts_chunk$set(out.width="800px",out.height="650px")
 outputFolder = "./assests/"
 
 ## ----loadCredentials, include=FALSE--------------------------------------
@@ -23,6 +24,7 @@ l7_ethiopia
 extent(l7_ethiopia)
 crs(l7_ethiopia)
 t.extent(l7_ethiopia)
+trs(l7_ethiopia)
 
 ## ----ehtiopiaSubset, cache=1---------------------------------------------
 subset.extent = extent(35,36.5,6,8.5)
@@ -33,8 +35,6 @@ extent(ethiopia.subset)
 ethiopia.subset = slice(ethiopia.subset,"t","2003-07-21")
 
 ## ----ethiopiaPlot, cache=1-----------------------------------------------
-#values = getValues(ethiopia.subset)
-# ethiopia.subset = readAll(ethiopia.subset)
 ethiopia.brick = as(ethiopia.subset,"RasterBrick")
 spplot(ethiopia.brick)
 
@@ -44,8 +44,8 @@ regrid.name = "LS7_BRAZIL_REGRID"
 ndvi.name = "LS7_BRAZIL_REGRID_NDVI"
 
 ## ----ndviDeletes, include=FALSE,eval=FALSE-------------------------------
-scidbrm(regrid.name,force=TRUE)
-scidbrm(ndvi.name, force=TRUE)
+#  scidbrm(regrid.name,force=TRUE)
+#  scidbrm(ndvi.name, force=TRUE)
 
 ## ----ndviResolution, cache=1---------------------------------------------
 ls7_brazil = scidbst(ls.brazil.name)
@@ -61,12 +61,11 @@ yres(ls7_brazil_regrid)
 ls7_brazil_regrid = scidbsteval(ls7_brazil_regrid,regrid.name)
 
 ## ----ndviCalculation, cache=1--------------------------------------------
-ls7_calc = transform(ls7_brazil_regrid, ndvi = "(band4_avg - band3_avg) / (band4_avg + band3_avg)", mdvi = "(band5_avg - band3_avg) / (band5_avg + band3_avg)")
+ls7_calc = transform(ls7_brazil_regrid, ndvi = "(band4_avg - band3_avg) / (band4_avg + band3_avg)", mdvi = "(band8_avg - band3_avg) / (band8_avg + band3_avg)")
 ls7_calc = project(ls7_calc,c("ndvi","mdvi"))
 ls7_calc = scidbsteval(ls7_calc,ndvi.name)
 
 ## ----ndviPlot, cache=1---------------------------------------------------
-# ls7_calc_t0 = readAll(slice(ls7_calc,"t","2001-088"))
 ndvi = slice(project(ls7_calc,c("ndvi")),"t","2001-088")
 mdvi = slice(project(ls7_calc,c("mdvi")),"t","2001-088")
 spplot(ndvi,main="NDVI calculation")
@@ -75,18 +74,16 @@ spplot(mdvi,main="MDVI calculation")
 ## ----cloudMask, cache=1--------------------------------------------------
 ls7_brazil = scidbst("LS7_BRAZIL")
 sliced.regridded = regrid(slice(ls7_brazil,"t",0),c(10,10),"avg(band1),avg(band2),avg(band3)")
-# sliced.regridded = readAll(sliced.regridded)
 brazil.brick = as(sliced.regridded,"RasterBrick")
+plotRGB(brazil.brick,r=3,g=2,b=1)
 
-
-transformed = transform(sliced.regridded,cloud = "iif(band1_avg >= 225 and band2_avg >= 225 and band3_avg >= 225, 1 , 0)")
+transformed = transform(sliced.regridded,cloud = "iif(band1_avg >= 252 and band2_avg >= 252 and band3_avg >= 252, 1 , 0)")
 p2 = project(transformed,c("cloud"))
 clouds = subset(p2,"cloud = 1")
 
 points = as(clouds,"SpatialPointsDataFrame")
-spplot(points)
+plot(points)
 
-plotRGB(brazil.brick,r=3,g=2,b=1)
 brick = as(clouds,"RasterBrick")
 spplot(brick)
 
@@ -95,8 +92,10 @@ trmm = scidbst("TRMM3B42_DAILY")
 trmm.prec = project(trmm,"band5")
 
 trmm.prec.crop = crop(trmm.prec,l7_ethiopia)
-daily.avg.ethiopia = aggregate(trmm.prec.crop,list("t"),FUN="sum(band5)")
+daily.avg.ethiopia = aggregate(trmm.prec.crop,list("t"),FUN="avg(band5)")
 
-ts = as(daily.avg.ethiopia,"xts")
-plot(window(ts,start="2010-01-01",end="2013-01-01"),major.ticks="months",minor.ticks=FALSE,main="Average precipitation for Ethiopia Landsat scene from 2010 to 2013")
+te = textent(as.POSIXct("2010-01-01"),as.POSIXct("2013-01-01"))
+tsubset = subarray(daily.avg.ethiopia,limits=te,between=TRUE)
+ts = as(tsubset,"xts")
+plot(ts,major.ticks="months",minor.ticks=FALSE,main="Average precipitation for Ethiopia Landsat scene from 2010 to 2013")
 
