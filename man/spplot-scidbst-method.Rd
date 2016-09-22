@@ -5,15 +5,14 @@
 \alias{spplot,scidbst-method}
 \title{spplot for scidbst objects}
 \usage{
-\S4method{spplot}{scidbst}(obj, maxpixels = 50000, as.table = TRUE, zlim,
-  ...)
+\S4method{spplot}{scidbst}(obj, ...)
 }
 \arguments{
 \item{obj}{scidbst object}
 
-\item{maxpixels}{Integer. Number of pixels to sample from each layer of large Raster objects}
-
 \item{...}{Any argument that can be passed to spplot and levelplot}
+
+\item{maxpixels}{Integer. Number of pixels to sample from each layer of large Raster objects}
 }
 \description{
 Like the raster version for spplot, this function plots a spatially referenced scidb array. To make this work on a
@@ -21,6 +20,6 @@ multidimensional array, the number of dimensions must be reduced to two spatial 
 be done by using the 'slice' operation of scidb.
 }
 \seealso{
-\code{\link{spplot,Raster-method}}
+\code{\link[raster]{spplot,Raster-method}}
 }
 

@@ -106,7 +106,7 @@ if (!isGeneric("scidbsteval")) {
   }
 
   if (expr@isTemporal) {
-    cmd = paste("eo_settrs(",name,",'",tdim(expr),"','",as.character(t0(expr)),"','",.getRefPeriod(expr),"'",")",sep="")
+    cmd = paste("eo_settrs(",name,",'",tdim(expr),"','",as.character(t0(expr)),"','",getRefPeriod(expr),"'",")",sep="")
     iquery(cmd)
   }
 

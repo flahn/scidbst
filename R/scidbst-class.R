@@ -46,18 +46,6 @@ scidbst = function(...){
     .scidbst@srs@srtext = .srs$srtext
 
     .scidbst@extent = extent(.extent[,"xmin"],.extent[,"xmax"],.extent[,"ymin"],.extent[,"ymax"])
-
-    #get minimum and maximum extent for spatial dimensions in terms of dimension indices
-    # .scidbst@nrows = as.integer(nrow(.scidbst))
-    # .scidbst@ncols = as.integer(ncol(.scidbst))
-
-    # for (n in names(.srs)) {
-    #   if (n %in% c("i")) {
-    #     next
-    #   } else {
-    #     .scidbst@sref[n] = .srs[1,n]
-    #   }
-    # }
   }
 
 
@@ -65,14 +53,6 @@ scidbst = function(...){
   .scidbst@isTemporal = (nrow(.trs) > 0)
 
   if (.scidbst@isTemporal) {
-    .scidbst@tref = list()
-    for (n in names(.trs)) {
-      if (n %in% c("i")) {
-        next
-      } else {
-        .scidbst@tref[n] = .trs[1,n]
-      }
-    }
 
     # TRS variables
     temporal_dim = .trs[,"tdim"]
@@ -88,11 +68,27 @@ scidbst = function(...){
     .scidbst@tExtent = textent(tmin,tmax)
   }
 
-
-
   return(.scidbst)
 }
 
+if (!isGeneric("trs")) {
+  setGeneric("trs", function(x) {
+    standardGeneric("trs")
+  })
+}
+
+#' Returns the Temporal reference object
+#'
+#' @param x scidbst object
+#' @return \code{\link{TRS} object}
+#' @export
+setMethod("trs",signature(x="scidbst"), function(x){
+  if (x@isTemporal) {
+    return(x@trs)
+  } else {
+    stop("Objecthas no temporal reference")
+  }
+})
 
 #' @export
 setMethod("show",signature(object="scidbst"), function(object){
@@ -109,8 +105,27 @@ setMethod("show",signature(object="scidbst"), function(object){
   }
   if (object@isTemporal) {
     show(t.extent(object))
+    show(trs(object))
   }
   show(s)
 })
 
+setGeneric("affine", function(x) standardGeneric("affine"))
+
+#' Returns the affine transformation
+#'
+#' The function returns the stored affine transformation. The matrix has a dimensionality of 2x3 and contains the following values:
+#' x0,xres(x),xshear(x) \\ y0, yshear(x), yres(x)
+#'
+#' @param x scidbst object
+#' @return a numeric matrix containing the affine transformation parameter
+#' @export
+setMethod("affine",signature(x="scidbst"),function(x) {
+  if (x@isSpatial) {
+    return(x@affine)
+  } else {
+    stop("The array is not spatial. There is no affine transformation.")
+  }
+
+})
 

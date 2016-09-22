@@ -4,7 +4,7 @@
 \name{scidbst}
 \alias{.scidbst_class}
 \alias{scidbst}
-\title{Class scidbst}
+\title{Constructor for scidbst}
 \usage{
 scidbst(...)
 }
@@ -15,8 +15,6 @@ scidbst(...)
 scidbst object
 }
 \description{
-Class \code{scidbst} inherits from class \code{scidb}
-
 Constructor for scidbst
 }
 \section{Slots}{
@@ -32,15 +30,15 @@ Constructor for scidbst
 
 \item{\code{isTemporal}}{A flag whether or not this object has a temporal reference}
 
-\item{\code{sref}}{A named list of elements that represent the spatial reference as specified in scidb by eo_getsrs}
-
-\item{\code{tref}}{A named list with the elements retrieved by eo_gettrs function}
-
 \item{\code{trs}}{The temporal reference object (\code{\link{TRS}})}
 
 \item{\code{srs}}{The spatial reference object \code{\link{SRS}}}
 
 \item{\code{proxy}}{scidb proxy \code{\link[scidb]{scidb}}}
+
+\item{\code{extent}}{spatial \code{\link[raster]{Extent}}}
+
+\item{\code{title}}{The name of the original array}
 }}
 \note{
 At least parameter \code{name} should be provided

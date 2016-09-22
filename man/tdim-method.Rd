@@ -11,7 +11,9 @@
 \S4method{tdim}{scidbst}(x)
 }
 \arguments{
-\item{x}{scidbst object}
+\item{x}{TRS object}
+
+\item{x}{TRS object}
 }
 \value{
 The temporal dimension name or the first dimension name

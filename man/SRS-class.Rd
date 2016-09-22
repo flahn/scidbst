@@ -23,5 +23,11 @@ Creates a new SRS object with projection arguments and dimension names (y,x)-ord
 
 \describe{
 \item{\code{dimnames}}{character - The names for the dimensions in the order y-axis (South-North), x-axis(West-East)}
+
+\item{\code{authority}}{character - The name of the authority that provides the information about the reference system}
+
+\item{\code{srid}}{integer - The integer identifier that 'names' the spatial reference system}
+
+\item{\code{srtext}}{character - The textual description of the reference system in OGC Well Known Text (WKT) format}
 }}
 

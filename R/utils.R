@@ -97,42 +97,6 @@
   return(trans %*% c(1,x,y))
 }
 
-
-# Copies metadata from a scidbst class to a scidbst class
-# .cpMetadata = function(from,to) {
-#   if (class(from) == "scidbst" && class(to) == "scidbst") {
-#     to@extent = from@extent
-#     crs(to) = crs(from)
-#
-#     to@affine = from@affine
-#
-#     # to@data@names = scidb_attributes(to)
-#     # to@data@nlayers = length(to@data@names)
-#     # to@data@fromdisk = TRUE
-#
-#     to@title = from@title
-#     to@srs = from@srs
-#
-#     # to@temporal_dim = from@temporal_dim
-#     # to@startTime = from@startTime
-#     # to@tResolution = from@tResolution
-#     # to@tUnit = from@tUnit
-#     to@trs = from@trs
-#     to@tExtent = from@tExtent
-#
-#     to@isSpatial = from@isSpatial
-#     to@isTemporal = from@isTemporal
-#     # to@sref = from@sref
-#     to@tref = from@tref
-#
-#     # if (inMemory(from)) {
-#     #   to@data@inmemory = FALSE
-#     # }
-#
-#     return(to)
-#   }
-# }
-
 # Calculates dimension indices from spatial real world coordinates given by an extent
 # object: scidbst object
 # extent: extent object
@@ -169,26 +133,7 @@
   return(v)
 }
 
-# function to create a scidb array from a scidbst array, this approach copies the environment content (object promises)
-# rather than querying the scidb instance anew for the same information
-# x: scidbst object
-#
-# returns scidb object
-# .toScidb = function(x) {
-#   return(x@proxy)
-# }
 
-# Returns the reference period of a scidbst object, e.g. P1D, P16D or P1M
-# x: scidbst object
-.getRefPeriod = function(x) {
-  m = matrix(cbind(c("P(\\d)+D","P(\\d)+M","P(\\d)+Y","P(\\d)+W","P(\\d)+h","P(\\d)+m","P(\\d)+s"),
-                   c("days","months","years","weeks","hours","mins","secs"),
-                   c("D","M","Y","W","h","m","s")),ncol=3)
-  colnames(m)=c("regexp","tunit","abbrev")
-
-  out = paste("P",tres(x),m[m[,"tunit"]==tunit(x),"abbrev"],sep="")
-  return(out)
-}
 
 # Calculates POSIX time from an temporal index
 # x: scidbst object
@@ -233,9 +178,15 @@ scidbst.ls = function() {
 #' Transform all spatial indices to spatial coordinates
 #'
 #' @param obj The scidbst object
-#' @param df A data.frame derived from an scidbst object
-#' @return data.frame with spatial coordinates
+#' @param df A data.frame derived from an scidbst object with indices as dimension values
 #'
+#' @return data.frame with spatial coordinates
+#' @examples
+#' \dontrun{
+#'  x = scidbst(arrayname)
+#'  df = as(x,"data.frame") # executes iquery and returns a data.frame with dimension indices and attribute values
+#'  coordinates = transformAllSpatialIndices(x,df) # returns only the spatial coordinates of scidbst object
+#' }
 #' @export
 transformAllSpatialIndices = function(obj,df) {
   .data = df
@@ -258,6 +209,12 @@ transformAllSpatialIndices = function(obj,df) {
 #' @param df A data.frame derived from an scidbst object
 #' @return data.frame with temporal coordinates
 #'
+#' @examples
+#' \dontrun{
+#'  x = scidbst(arrayname)
+#'  df = as(x,"data.frame") # executes iquery and returns a data.frame with dimension indices and attribute values
+#'  times = transformAllTemporalIndices(x,df) # returns only the unique temporal coordinates of scidbst object
+#' }
 #' @export
 transformAllTemporalIndices = function(obj,df) {
   .data=df
@@ -286,14 +243,3 @@ transformAllTemporalIndices = function(obj,df) {
   cat("Download done.")
   return(.data)
 }
-
-# clear = function(x) {
-#   if (hasValues(x)) {
-#     x@data@inmemory = FALSE
-#     x@data@fromdisk = FALSE
-#     x@data@values = matrix()
-#     x@data@names = vector("character",length=0)
-#     x@data@nlayers = as.integer(0)
-#     return(x)
-#   }
-# }
