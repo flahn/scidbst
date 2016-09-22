@@ -3,7 +3,6 @@
 NULL
 
 
-
 #' TemporalExtent class constructor
 #'
 #' This constructor function creates a TemporalExtent object that defines an interval on the temporal dimension.

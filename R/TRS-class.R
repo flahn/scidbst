@@ -1,6 +1,5 @@
 #' @include scidbst-class-decl.R
 #' @include TRS-class-decl.R
-NULL
 
 #' TRS constructor
 #'

@@ -14,9 +14,9 @@ VignetteBuilder: knitr
 Encoding: UTF-8
 BuildVignette: FALSE
 Depends:
-    raster,scidb,rgdal
+    raster,scidb
 Imports:
-    spacetime,xts
+    spacetime,xts,rgdal
 Suggests:
     knitr
 Collate:
@@ -39,7 +39,6 @@ Collate:
     'nrow.R'
     'pkg.R'
     'project.R'
-    'readAll.R'
     'regrid.R'
     'scidb-basic.R'
     'scidbsteval.R'

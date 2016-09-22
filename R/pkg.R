@@ -8,9 +8,7 @@
 #' @note This package requires to SciDB instance to operate on, as well as the scidb package for R. It is also important that the SciDB instance
 #' runs the scidb4geo extension, which allows to maintain the references in scidb.
 #'
-#' @import raster
-#' @import scidb
-#' @import methods
+#'
 #' @seealso
 #' The scidb4geo extension: \link{https://github.com/mappl/scidb4geo} \\
 #' Docker image for easy scidb4geo setup: \link{https://github.com/mappl/scidb-eo}

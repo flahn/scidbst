@@ -4,7 +4,7 @@
 \name{scidbst}
 \alias{.scidbst_class}
 \alias{scidbst}
-\title{Constructor for scidbst}
+\title{Class scidbst}
 \usage{
 scidbst(...)
 }
@@ -15,6 +15,8 @@ scidbst(...)
 scidbst object
 }
 \description{
+Class \code{scidbst} inherits from class \code{scidb}
+
 Constructor for scidbst
 }
 \section{Slots}{

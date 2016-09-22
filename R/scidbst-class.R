@@ -1,10 +1,9 @@
-#' @import scidb
-#' @import raster
 #' @include TemporalExtent-class.R
 #' @include scidbst-class-decl.R
 #' @include TRS-class.R
 #' @include SRS-class.R
 NULL
+
 
 # just a precaution, since the class was not exported in the package SciDBR (remved S3Methods=TRUE for now)
 setClass("scidb",

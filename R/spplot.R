@@ -1,4 +1,5 @@
 #' @include scidbst-class.R
+NULL
 
 .spplot.brick.coerce = function(obj, ...) {
   if (obj@isSpatial) {

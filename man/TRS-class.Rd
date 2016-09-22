@@ -20,8 +20,6 @@ TRS(dimension, t0, tres, tunit)
 \description{
 This object holds information regarding a temporal reference system. In particular this reference system consists of a datum (t0), a
 resolution (tres), a dimension name (dimname) and a measurement unit (tUnit) which is connected to the resolution.
-
-This function creates a new temporal reference object
 }
 \details{
 The tUnit is mostly used in cases where the function \link{\code{difftime}} is called. Therefore tUnit can either be "secs", "mins",

@@ -1,6 +1,7 @@
 #' @include TemporalExtent-class-decl.R
 #' @include TRS-class-decl.R
 #' @include SRS-class-decl.R
+NULL
 
 
 #' Class scidbst
