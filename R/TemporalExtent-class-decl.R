@@ -2,7 +2,7 @@
 #'
 #' This class represents a temporal interval with POSIXt dates.
 #'
-#' @name TemporalExtent-class
+#' @name TemporalExtent
 #' @rdname TemporalExtent-class
 #' @slot min POSIXt derived object defining the minimum inclusive boundary
 #' @slot max POSIXt derived object defining the maximum inclusive boundary

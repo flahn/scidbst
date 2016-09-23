@@ -49,7 +49,7 @@ if (!isGeneric("tmax")) {
 #' Return the minimum boundary of a TemporalExtent object
 #' @rdname tmin-method
 #' @name tmin
-#' @param x TemporalExtent
+#' @param x object
 #' @return POSIXt object referring to the minimum boundary
 #'
 #' @export
@@ -68,7 +68,7 @@ setMethod("tmin",signature(x="scidbst"),function(x) {
 #' Return the maximum boundary of a TemporalExtent object
 #' @rdname tmax-method
 #' @name tmax
-#' @param x TemporalExtent
+#' @param x object
 #' @return POSIXt object referring to the maximum boundary
 #'
 #' @export

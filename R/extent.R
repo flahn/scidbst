@@ -1,4 +1,8 @@
 #' @export
 setMethod("extent",signature(x="scidbst"), function(x) {
-  return(x@extent)
+  if (x@isSpatial || !is.null(x@extent)) {
+    return(x@extent)
+  } else {
+    stop("There is no spatial extent for this SciDB array")
+  }
 })

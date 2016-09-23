@@ -8,7 +8,7 @@ if (!isGeneric("slice")) {
 .slice = function (x,d,n) {
   .scidb.obj = as(x,"scidb")
 
-  .scidb.obj = slice(.scidb.obj,d,n)
+  .scidb.obj = scidb::slice(.scidb.obj,d,n)
 
   x@proxy = .scidb.obj
   if (d %in% tdim(x)) {

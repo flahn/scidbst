@@ -16,7 +16,7 @@ library(scidbst)
 
 opts_chunk$set(collapse = T, comment = "#>")
 opts_chunk$set(cache.extra = list(R.version, sessionInfo(), format(Sys.Date(), '%Y-%m')))
-opts_chunk$set(out.width="800px",out.height="650px")
+opts_chunk$set(fig.width=10, fig.height=8)
 outputFolder = "./assests/"
 ```
 

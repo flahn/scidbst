@@ -9,16 +9,17 @@
 setMethod("nrow",signature(x="scidbst"),function(x) {
   if (x@isSpatial) {
     # if (!hasValues(x)) {
-      lengths = .getLengths(x)
-      if (length(lengths) == 1) {
-        return(1)
-      } else {
-        return(lengths[ydim(x)])
-      }
+      # lengths = .getLengths(x)
+      # if (length(lengths) == 1) {
+      #   return(1)
+      # } else {
+      #   return(lengths[ydim(x)])
+      # }
     # } else {
     #   return(x@nrows)
     # }
-
+      indices = .calculateDimIndices(x,extent(x))
+      return(ymax(indices)-ymin(indices))
   } else if (x@isTemporal){
     return(1)
   }

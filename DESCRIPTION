@@ -14,7 +14,7 @@ VignetteBuilder: knitr
 Encoding: UTF-8
 BuildVignette: FALSE
 Depends:
-    raster,scidb
+    scidb,raster
 Imports:
     spacetime,xts,rgdal
 Suggests:

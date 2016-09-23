@@ -9,15 +9,17 @@
 setMethod("ncol",signature(x="scidbst"),function(x) {
   if (x@isSpatial) {
     # if (!hasValues(x)) {
-      lengths = .getLengths(x)
-      if (length(lengths) == 1) {
-        return(lengths[1])
-      } else {
-        return(lengths[xdim(x)])
-      }
+      # lengths = .getLengths(x)
+      # if (length(lengths) == 1) {
+      #   return(lengths[1])
+      # } else {
+      #   return(lengths[xdim(x)])
+      # }
     # } else {
     #   return(x@ncols)
     # }
+    indices = .calculateDimIndices(x,extent(x))
+    return(xmax(indices)-xmin(indices))
 
   } else if (x@isTemporal) {
     # delta_t/t_res

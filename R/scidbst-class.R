@@ -5,11 +5,13 @@
 NULL
 
 
-# just a precaution, since the class was not exported in the package SciDBR (remved S3Methods=TRUE for now)
+
+# just a precaution, since the class was not exported in the package SciDBR (remvoed S3Methods=TRUE for now)
 setClass("scidb",
          representation(name="character",
                         meta="environment",
-                        gc="environment")
+                        gc="environment"),
+         S3methods = TRUE
 )
 
 
@@ -21,9 +23,15 @@ setClass("scidb",
 #'
 #' @note At least parameter \code{name} should be provided
 #' @return scidbst object
+#'
+#' @examples
+#' \dontrun{
+#' scidbconnect(host,port,user,pwd,protocol,authtype)
+#' chicago = scidbst(name="chicago_sts")
+#' }
 #' @export
 scidbst = function(...){
-  .scidbst = .scidbst_class()
+  .scidbst = new("scidbst")
   .scidb = scidb(...)
   .scidbst@proxy = .scidb
   .scidbst@title = .scidb@name
@@ -82,13 +90,19 @@ if (!isGeneric("trs")) {
 #' @return \code{\link{TRS} object}
 #' @export
 setMethod("trs",signature(x="scidbst"), function(x){
-  if (x@isTemporal) {
+  if (x@isTemporal || !is.null(x@trs)) {
     return(x@trs)
   } else {
     stop("Objecthas no temporal reference")
   }
 })
 
+#' Show scidbst object
+#'
+#' Creates a printable representation about relevant information about the scidbst object.
+#'
+#' @param object scidbst object
+#'
 #' @export
 setMethod("show",signature(object="scidbst"), function(object){
   s = as(object,"scidb")
@@ -106,7 +120,9 @@ setMethod("show",signature(object="scidbst"), function(object){
     show(t.extent(object))
     show(trs(object))
   }
-  show(s)
+  if(!is.null(s)) {
+    show(s)
+  }
 })
 
 setGeneric("affine", function(x) standardGeneric("affine"))

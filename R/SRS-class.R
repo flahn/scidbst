@@ -17,8 +17,15 @@ SRS = function(projargs, dimnames) {
   return(.srs)
 }
 
+#' Returns the Coordinate Reference System
+#'
+#' Returns the coordinate reference system of a scidbst object
+#'
+#' @param x scidbst object
+#' @return \link[rgdal]{CRS}
+#'
 #' @export
-setMethod("crs",signature(x="scidbst"),function(x) {
+setMethod("crs",signature(x="scidbst"),function(x, ...) {
   return(CRS(x@srs@projargs))
 })
 
@@ -80,6 +87,23 @@ setMethod("ydim",signature(x="SRS"),function(x){
   return(x@dimnames[1])
 })
 
+#' Spatial resolution
+#'
+#' Returns informaiton about the spatial resolution as a numeric values, e.g.(xres,yres), xres or yres.
+#'
+#' @rdname resolution
+#' @param x scidbst
+#' @return numeric or numeric vector
+#'
+#' @importFrom raster res
+#' @export
+setMethod("res", signature(x="scidbst"), function(x) {
+  if (x@isSpatial) {
+    return(c(xres(x),yres(x)))
+  }
+})
+
+#' @rdname resolution
 #' @importFrom raster xres
 #' @export
 setMethod("xres", signature(x="scidbst"), function(x) {
@@ -88,6 +112,7 @@ setMethod("xres", signature(x="scidbst"), function(x) {
   return(dx/ncol(x))
 })
 
+#' @rdname resolution
 #' @importFrom raster yres
 #' @export
 setMethod("yres", signature(x="scidbst"), function(x) {
@@ -96,11 +121,6 @@ setMethod("yres", signature(x="scidbst"), function(x) {
   return(dy/nrow(x))
 })
 
-#' @importFrom raster res
-#' @export
-setMethod("res", signature(x="scidbst"), function(x) {
-  return(c(xres(x),yres(x)))
-})
 
 #' @export
 setMethod("xmin",signature(x="scidbst"),function(x) {
