@@ -1,27 +1,22 @@
+#' @include scidbst-class-decl.R
+NULL
+
+.nrow = function(x) {
+  if (x@isSpatial) {
+    indices = .calculateDimIndices(x,extent(x))
+    nrows = ymax(indices)-ymin(indices)
+    return(nrows)
+  } else if (x@isTemporal){
+    return(1)
+  }
+  stop("Did not expect to go here. Probably no spatial or temporal reference")
+}
+
 #' Number of rows
 #'
 #' returns the number of rows
 #'
 #' @param x scibst
 #' @return number of rows for a scidbst object
-#'
 #' @export
-setMethod("nrow",signature(x="scidbst"),function(x) {
-  if (x@isSpatial) {
-    # if (!hasValues(x)) {
-      # lengths = .getLengths(x)
-      # if (length(lengths) == 1) {
-      #   return(1)
-      # } else {
-      #   return(lengths[ydim(x)])
-      # }
-    # } else {
-    #   return(x@nrows)
-    # }
-      indices = .calculateDimIndices(x,extent(x))
-      return(ymax(indices)-ymin(indices))
-  } else if (x@isTemporal){
-    return(1)
-  }
-  stop("Did not expect to go here. Probably no spatial or temporal reference")
-})
+setMethod("nrow",signature(x="scidbst"),.nrow)

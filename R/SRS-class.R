@@ -1,5 +1,7 @@
 #' @include SRS-class-decl.R
 #' @include scidbst-class-decl.R
+#' @include ncol.R
+#' @include nrow.R
 NULL
 
 #' SRS class constructor
@@ -87,41 +89,6 @@ setMethod("ydim",signature(x="SRS"),function(x){
   return(x@dimnames[1])
 })
 
-#' Spatial resolution
-#'
-#' Returns informaiton about the spatial resolution as a numeric values, e.g.(xres,yres), xres or yres.
-#'
-#' @rdname resolution
-#' @param x scidbst
-#' @return numeric or numeric vector
-#'
-#' @importFrom raster res
-#' @export
-setMethod("res", signature(x="scidbst"), function(x) {
-  if (x@isSpatial) {
-    return(c(xres(x),yres(x)))
-  }
-})
-
-#' @rdname resolution
-#' @importFrom raster xres
-#' @export
-setMethod("xres", signature(x="scidbst"), function(x) {
-  e = extent(x)
-  dx = xmax(e)-xmin(e)
-  return(dx/ncol(x))
-})
-
-#' @rdname resolution
-#' @importFrom raster yres
-#' @export
-setMethod("yres", signature(x="scidbst"), function(x) {
-  e = extent(x)
-  dy = ymax(e)-ymin(e)
-  return(dy/nrow(x))
-})
-
-
 #' @export
 setMethod("xmin",signature(x="scidbst"),function(x) {
   return(xmin(x@extent))
@@ -140,5 +107,38 @@ setMethod("xmax",signature(x="scidbst"),function(x) {
 #' @export
 setMethod("ymax",signature(x="scidbst"),function(x) {
   return(ymax(x@extent))
+})
+
+#' @rdname resolution
+#' @export
+setMethod("xres", signature(x="scidbst"), function(x) {
+  e = extent(x)
+  dx = xmax(e)-xmin(e)
+  ncol = .ncol(x)
+  return(dx/ncol)
+})
+
+#' @rdname resolution
+#' @export
+setMethod("yres", signature(x="scidbst"), function(x) {
+  e = extent(x)
+  dy = ymax(e)-ymin(e)
+  nrow = .nrow(x)
+  return(dy/nrow)
+})
+
+#' Spatial resolution
+#'
+#' Returns informaiton about the spatial resolution as a numeric values, e.g.(xres,yres), xres or yres.
+#'
+#' @rdname resolution
+#' @param x scidbst
+#' @return numeric or numeric vector
+#'
+#' @export
+setMethod("res", signature(x="scidbst"), function(x) {
+  if (x@isSpatial) {
+    return(c(xres(x),yres(x)))
+  }
 })
 
