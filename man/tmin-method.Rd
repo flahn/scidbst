@@ -11,7 +11,7 @@
 \S4method{tmin}{scidbst}(x)
 }
 \arguments{
-\item{x}{TemporalExtent}
+\item{x}{object}
 }
 \value{
 POSIXt object referring to the minimum boundary

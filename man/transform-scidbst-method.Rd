@@ -17,7 +17,15 @@
 \item{...}{Further arguments of the form \code{tag=value}}
 }
 \description{
-This function overrides the S3method 'transform' and provides the same functionality as the 'apply' in SciDB.
+This function applies arithmetic operations on the attributes of an SciDB array.
+}
+\examples{
+\dontrun{
+ls7_brazil_regrid = scidbst("LS7_brazil_regridded")
+# Calculating the NDVI and MDVI of a Landsat 7 scene
+ls7_calc = transform(ls7_brazil_regrid, ndvi = "(band4 - band3) / (band4 + band3)", mdvi = "(band8 - band3) / (band8 + band3)")
+}
+
 }
 \seealso{
 \link{transform}

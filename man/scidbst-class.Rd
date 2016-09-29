@@ -2,7 +2,6 @@
 % Please edit documentation in R/scidbst-class-decl.R, R/scidbst-class.R
 \docType{class}
 \name{scidbst}
-\alias{.scidbst_class}
 \alias{scidbst}
 \title{Class scidbst}
 \usage{
@@ -15,7 +14,9 @@ scidbst(...)
 scidbst object
 }
 \description{
-Class \code{scidbst} inherits from class \code{scidb}
+The scidbst class contains several objects in order to describe a SciDB array spatially and temporally. Therefore the
+object holds a reference to the SciDB array via a scidb object and the dimension references for space and time with a
+SRS and TRS object respectively.
 
 Constructor for scidbst
 }
@@ -44,5 +45,11 @@ Constructor for scidbst
 }}
 \note{
 At least parameter \code{name} should be provided
+}
+\examples{
+\dontrun{
+scidbconnect(host,port,user,pwd,protocol,authtype)
+chicago = scidbst(name="chicago_sts")
+}
 }
 

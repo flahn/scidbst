@@ -1,5 +1,5 @@
 if (!isGeneric("transform")) {
-  setGeneric("transform")
+  setGeneric("transform", function(`_data`, ...) standardGeneric("transform"))
 }
 
 #' @rdname transform-scidbst-method

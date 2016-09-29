@@ -83,6 +83,32 @@ subarray.scidbst = function (x, limits, between = FALSE) {
   return(x)
 }
 
+.subarray.TemporalExtent = function(x,limits,between=FALSE) {
+  if (!x@isTemporal) {
+    stop("Cannot set limit for time dimension. Array has no such dimension.")
+  }
+
+  tdim = tdim(x)
+  dims = dimensions(x)
+  bounds = scidb_coordinate_bounds(x)
+
+  limitExpr = c(bounds$start,bounds$end)
+  tminPos = which(dims==tdim)
+  tmaxPos = 2*tminPos
+
+  tmin = .calcTDimIndex(x,tmin(limits))
+  tmax = .calcTDimIndex(x,tmax(limits))
+
+  if (tmax > tmax(x)) tmax = tmax(x)
+  if (tmin > tmin(x)) tmin = tmin(x)
+
+
+  limitExpr[tminPos] = tmin
+  limitExpr[tmaxPos] = tmax
+  # now call subarray again with a list of indices
+  return(subarray(x,limits=limitExpr,between=between))
+}
+
 #' Subarray function for scidbst object
 #'
 #' This function is based on the scidb subarray function. It will create a subset of the array based on the stated dimension limits. Based
@@ -143,32 +169,6 @@ setMethod("subarray",signature(x="scidbst",limits="character"), subarray.scidbst
 setMethod("subarray",signature(x="scidbst",limits="Extent"),function(x, limits, between = FALSE) {
   .crop(x,limits,between=between)
 })
-
-.subarray.TemporalExtent = function(x,limits,between=FALSE) {
-    if (!x@isTemporal) {
-      stop("Cannot set limit for time dimension. Array has no such dimension.")
-    }
-
-    tdim = tdim(x)
-    dims = dimensions(x)
-    bounds = scidb_coordinate_bounds(x)
-
-    limitExpr = c(bounds$start,bounds$end)
-    tminPos = which(dims==tdim)
-    tmaxPos = 2*tminPos
-
-    tmin = .calcTDimIndex(x,tmin(limits))
-    tmax = .calcTDimIndex(x,tmax(limits))
-
-    if (tmax > tmax(x)) tmax = tmax(x)
-    if (tmin > tmin(x)) tmin = tmin(x)
-
-
-    limitExpr[tminPos] = tmin
-    limitExpr[tmaxPos] = tmax
-    # now call subarray again with a list of indices
-    return(subarray(x,limits=limitExpr,between=between))
-}
 
 #' @name subarray,scidbst
 #' @rdname subarray-scidbst-method

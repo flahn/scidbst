@@ -3,6 +3,14 @@
 #' @include SRS-class-decl.R
 NULL
 
+# just a precaution, since the class was not exported in the package SciDBR (remvoed S3Methods=TRUE for now)
+setClass("scidb",
+         representation(name="character",
+                        meta="environment",
+                        gc="environment"),
+         S3methods = TRUE
+)
+
 setClassUnion("SRSOrNULL",c("SRS","NULL"))
 
 #' @importClassesFrom raster Extent
@@ -31,7 +39,6 @@ setClassUnion("TemporalExtentOrNULL",c("TemporalExtent","NULL"))
 #' @slot extent spatial \code{\link[raster]{Extent}}
 #' @slot title The name of the original array
 #' @aliases scidbst
-#' @importClassesFrom raster Extent
 #' @exportClass scidbst
 setClass("scidbst",
                 slots=c(

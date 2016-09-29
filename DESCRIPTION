@@ -16,7 +16,7 @@ BuildVignette: FALSE
 Depends:
     scidb,raster
 Imports:
-    spacetime,xts,rgdal
+    spacetime,xts,rgdal,sp
 Suggests:
     knitr
 Collate:

@@ -1,3 +1,4 @@
+#' @importFrom raster extent
 #' @export
 setMethod("extent",signature(x="scidbst"), function(x) {
   if (x@isSpatial || !is.null(x@extent)) {

@@ -1,3 +1,6 @@
+#' @include scidbst-class-decl.R
+NULL
+
 if (!isGeneric("dimensions")) {
   setGeneric("dimensions",function(obj){
     standardGeneric("dimensions")
