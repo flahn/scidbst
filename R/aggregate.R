@@ -4,20 +4,16 @@ NULL
 setGeneric("aggregate.t", function(x, ...) standardGeneric("aggregate.t"))
 
 .aggregate.t.scidbst = function(x, by, ...) {
-  selection = x@spatial_dims
+  selection = list(ydim(x),xdim(x))
 
   if (x@isTemporal) {
     x@isTemporal = FALSE
-    sobj = .toScidb(x)
+    sobj = as(x,"scidb")
     agg = aggregate(sobj, by=selection,...) #delegate operation to scidb package
-    out = .scidbst_class(agg)
-
-    #manage metadata
-    out = .cpMetadata(x,out)
-    out@data@names = scidb_attributes(out)
-    out@tResolution = as.numeric(difftime(x@tExtent[["max"]],x@tExtent[["min"]],x@tUnit))+1
-    # out@temporal_dim = ""
-    return(out)
+    x@proxy = agg
+    # x@data@names = scidb_attributes(x)
+    x@trs@tResolution = as.numeric(difftime(tmax(x),tmin(x),tunit(x)))+1
+    return(x)
   } else {
     stop("Cannot aggregate over time with no temporal reference on the object")
   }
@@ -29,7 +25,8 @@ setGeneric("aggregate.t", function(x, ...) standardGeneric("aggregate.t"))
 #' the temporal dimension and the values on the temporal dimension will be aggregated.
 #'
 #' @note The aggregated scidbst object will loose its temporal reference after aggregation, due to the fact that the spatial
-#' dimensions are removed
+#' dimensions are removed. However if scidbsteval with parameter \code{drop=FALSE} is executed, then the aggregated dimensions are preserved.
+#'
 #' @aliases aggregate.t
 #' @usage
 #' aggregate(x, by, FUN, window, variable_window)
@@ -49,6 +46,7 @@ setGeneric("aggregate.t", function(x, ...) standardGeneric("aggregate.t"))
 #' scidbst.obj = scidbst(array_name)
 #' aggt = aggregate.t(scidbst.obj,FUN="avg(attribute1)") # returns something similar to a raster with aggregated values over the temporal dimension
 #' }
+#' @seealso \code{\link{scidbsteval}}
 #' @export
 setMethod("aggregate.t", signature(x="scidbst"), .aggregate.t.scidbst)
 
@@ -57,7 +55,7 @@ setGeneric("aggregate.sp", function(x, ...) standardGeneric("aggregate.sp"))
 .aggregate.sp.scidbst = function(x, by, ...) {
   dots = list(...)
 
-  selection = as.list(x@temporal_dim)
+  selection = as.list(tdim(x))
   if (!missing(by)) {
     dots["by"] <- NULL
   }
@@ -67,16 +65,14 @@ setGeneric("aggregate.sp", function(x, ...) standardGeneric("aggregate.sp"))
     x@isSpatial = FALSE
     old_nrow = nrow(x)
     old_ncol = ncol(x)
-    sobj = .toScidb(x)
+    sobj = as(x,"scidb")
     agg = aggregate(sobj, by=selection, dots) # delegate operation to scidb package
-    out = .scidbst_class(agg)
-    out = .cpMetadata(x,out)
-    out@data@names = scidb_attributes(out)
-    # out@spatial_dims = list()
+    x@proxy = agg
+    # x@data@names = scidb_attributes(x)
 
-    out@affine = out@affine %*% matrix(c(1,0,0,0,old_ncol,0,0,0,old_nrow),ncol=3,nrow=3)
+    x@affine = affine(x) %*% matrix(c(1,0,0,0,old_ncol,0,0,0,old_nrow),ncol=3,nrow=3)
 
-    return(out)
+    return(x)
   } else {
     stop("Cannot aggregate over space with no spatial reference on the object")
   }
@@ -124,20 +120,20 @@ setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
   }
 
   if (x@isTemporal) {
-    aggregate_by_time = all(x@spatial_dims %in% by)
+    aggregate_by_time = all(x@srs@dimnames %in% by)
   }
   if (x@isSpatial) {
-    aggregate_by_space = all(x@temporal_dim %in% by)
+    aggregate_by_space = all(tdim(x) %in% by)
   }
 
   if (aggregate_by_time && !aggregate_by_space) { #all spatial dimensions are present
-    out = aggregate.t(x, by, ...)
-    return(out)
+    x = aggregate.t(x, by, ...)
+    return(x)
   }
 
   if (aggregate_by_space && !aggregate_by_time) { # all temporal dimensions are present
-    out = aggregate.sp(x, by, ...)
-    return(out)
+    x = aggregate.sp(x, by, ...)
+    return(x)
   }
 
   if (aggregate_by_time && aggregate_by_space) { #aggregation over space and time
@@ -145,45 +141,39 @@ setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
     old_ncol = ncol(x)
     old_nrow = nrow(x)
 
+    .scidb = as(x,"scidb")
     if (length(by) != length(dimensions(x))) {
-      out = aggregate(.toScidb(x),by,...)
+      x@proxy = aggregate(.scidb,by,...)
     } else {
-      out = aggregate(.toScidb(x), by="", ...)
+      x@proxy = aggregate(.scidb, by="", ...)
     }
 
 
-    if (is.null(out)) {
+    if (is.null(x@proxy)) {
       # this should basically never happen, because dimension 'i' will be used if every other dimension
       # is gone.
       stop("No dimensions left.")
     }
-    # copy metadata
-    out = .scidbst_class(out)
-    out = .cpMetadata(x,out)
-    out@data@names = scidb_attributes(out)
+
+    # x@data@names = scidb_attributes(x)
 
     # set tResolution to complete temporal extent
+    x@trs@tResolution = as.numeric(difftime(tmax(x),tmin(x),tunit(x)))+1
 
-    out@tResolution = as.numeric(difftime(x@tExtent[["max"]],x@tExtent[["min"]],x@tUnit))+1
-    out@temporal_dim = ""
     # set space Resolution in affine transformation to total spatial extent
-    out@spatial_dims = list()
-
-    out@affine = out@affine %*% matrix(c(1,0,0,0,old_ncol,0,0,0,old_nrow),ncol=3,nrow=3)
-    out@isSpatial = FALSE
-    out@isTemporal = FALSE
-    return(out)
+    x@affine = affine(x) %*% matrix(c(1,0,0,0,old_ncol,0,0,0,old_nrow),ncol=3,nrow=3)
+    x@isSpatial = FALSE
+    x@isTemporal = FALSE
+    return(x)
   }
 
   # at this point either no or just one spatial dimension is present
 
-  if (!aggregate_by_time && !aggregate_by_space && !any(x@spatial_dims %in% by)) { # no referenced dimension involved
+  if (!aggregate_by_time && !aggregate_by_space && !any(x@srs@dimnames %in% by)) { # no referenced dimension involved
     #aggregate as scidb object
-    arr = aggregate(.toScidb(x),by,...)
-    #and then transform to scidbst
-    arr = .scidbst_class(arr)
-    arr = .cpMetadata(x,arr)
-    return(arr)
+    x@proxy = aggregate(as(x,"scidb"),by,...)
+
+    return(x)
   } else {
     stop("Aggregation over one spatial dimension currently not allowed")
   }

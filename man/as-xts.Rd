@@ -10,6 +10,6 @@ Creates a RasterBrick from scidbst
 Other scidbst: \code{\link{as-RasterBrick}},
   \code{\link{as-STSDF}},
   \code{\link{as-SpatialPointsDataFrame}},
-  \code{\link{as-data.frame}}
+  \code{\link{as-data.frame}}, \code{\link{as-scidb}}
 }
 

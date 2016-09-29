@@ -9,12 +9,19 @@ transformAllSpatialIndices(obj, df)
 \arguments{
 \item{obj}{The scidbst object}
 
-\item{df}{A data.frame derived from an scidbst object}
+\item{df}{A data.frame derived from an scidbst object with indices as dimension values}
 }
 \value{
 data.frame with spatial coordinates
 }
 \description{
 Transform all spatial indices to spatial coordinates
+}
+\examples{
+\dontrun{
+ x = scidbst(arrayname)
+ df = as(x,"data.frame") # executes iquery and returns a data.frame with dimension indices and attribute values
+ coordinates = transformAllSpatialIndices(x,df) # returns only the spatial coordinates of scidbst object
+}
 }
 

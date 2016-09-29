@@ -9,6 +9,7 @@ Creates a RasterBrick from scidbst
 \seealso{
 Other scidbst: \code{\link{as-STSDF}},
   \code{\link{as-SpatialPointsDataFrame}},
-  \code{\link{as-data.frame}}, \code{\link{as-xts}}
+  \code{\link{as-data.frame}}, \code{\link{as-scidb}},
+  \code{\link{as-xts}}
 }
 

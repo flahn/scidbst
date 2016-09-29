@@ -2,7 +2,9 @@
 NULL
 
 .crop.scidbst = function(x, y, snap='near', ..., between=TRUE) {
-      ndim = length(dimensions(x))
+      proxy = x@proxy
+      .dims = dimensions(x)
+      ndim = length(.dims)
       if (!x@isSpatial) {
         stop("The array does not have spatial dimensions to crop with a bounding box")
       }
@@ -17,15 +19,19 @@ NULL
       validObject(y)
 
       e <- intersect(extent(x), extent(y))
-      e <- alignExtent(e, x, snap=snap)
+      rasterStruct = raster(x=extent(x),crs=crs(x))
+      nrow(rasterStruct) = as.integer(nrow(x))
+      ncol(rasterStruct) = as.integer(ncol(x))
+      e <- alignExtent(e, rasterStruct, snap=snap)
 
+      # make list of dimension indices and use subarray again
       out = .calculateDimIndices(x,e)
 
-      xindex = which(dimensions(x)==getXDim(x)) #get position of "x" values
+      xindex = which(.dims==xdim(x)) #get position of "x" values
       limits[xindex] = xmin(out)
       limits[xindex+ndim] = xmax(out)
 
-      yindex = which(dimensions(x)==getYDim(x)) #position of "y" values
+      yindex = which(.dims==ydim(x)) #position of "y" values
       limits[yindex] = ymin(out)
       limits[yindex+ndim] = ymax(out)
 
@@ -52,7 +58,7 @@ NULL
 #' @param snap Character. One of 'near', 'in', or 'out', for use with alignExtent
 #' @param ...	Additional arguments as for writeRaster
 #' @param between (logical) whether or not to use 'between' or 'subarray' as scidb operation
-#'
+#' @importFrom raster as.vector intersect alignExtent raster extent
 #' @return scidbst object with refined spatial extent
 #'
 #' @seealso \code{\link[raster]{crop}} or \code{\link[scidbst]{subarray,scidbst}}
@@ -66,6 +72,6 @@ NULL
 #' cropped = crop(scidbst.obj,e)
 #' }
 #' @export
-setMethod('crop', signature(x='scidbst', y='ANY'),
+setMethod('crop', signature(x="scidbst", y="ANY"),
           .crop.scidbst
 )

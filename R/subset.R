@@ -6,12 +6,11 @@ if (!isGeneric("subset")) {
 #' @method subset scidbst
 #' @export
 subset.scidbst = function(x, ...) {
-  .scidb.object = .toScidb(x)
+  .scidb.object = as(x,"scidb")
 
   .scidb.object = scidb:::filter_scidb(.scidb.object, ...)
-  out = .scidbst_class(.scidb.object)
-  out = .cpMetadata(x,out)
-  return(out)
+  x@proxy = .scidb.object
+  return(x)
 }
 
 

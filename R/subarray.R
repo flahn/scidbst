@@ -3,92 +3,126 @@ if (!isGeneric("subarray")) {
 }
 
 subarray.scidbst = function (x, limits, between = FALSE) {
-  ndim = length(dimensions(x))
+  proxy = x@proxy
+  .dims = dimensions(x)
+  ndim = length(.dims)
 
   if (is.character(limits)) {
     limits = gsub("\\*","Inf",limits)
     limits = as.numeric(unlist(strsplit(limits,",")))
   }
   #TODO limits = scidbst object
-  #TODO limits = raster or extent (equals raster::crop)
-  #TODO limits = temporal extent
 
   if (length(limits) != 2*ndim) {
     stop("limits do not match dimension description [#limits != (2*#dims)]")
   }
 
-  if (!between) { #subarray call
+  # adapt extent
+  # if (!between) { #subarray call
     if (x@isSpatial) {
       #image origin has been shifted towards limits
-      xindex = which(dimensions(x)==getXDim(x)) #get position of "x" values
+      xindex = which(dimensions(x)==xdim(x)) #get position of "x" values
       xvals = c(limits[xindex],limits[xindex+ndim]) #min/max for xdim
 
-      yindex = which(dimensions(x)==getYDim(x)) #position of "y" values
+      yindex = which(dimensions(x)==ydim(x)) #position of "y" values
       yvals = c(limits[yindex],limits[yindex+ndim]) #min/max for ydim
 
       #calculate upper left coordinate (origin of image coordinate system)
-      ul = .transformToWorld(x@affine,xvals[1],yvals[1]) #note: image coordinate system trans(i0) > trans(iEnd)
+      ul = .transformToWorld(affine(x),xvals[1],yvals[1]) #note: image coordinate system trans(i0) > trans(iEnd)
 
-      lr = .transformToWorld(x@affine,xvals[2],yvals[2]) #to get an extent
+      lr = .transformToWorld(affine(x),xvals[2],yvals[2]) #to get an extent
       newExtent = extent(ul[1],lr[1],lr[2],ul[2])
     }
 
     if (x@isTemporal) {
-      tindex = which(dimensions(x)==getTDim(x))
+      tindex = which(dimensions(x)==tdim(x))
       tvals = c(limits[tindex],limits[tindex+ndim]) #min/max for xdim
 
       t0 = .calculatePOSIXfromIndex(x,tvals[1])
       if (tvals[2]==Inf) {
-        tEnd = x@tExtent[["max"]]
+        tEnd = tmax(x)
       } else {
         tEnd = .calculatePOSIXfromIndex(x,tvals[2])
       }
 
     }
-  }
+  # }
 
-  scidbst.obj = x
-  scidb.obj = .toScidb(scidbst.obj)
+  scidb.obj = as(x,"scidb")
   scidb.obj = scidb::subarray(scidb.obj, limits, between)
-  out = .scidbst_class(scidb.obj)
-  out = .cpMetadata(scidbst.obj,out)
+  x@proxy = scidb.obj
 
 
   if (!between) {
     if (x@isSpatial) {
       #limits are the new coordinates in the old image reference
       # 1) adapt new extent
-      out@extent = newExtent
+      x@extent = newExtent
 
       # 2) adapt transformation parameter (origin)
       # we can simply overwrite the origin, since the array dimension indices are also recalculated
-      out@affine[1,1] = ul[1]
-      out@affine[2,1] = ul[2]
+      x@affine[1,1] = ul[1]
+      x@affine[2,1] = ul[2]
     }
 
     if (x@isTemporal) {
-      out@startTime = t0
-      out@tExtent[["min"]] = t0
-      out@tExtent[["max"]] = tEnd
-    }
-  } #else leave as is since we do not change dimension values
+      x@trs@t0 = t0
 
-  return(out)
+      x@tExtent@min = t0
+      x@tExtent@max = tEnd
+    }
+  } else {#else leave as is since we do not change dimension values <- wrong we dont mess with TRS or SRS but still with the extent
+    if (x@isSpatial) {
+      x@extent = newExtent
+    }
+    if (x@isTemporal) {
+      x@tExtent@min = t0
+      x@tExtent@max = tEnd
+    }
+  }
+  return(x)
+}
+
+.subarray.TemporalExtent = function(x,limits,between=FALSE) {
+  if (!x@isTemporal) {
+    stop("Cannot set limit for time dimension. Array has no such dimension.")
+  }
+
+  tdim = tdim(x)
+  dims = dimensions(x)
+  bounds = scidb_coordinate_bounds(x)
+
+  limitExpr = c(bounds$start,bounds$end)
+  tminPos = which(dims==tdim)
+  tmaxPos = 2*tminPos
+
+  tmin = .calcTDimIndex(x,tmin(limits))
+  tmax = .calcTDimIndex(x,tmax(limits))
+
+  if (tmax > tmax(x)) tmax = tmax(x)
+  if (tmin > tmin(x)) tmin = tmin(x)
+
+
+  limitExpr[tminPos] = tmin
+  limitExpr[tmaxPos] = tmax
+  # now call subarray again with a list of indices
+  return(subarray(x,limits=limitExpr,between=between))
 }
 
 #' Subarray function for scidbst object
 #'
 #' This function is based on the scidb subarray function. It will create a subset of the array based on the stated dimension limits. Based
-#' on the 'between' flag in scidb will be used the AFL function 'subarray' or 'between'. When 'between is set \code{TRUE}, then the spatial
+#' on the 'between' parameter either the 'subarray' or the 'between' function will be used in SciDBs AFL query. When 'between is set \code{TRUE}, then the spatial
 #' and/or temporal references will not be changed, because the dimension values are not recalculated. If 'subarray' is used in scidb, then
-#' the dimension values are shifted to the new lower boundaries, which requires an adaption of the references (if necessary).
+#' the dimension values are shifted to the new lower boundaries, which requires an adaption of the references (if necessary). In either case the resulting
+#' scidbst object will have a modified dimensional extent.
 #'
 #' @rdname subarray-scidbst-method
 #' @name subarray,scidbst
 #' @param x scidbst array object
-#' @param limits vector of coordinate ranges or a character string (see Details) or Extent or TemporalExtent objects
+#' @param limits vector of coordinate ranges or a character string (see Details) or \code{\link[raster]{Extent}} or \code{\link[scidbst]{TemporalExtent}} objects
 #' @param between (logical) Whether or not the \code{between} function shall be used in scidb instead of \code{subarray}
-#' @return scidbst array object with modified dimension references
+#' @return modified scidbst array object
 #'
 #' @details Like in the original \code{subarray} method \code{limits} parameter needs to be either a vector of numerics or characters or a character string. The vector needs to
 #' have two times the number of dimension as elements in it. This also applies to the character string, which shall contain the limits
@@ -106,11 +140,19 @@ subarray.scidbst = function (x, limits, between = FALSE) {
 #' \dontrun{
 #' scidbconnect(...)
 #' chicago = scidbst("chicago_sts")
-#' expression = c(501,285,2,901,585,3) #minimum values, then maximum values for all dimensions
-#' expression2 = c("501","285","2","901","585","*")
-#' expression3 = "501,285,2,901,585,3"
 #'
-#' chicago_sub = subarray(x=chicago,limits=expression,between=FALSE)
+#' # Using character strings and vector
+#' chicago_sub1 = subarray(x=chicago,c(501,285,2,901,585,3),between=FALSE) #minimum values, then maximum values for all dimensions
+#' chicago_sub2 = subarray(x=chicago,limits=c("501","285","2","901","585","*"))
+#' chicago_sub3 = subarray(x=chicago,limits="501,285,2,901,585,3")
+#'
+#' # Using an extent object
+#' extent = c(448000,451000,4635000,4640000)
+#' chicago_sub4 = subarray(x=chicago,limits=extent,between=FALSE)
+#'
+#' # Using a Temporal extent
+#' te = textent(as.POSIXct("2016-05-03"),as.POSIXct("2016-05-05"))
+#' chicago_sub5 = subarray(x=chicago,limits=te,between=FALSE)
 #' }
 #'
 #' @export
@@ -128,34 +170,7 @@ setMethod("subarray",signature(x="scidbst",limits="Extent"),function(x, limits, 
   .crop(x,limits,between=between)
 })
 
-.subarray.TemporalExtent = function(x,limits,between=FALSE) {
-    if (!x@isTemporal) {
-      stop("Cannot set limit for time dimension. Array has no such dimension.")
-    }
-
-    tdim = getTDim(x)
-    dims = dimensions(x)
-    bounds = scidb_coordinate_bounds(x)
-
-    limitExpr = c(bounds$start,bounds$end)
-    tminPos = which(dims==tdim)
-    tmaxPos = 2*tminPos
-
-    tmin = scidbst:::.calcTDimIndex(x,tmin(limits))
-    tmax = scidbst:::.calcTDimIndex(x,tmax(limits))
-
-    if (tmax > x@tExtent$max) tmax = x@tExtent$max
-    if (tmin > x@tExtent$min) tmin = x@tExtent$min
-
-
-    limitExpr[tminPos] = tmin
-    limitExpr[tmaxPos] = tmax
-
-
-    return(subarray(x,limits=limitExpr,between=between))
-}
-
 #' @name subarray,scidbst
 #' @rdname subarray-scidbst-method
 #' @export
-setMethod("subarray",signature(x="scidbst",limit="TemporalExtent"), .subarray.TemporalExtent)
+setMethod("subarray",signature(x="scidbst",limits="TemporalExtent"), .subarray.TemporalExtent)

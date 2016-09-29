@@ -18,4 +18,11 @@ data.frame with temporal coordinates
 This function transforms the temporal indices of a data.frame that was derived from a scidbst object into the actual
 dates.
 }
+\examples{
+\dontrun{
+ x = scidbst(arrayname)
+ df = as(x,"data.frame") # executes iquery and returns a data.frame with dimension indices and attribute values
+ times = transformAllTemporalIndices(x,df) # returns only the unique temporal coordinates of scidbst object
+}
+}
 

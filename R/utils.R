@@ -4,16 +4,16 @@
 # returns temporal index
 .calcTDimIndex = function (x, time) {
   if (is.character(time)) {
-    time = as.POSIXlt(.getDateTime(time,x@tUnit))
+    time = as.POSIXlt(.getDateTime(time,tunit(x)))
   } else {
     #is this called?
     time = as.POSIXlt(time) #assuming valid POSIX string
   }
 
-  if (time >= x@tExtent$min && time <= x@tExtent$max) {
-    t0 = x@startTime
-    dt = x@tResolution
-    unit = x@tUnit
+  if (time >= tmin(x) && time <= tmax(x)) {
+    t0 = t0(x)
+    dt = tres(x)
+    unit = tunit(x)
     index  = floor(as.numeric(difftime(time,t0,unit))/dt)
 
     return(index)
@@ -97,39 +97,6 @@
   return(trans %*% c(1,x,y))
 }
 
-
-# Copies metadata from a scidbst class to a scidbst class
-.cpMetadata = function(from,to) {
-  if (class(from) == "scidbst" && class(to) == "scidbst") {
-    to@extent = from@extent
-    crs(to) = crs(from)
-
-    to@affine = from@affine
-
-    # to@data@names = scidb_attributes(to)
-    # to@data@nlayers = length(to@data@names)
-    # to@data@fromdisk = TRUE
-
-    to@title = from@title
-    to@spatial_dims = from@spatial_dims
-    to@temporal_dim = from@temporal_dim
-    to@startTime = from@startTime
-    to@tExtent = from@tExtent
-    to@tResolution = from@tResolution
-    to@tUnit = from@tUnit
-    to@isSpatial = from@isSpatial
-    to@isTemporal = from@isTemporal
-    to@sref = from@sref
-    to@tref = from@tref
-
-    # if (inMemory(from)) {
-    #   to@data@inmemory = FALSE
-    # }
-
-    return(to)
-  }
-}
-
 # Calculates dimension indices from spatial real world coordinates given by an extent
 # object: scidbst object
 # extent: extent object
@@ -139,8 +106,8 @@
   ll = c(xmin(extent),ymin(extent))
   ur = c(xmax(extent),ymax(extent))
 
-  origin = object@affine[,1]
-  sub = object@affine[,2:3]
+  origin = affine(object)[,1]
+  sub = affine(object)[,2:3]
 
   img1 = (solve(sub) %*% (ll - origin))
   img2 = (solve(sub) %*% (ur - origin))
@@ -154,39 +121,19 @@
 }
 
 # Returns the lengths of each individual dimension
+# obj: scidbst object
+#
+# returns: numeric vector with dimension names and lengths
 .getLengths = function(obj) {
-  dimnames = dimensions(obj)
-  dimbounds = scidb_coordinate_bounds(obj)
-  v = as.numeric(dimbounds$length)
-  names(v) = dimnames
+  .dimnames = dimensions(obj)
+  .dimbounds = scidb_coordinate_bounds(obj)
+  v = as.numeric(.dimbounds$length)
+  names(v) = .dimnames
 
   return(v)
 }
 
-# function to create a scidb array from a scidbst array, this approach copies the environment content (object promises)
-# rather than querying the scidb instance anew for the same information
-# x: scidbst object
-#
-# returns scidb object
-.toScidb = function(x) {
-  res = scidb("")
-  res@name = x@name
-  res@gc = x@gc
-  res@meta = suppressWarnings(x@meta)
-  return(res)
-}
 
-# Returns the reference period of a scidbst object, e.g. P1D, P16D or P1M
-# x: scidbst object
-.getRefPeriod = function(x) {
-  m = matrix(cbind(c("P(\\d)+D","P(\\d)+M","P(\\d)+Y","P(\\d)+W","P(\\d)+h","P(\\d)+m","P(\\d)+s"),
-                   c("days","months","years","weeks","hours","mins","secs"),
-                   c("D","M","Y","W","h","m","s")),ncol=3)
-  colnames(m)=c("regexp","tunit","abbrev")
-
-  out = paste("P",x@tResolution,m[m[,"tunit"]==x@tUnit,"abbrev"],sep="")
-  return(out)
-}
 
 # Calculates POSIX time from an temporal index
 # x: scidbst object
@@ -194,21 +141,21 @@
 .calculatePOSIXfromIndex = function(x,n) {
   baseTime = 0
 
-  if (x@tUnit == "weeks") {
+  if (tunit(x) == "weeks") {
     baseTime = 7*24*60*60
-  } else if (x@tUnit == "days") {
+  } else if (tunit(x)  == "days") {
     baseTime = 24*60*60
-  } else if (x@tUnit == "hours") {
+  } else if (tunit(x)  == "hours") {
     baseTime = 60 * 60
-  } else if (x@tUnit == "mins") {
+  } else if (tunit(x)  == "mins") {
     baseTime = 60
-  } else if (x@tUnit == "secs") {
+  } else if (tunit(x)  == "secs") {
     baseTime = 1
   } else {
     stop("currently no other temporal unit supported")
   }
 
-  val = as.POSIXlt(as.character(x@startTime + n * x@tResolution * baseTime))
+  val = as.POSIXlt(as.character(t0(x) + n * tres(x) * baseTime))
   return(val)
 }
 
@@ -231,18 +178,24 @@ scidbst.ls = function() {
 #' Transform all spatial indices to spatial coordinates
 #'
 #' @param obj The scidbst object
-#' @param df A data.frame derived from an scidbst object
-#' @return data.frame with spatial coordinates
+#' @param df A data.frame derived from an scidbst object with indices as dimension values
 #'
+#' @return data.frame with spatial coordinates
+#' @examples
+#' \dontrun{
+#'  x = scidbst(arrayname)
+#'  df = as(x,"data.frame") # executes iquery and returns a data.frame with dimension indices and attribute values
+#'  coordinates = transformAllSpatialIndices(x,df) # returns only the spatial coordinates of scidbst object
+#' }
 #' @export
 transformAllSpatialIndices = function(obj,df) {
   .data = df
   from = obj
 
-  coords = rbind(rep(1,nrow(.data)),.data[,getXDim(from)],.data[,getYDim(from)])
-  res = t(from@affine %*% coords) #(x,y)
-  .data[,getXDim(from)] = res[,1]
-  .data[,getYDim(from)] = res[,2]
+  coords = rbind(rep(1,nrow(.data)),.data[,xdim(from)],.data[,ydim(from)])
+  res = t(affine(from) %*% coords) #(x,y)
+  .data[,xdim(from)] = res[,1]
+  .data[,ydim(from)] = res[,2]
 
   return(.data)
 }
@@ -256,12 +209,18 @@ transformAllSpatialIndices = function(obj,df) {
 #' @param df A data.frame derived from an scidbst object
 #' @return data.frame with temporal coordinates
 #'
+#' @examples
+#' \dontrun{
+#'  x = scidbst(arrayname)
+#'  df = as(x,"data.frame") # executes iquery and returns a data.frame with dimension indices and attribute values
+#'  times = transformAllTemporalIndices(x,df) # returns only the unique temporal coordinates of scidbst object
+#' }
 #' @export
 transformAllTemporalIndices = function(obj,df) {
   .data=df
   from=obj
 
-  tdim = getTDim(from)
+  tdim = tdim(from)
   tindex = unique(.data[,tdim])
   dates = lapply(tindex,function(x,y) {
     as.Date(.calculatePOSIXfromIndex(y,x))
@@ -275,5 +234,12 @@ transformAllTemporalIndices = function(obj,df) {
   time = as.Date(time,origin="1970-01-01")
 
   .data[,tdim] = time
+  return(.data)
+}
+
+.downloadData = function(object) {
+  cat("Downloading data...\n")
+  .data = iquery(object@proxy@name,return=T) #query scidb for data
+  cat("Download done.")
   return(.data)
 }

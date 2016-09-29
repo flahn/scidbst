@@ -9,11 +9,14 @@ vignette: >
 ```{r, include=FALSE}
 library(scidb)
 library(raster)
+library(zoo)
+library(xts)
 library(knitr)
 library(scidbst)
 
 opts_chunk$set(collapse = T, comment = "#>")
 opts_chunk$set(cache.extra = list(R.version, sessionInfo(), format(Sys.Date(), '%Y-%m')))
+opts_chunk$set(fig.width=10, fig.height=8)
 outputFolder = "./assests/"
 ```
 
@@ -52,6 +55,7 @@ l7_ethiopia
 extent(l7_ethiopia)
 crs(l7_ethiopia)
 t.extent(l7_ethiopia)
+trs(l7_ethiopia)
 ```
 
 One typical task in the Geoscience domain is the creation of spatial subsets. In SciDB such subsets are created by using the dimension index values, which is complicated since it is not obvious which index refers to which real world coordinate. In this package we allow spatial subsetting with the \code{crop} method that was introduced by the \code{raster} package. Other subsetting operations that refer to the dimension index notion are \cdoe{subarray} and \code{subset}.
@@ -68,12 +72,11 @@ In order to plot the image we need to further reduce the dimensionality to simpl
 ethiopia.subset = slice(ethiopia.subset,"t","2003-07-21")
 ```
 
-Now that we have a two dimensional subset, we can either plot the image or download its values. \code{spplot} is used to for the visualization purpose and \code{readAll} or \code{getValues} can be used to obtain the values and perform additional calculations locally. \code{getValues} returns the data as a data.frame with m columns (m = number of attributes) and n rows ("number spatial x dimension values" * "number spatial y dimension values").
+Now that we have a two dimensional subset, we can either plot the image or download its values. \code{spplot} is used to for the visualization purpose. To access access or download the data, you need to coerce the scidbst object into another object. Most common for this would be to coerce into a \code{SpatialPointsDataFrame}, \code{RasterBrick} or \code{data.frame}, but there are also other formats supported.
 
 ```{r ethiopiaPlot, cache=1}
-#values = getValues(ethiopia.subset)
-ethiopia.subset = readAll(ethiopia.subset)
-spplot(ethiopia.subset)
+ethiopia.brick = as(ethiopia.subset,"RasterBrick")
+spplot(ethiopia.brick)
 ```
 
 
@@ -121,17 +124,18 @@ $$ NDVI = \frac{NIR-RED}{NIR+RED} $$ and $$ MDVI =\frac{MIR-NIR}{MIR+NIR} $$
 The calculated attributes are attached as new attributes. We will extract those new calculated attributes by using \code{project} and save them as a new scidbst array in SciDB.
 
 ```{r ndviCalculation, cache=1}
-ls7_calc = transform(ls7_brazil_regrid, ndvi = "(band4_avg - band3_avg) / (band4_avg + band3_avg)", mdvi = "(band5_avg - band3_avg) / (band5_avg + band3_avg)")
+ls7_calc = transform(ls7_brazil_regrid, ndvi = "(band4_avg - band3_avg) / (band4_avg + band3_avg)", mdvi = "(band8_avg - band3_avg) / (band8_avg + band3_avg)")
 ls7_calc = project(ls7_calc,c("ndvi","mdvi"))
 ls7_calc = scidbsteval(ls7_calc,ndvi.name)
 ```
 
-To show the results we will first download the data with \code{readAll} for one point in time and then we will plot each attribute.
+To show the results we will first download the data with \code{as(x,"RasterBrick")} for one point in time and then we will plot each attribute. To select the attributes, we used \code{project} again. In this case the spatial plotting internally queries for the data on the server and the data will not be returned to the outside of the \code{spplot} function, but it will be plotted.
 
 ```{r ndviPlot, cache=1}
-ls7_calc_t0 = readAll(slice(ls7_calc,"t","2001-088"))
-spplot(getLayer(ls7_calc_t0,"ndvi"))
-spplot(getLayer(ls7_calc_t0,"mdvi"))
+ndvi = slice(project(ls7_calc,c("ndvi")),"t","2001-088")
+mdvi = slice(project(ls7_calc,c("mdvi")),"t","2001-088")
+spplot(ndvi,main="NDVI calculation")
+spplot(mdvi,main="MDVI calculation")
 ```
 
 In this use case we highlighted the following functions:
@@ -141,7 +145,6 @@ In this use case we highlighted the following functions:
 - storing arrays with \code{scidbsteval}
 - performing attribute calculations with \code{transform}
 - selecting attributes with \code{project}
-- accessing the different attribute values as a Raster object with \code{getLayer}
 
 ## Cloud mask
 In the next use case we will perform a very simplistic approach for cloud detection to showcase the the filter/subset function. In this case we assume that clouds appear as white objects in an image. This means that in the visual light spectrum they have a whiteish color. We can filter the array for all cells that have values around the maximum data type value. In the Brazilian Landsat scene this will relate to selecting each cell that has a value of 254 or 255 for bands 1 to 3.
@@ -149,8 +152,8 @@ In the next use case we will perform a very simplistic approach for cloud detect
 ```{r cloudMask, cache=1}
 ls7_brazil = scidbst("LS7_BRAZIL")
 sliced.regridded = regrid(slice(ls7_brazil,"t",0),c(10,10),"avg(band1),avg(band2),avg(band3)")
-sliced.regridded = readAll(sliced.regridded)
-plotRGB(sliced.regridded,r=3,g=2,b=1)
+brazil.brick = as(sliced.regridded,"RasterBrick")
+plotRGB(brazil.brick,r=3,g=2,b=1)
 
 transformed = transform(sliced.regridded,cloud = "iif(band1_avg >= 252 and band2_avg >= 252 and band3_avg >= 252, 1 , 0)")
 p2 = project(transformed,c("cloud"))
@@ -169,7 +172,7 @@ To visualize the results we coerce the scidbst object into a \code{SpatialPoints
 In this use case we highlighted the uses of:
 
 - selection of cell values by filtering \code{subset}
-- coercing a scidbst object to different objects \code{as}
+- coercing a scidbst object to different representations \code{as}
 
 ## TRMM Precipitation Data
 In this use case we are going to highlight the use of the aggregation function\code{aggregate}. For the aggregation use case we will aggregate over space, which will leave us with a timeseries for a certain region. The TRMM data set contains daily precipitation values for the area -180° to 180° longitude and -50° to 50° latitude. We are going to use \code{crop} to make a spatial subset for the Landsat 7 scene in Ethiopia. Afterwards we are going to aggregate over the spatial domain with an averaging function.
@@ -183,8 +186,10 @@ trmm.prec = project(trmm,"band5")
 trmm.prec.crop = crop(trmm.prec,l7_ethiopia)
 daily.avg.ethiopia = aggregate(trmm.prec.crop,list("t"),FUN="avg(band5)")
 
-ts = as(daily.avg.ethiopia,"xts")
-plot(window(ts,start="2010-01-01",end="2013-01-01"),major.ticks="months",minor.ticks=FALSE,main="Average precipitation for Ethiopia Landsat scene from 2010 to 2013")
+te = textent(as.POSIXct("2010-01-01"),as.POSIXct("2013-01-01"))
+tsubset = subarray(daily.avg.ethiopia,limits=te,between=TRUE)
+ts = as(tsubset,"xts")
+plot(ts,major.ticks="months",minor.ticks=FALSE,main="Average precipitation for Ethiopia Landsat scene from 2010 to 2013")
 ```
 
 ## References

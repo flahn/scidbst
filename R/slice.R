@@ -6,40 +6,42 @@ if (!isGeneric("slice")) {
 }
 
 .slice = function (x,d,n) {
-  out = .scidbst_class(scidb::slice(x,d,n))
+  .scidb.obj = as(x,"scidb")
 
-  out = .cpMetadata(x,out)
-  if (d %in% x@temporal_dim) {
+  .scidb.obj = scidb::slice(.scidb.obj,d,n)
+
+  x@proxy = .scidb.obj
+  if (d %in% tdim(x)) {
     baseTime = 0
 
-    if (x@tUnit == "weeks") {
+    if (tunit(x) == "weeks") {
       baseTime = 7*24*60*60
-    } else if (x@tUnit == "days") {
+    } else if (tunit(x) == "days") {
       baseTime = 24*60*60
-    } else if (x@tUnit == "hours") {
+    } else if (tunit(x) == "hours") {
       baseTime = 60 * 60
-    } else if (x@tUnit == "mins") {
+    } else if (tunit(x) == "mins") {
       baseTime = 60
-    } else if (x@tUnit == "secs") {
+    } else if (tunit(x) == "secs") {
       baseTime = 1
     } else {
       stop("currently no other temporal unit supported")
     }
 
     #adapt temporal extent
-    newStart = as.POSIXlt(as.character(x@startTime + n * x@tResolution * baseTime))
-    newEnd = as.POSIXlt(as.character(x@startTime + (n+1) * x@tResolution * baseTime))
-    out@tExtent[["min"]] = newStart
-    out@tExtent[["max"]] = newEnd
-    out@isTemporal = FALSE
+    newStart = as.POSIXlt(as.character(t0(x) + n * tres(x) * baseTime))
+    newEnd = as.POSIXlt(as.character(t0(x) + (n+1) * tres(x) * baseTime))
+    x@tExtent@min = newStart
+    x@tExtent@max = newEnd
+    x@isTemporal = FALSE
     # it remains temporal in R, but not in scidb => keep information, but set temporal to false
   }
 
-  if (d %in% x@spatial_dims) {
-    out@isSpatial = FALSE
+  if (d %in% x@srs@dimnames) {
+    x@isSpatial = FALSE
   }
 
-  return(out)
+  return(x)
 }
 
 #' Slice a scidbst object at a particular dimension value
@@ -67,7 +69,7 @@ if (!isGeneric("slice")) {
 #' }
 #' @export
 setMethod('slice', signature(x="scidbst",d="character",n="ANY") , function(x,d,n) {
-  if (d %in% x@temporal_dim) {
+  if (d %in% tdim(x)) {
     if (is.character(n) ) {
       index = suppressWarnings(as.numeric(n)) #disable warnings that might result from converting a plain string
       if (is.na(index)) {

@@ -5,12 +5,10 @@ if (!isGeneric("cumulate")) {
 .cumulate.scidbst = function (x, expression, dimension) {
 
   scidbst.obj = x
-  scidb.obj = .toScidb(scidbst.obj)
+  scidb.obj = as(scidbst.obj,"scidb")
   scidb.obj = scidb::cumulate(scidb.obj, expression, dimension)
-  out = .scidbst_class(scidb.obj)
-  out = .cpMetadata(scidbst.obj,out)
-
-  return(out)
+  x@proxy = scidb.obj
+  return(x)
 }
 
 #' Cumulate function for scidbst objects

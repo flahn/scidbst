@@ -16,18 +16,19 @@
 \arguments{
 \item{x}{scidbst array object}
 
-\item{limits}{vector of coordinate ranges or a character string (see Details) or Extent or TemporalExtent objects}
+\item{limits}{vector of coordinate ranges or a character string (see Details) or \code{\link[raster]{Extent}} or \code{\link[scidbst]{TemporalExtent}} objects}
 
 \item{between}{(logical) Whether or not the \code{between} function shall be used in scidb instead of \code{subarray}}
 }
 \value{
-scidbst array object with modified dimension references
+modified scidbst array object
 }
 \description{
 This function is based on the scidb subarray function. It will create a subset of the array based on the stated dimension limits. Based
-on the 'between' flag in scidb will be used the AFL function 'subarray' or 'between'. When 'between is set \code{TRUE}, then the spatial
+on the 'between' parameter either the 'subarray' or the 'between' function will be used in SciDBs AFL query. When 'between is set \code{TRUE}, then the spatial
 and/or temporal references will not be changed, because the dimension values are not recalculated. If 'subarray' is used in scidb, then
-the dimension values are shifted to the new lower boundaries, which requires an adaption of the references (if necessary).
+the dimension values are shifted to the new lower boundaries, which requires an adaption of the references (if necessary). In either case the resulting
+scidbst object will have a modified dimensional extent.
 }
 \details{
 Like in the original \code{subarray} method \code{limits} parameter needs to be either a vector of numerics or characters or a character string. The vector needs to
@@ -45,11 +46,19 @@ the scidb package will not be recognized as S4 function. Use scidb::subarray to 
 \dontrun{
 scidbconnect(...)
 chicago = scidbst("chicago_sts")
-expression = c(501,285,2,901,585,3) #minimum values, then maximum values for all dimensions
-expression2 = c("501","285","2","901","585","*")
-expression3 = "501,285,2,901,585,3"
 
-chicago_sub = subarray(x=chicago,limits=expression,between=FALSE)
+# Using character strings and vector
+chicago_sub1 = subarray(x=chicago,c(501,285,2,901,585,3),between=FALSE) #minimum values, then maximum values for all dimensions
+chicago_sub2 = subarray(x=chicago,limits=c("501","285","2","901","585","*"))
+chicago_sub3 = subarray(x=chicago,limits="501,285,2,901,585,3")
+
+# Using an extent object
+extent = c(448000,451000,4635000,4640000)
+chicago_sub4 = subarray(x=chicago,limits=extent,between=FALSE)
+
+# Using a Temporal extent
+te = textent(as.POSIXct("2016-05-03"),as.POSIXct("2016-05-05"))
+chicago_sub5 = subarray(x=chicago,limits=te,between=FALSE)
 }
 
 }

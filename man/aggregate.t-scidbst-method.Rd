@@ -30,7 +30,7 @@ the temporal dimension and the values on the temporal dimension will be aggregat
 }
 \note{
 The aggregated scidbst object will loose its temporal reference after aggregation, due to the fact that the spatial
-dimensions are removed
+dimensions are removed. However if scidbsteval with parameter \code{drop=FALSE} is executed, then the aggregated dimensions are preserved.
 }
 \examples{
 \dontrun{
@@ -38,5 +38,8 @@ scidbconnect(...)
 scidbst.obj = scidbst(array_name)
 aggt = aggregate.t(scidbst.obj,FUN="avg(attribute1)") # returns something similar to a raster with aggregated values over the temporal dimension
 }
+}
+\seealso{
+\code{\link{scidbsteval}}
 }
 

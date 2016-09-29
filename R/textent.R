@@ -8,14 +8,12 @@ setGeneric("t.extent", function(x, ...) standardGeneric("t.extent"))
 #'
 #' @param x a scidbst object
 #'
-#' @return The temporal extent as a list of POSIXlt values
+#' @return The temporal extent as a \link{\code{TemporalExtent}} object
 #'
 #' @export
 setMethod("t.extent",signature(x="scidbst"), function(x) {
   if (!x@isTemporal) {
-    warn(paste("Array",x@title,"does not have a temporal dimension."))
-    list()
-  } else {
-    x@tExtent
+    stop(paste("Array",x@proxy@name,"does not have a temporal dimension."))
   }
+  return(x@tExtent)
 })

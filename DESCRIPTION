@@ -14,30 +14,33 @@ VignetteBuilder: knitr
 Encoding: UTF-8
 BuildVignette: FALSE
 Depends:
-    raster,scidb,rgdal
+    scidb,raster
 Imports:
-    spacetime,xts
+    spacetime,xts,rgdal,sp
 Suggests:
     knitr
 Collate:
+    'SRS-class-decl.R'
+    'TRS-class-decl.R'
+    'TemporalExtent-class-decl.R'
+    'scidbst-class-decl.R'
+    'SRS-class.R'
+    'TRS-class.R'
     'TemporalExtent-class.R'
     'scidbst-class.R'
     'aggregate.R'
+    'utils.R'
     'coerce.R'
     'crop.R'
     'cumulate.R'
     'extent.R'
-    'getValues.R'
-    'getterSetter.R'
     'names.R'
     'ncol.R'
     'nrow.R'
     'pkg.R'
     'project.R'
-    'readAll.R'
     'regrid.R'
-    'resolution.R'
-    'sampleRegular.R'
+    'scidb-basic.R'
     'scidbsteval.R'
     'slice.R'
     'spplot.R'
@@ -45,4 +48,3 @@ Collate:
     'subset.R'
     'textent.R'
     'transform-apply.R'
-    'utils.R'

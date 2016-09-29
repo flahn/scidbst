@@ -9,32 +9,35 @@ if (!isGeneric("scidbsteval")) {
   if (missing(name)) {
     stop("No target array name specified. Please use parameter 'name' to state the target arrays name.")
   }
-  if (inherits(expr,"scidb")) {
-    scidb.obj = .toScidb(expr)
-  } else {
+  if (inherits(expr,"scidbst")) {
+    scidb.obj = as(expr,"scidb")
+  } else if (is.character(expr)){
     # if this is an expression (string), then we try to create a scidbst object from that
     expr = scidbst(expr)
-    scidb.obj = .toScidb(expr)
+    scidb.obj = as(expr,"scidb")
+  } else {
+    stop(paste("Cannot invoke scidb with parameter 'expr' of type ",class(expr),sep=""))
   }
 
   if (!drop) {
     temp_name = paste(name,"_temp",sep="")
     #store evaluated array temporary
     scidb.obj = scidbeval(scidb.obj,eval=TRUE,name=temp_name,gc=TRUE,temp=TRUE) #probably takes time
+    expr@proxy = scidb.obj
     bounds=iquery(sprintf("dimensions(%s)",temp_name),return=T) # required to find the true
 
     # there are problems with reshape and unbounded coordinates -> scidbeval runs infinitely, so replace
     # infinites with highs and lows
     # if references are kept (not dropped)
-    starts = scidb_coordinate_start(scidb.obj)
+    starts = scidb_coordinate_start(expr)
     starts[starts=="*"] = bounds$low[starts=="*"]
     starts = as.double(starts)
 
-    lengths = scidb_coordinate_bounds(scidb.obj)$length
+    lengths = scidb_coordinate_bounds(expr)$length
     lengths = as.double(lengths)
     lengths[is.infinite(lengths)] = bounds[is.infinite(lengths),"high"] -bounds[is.infinite(lengths),"low"]+1
 
-    ends = scidb_coordinate_end(scidb.obj)
+    ends = scidb_coordinate_end(expr)
     ends[ends=="*"] = bounds$high[ends=="*"]
     ends = as.double(ends)
 
@@ -47,14 +50,14 @@ if (!isGeneric("scidbsteval")) {
     # 1. check if there is some sort of spatial reference left (isSpatial is not enough)
     # hint: normally the spatial dimensions are not unbounded
     if (!expr@isSpatial) { #not spatial in scidb, but in R
-      if (length(expr@spatial_dims) >= 2) {
+      if (length(expr@srs@dimnames) >= 2) {
         # yes: merge old spatial dimensions back to the array,
         # set values to 0 and
         # set new spatial reference (adapted resolution for example)
         starts = c(starts, 0,0)
         ends = c(ends, 0,0)
         lengths = c(lengths, 1,1)
-        dimnames = c(dimnames,getYDim(expr),getXDim(expr))
+        dimnames = c(dimnames,ydim(expr),xdim(expr))
         chunks = c(chunks,1,1)
         expr@isSpatial = TRUE
       } else {
@@ -64,13 +67,13 @@ if (!isGeneric("scidbsteval")) {
 
     # 2. check if there is some sort of temporal reference left (isTemporal just refers to the scidb array)
     if (!expr@isTemporal) {
-      if (length(expr@temporal_dim) > 0) {
+      if (length(tdim(expr)) > 0) {
         # yes: merge the old temporal dimension back to array,
         # set values to 0 and
         starts = c(starts, 0)
         ends = c(ends,0)
         lengths = c(lengths, 1)
-        dimnames = c(dimnames,getTDim(expr))
+        dimnames = c(dimnames,tdim(expr))
         chunks = c(chunks,1)
         expr@isTemporal = TRUE
         # set adapt temporal reference
@@ -82,17 +85,15 @@ if (!isGeneric("scidbsteval")) {
 
     #second store to adapt none dropping changes
     scidb.obj = scidbeval(expr=scidb.obj,eval=eval,name=name, gc=gc, temp=temp)
+    expr@proxy = scidb.obj
 
-
-    # recreate the spatial/temporal references in R
-    scidbst.obj = .scidbst_class(scidb.obj)
-    expr = .cpMetadata(expr,scidbst.obj)
 
     #clean up
     scidbrm(temp_name,force=TRUE)
   } else {
     # store / evaluate array
     scidb.obj = scidbeval(scidb.obj,eval,name, gc, temp)
+    expr@proxy = scidb.obj
     # no need to copy elements, just use the expr object that was passed to this function and change name later
   }
 
@@ -100,17 +101,17 @@ if (!isGeneric("scidbsteval")) {
   # set spatial and temporal references if applicable
   if (expr@isSpatial) {
     #eo_setsrs:  {name,xdim,ydim,authname,authsrid,affine_str}
-    cmd = paste("eo_setsrs(",name,",'",getXDim(expr),"','",getYDim(expr),"','",expr@sref$auth_name,"',",expr@sref$auth_srid,",'","x0=",expr@affine[1,1]," y0=",expr@affine[2,1]," a11=",expr@affine[1,2]," a22=",expr@affine[2,3]," a12=",expr@affine[1,3]," a21=",expr@affine[2,2],"'",")",sep="")
+    cmd = paste("eo_setsrs(",name,",'",xdim(expr),"','",ydim(expr),"','",expr@srs@authority,"',",expr@srs@srid,",'","x0=",affine(expr)[1,1]," y0=",affine(expr)[2,1]," a11=",affine(expr)[1,2]," a22=",affine(expr)[2,3]," a12=",affine(expr)[1,3]," a21=",affine(expr)[2,2],"'",")",sep="")
     iquery(cmd)
   }
 
   if (expr@isTemporal) {
-    cmd = paste("eo_settrs(",name,",'",getTDim(expr),"','",as.character(expr@startTime),"','",.getRefPeriod(expr),"'",")",sep="")
+    cmd = paste("eo_settrs(",name,",'",tdim(expr),"','",as.character(t0(expr)),"','",getRefPeriod(expr),"'",")",sep="")
     iquery(cmd)
   }
 
   # rename the array, since the name was changed due to store
-  expr@name = name
+  expr@proxy@name = name
   expr@title = name
   return(expr)
 }

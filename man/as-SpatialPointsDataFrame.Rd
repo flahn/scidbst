@@ -9,6 +9,6 @@ Creates a SpatialPointsDataFrame from scidbst
 \seealso{
 Other scidbst: \code{\link{as-RasterBrick}},
   \code{\link{as-STSDF}}, \code{\link{as-data.frame}},
-  \code{\link{as-xts}}
+  \code{\link{as-scidb}}, \code{\link{as-xts}}
 }
 

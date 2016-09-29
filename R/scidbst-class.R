@@ -1,85 +1,31 @@
-#' @import methods
-#' @import scidb
-#' @import raster
+#' @include TemporalExtent-class.R
+#' @include scidbst-class-decl.R
+#' @include TRS-class.R
+#' @include SRS-class.R
 NULL
 
-# just a precaution, since the class was not exported in the package SciDBR (remved S3Methods for now)
-setClass("scidb",
-         representation(name="character",
-                        meta="environment",
-                        gc="environment")
-)
-
-#' Class scidbst
-#'
-#' Class \code{scidbst} inherits from class \code{scidb}
-#'
-#' @name scidbst-class
-#' @rdname scidbst-class
-#' @slot CRS The coordinate reference system used as class 'CRS' that represents a Proj.4 string
-#' @slot extent The outer boundary of the SciDB array in referenced coordinates
-#' @slot affine The affine transformation used to convert real-world coordinates into image frame coordinates
-#' @slot spatial_dims the names of the spatial dimensions as a named list. 'xdim' describes the west-east axis and 'ydim' the north-south axis.
-#' @slot temporal_dim the name of the temporal dimension
-#' @slot startTime the start time as a POSIXlt object
-#' @slot tResolution The temporal resolution as a numeric
-#' @slot tExtent the temporal extent (min/max) as a list
-#' @slot tUnit the temporal base unit for this timeseries
-#' @slot isSpatial A flag whether or not this object has a spatial reference
-#' @slot isTemporal A flag whether or not this object has a temporal reference
-#' @slot sref A named list of elements that represent the spatial reference as specified in scidb by eo_getsrs
-#' @slot tref A named list with the elements retrieved by eo_gettrs function
-#' @aliases scidbst
-#' @exportClass scidbst
-.scidbst_class = setClass("scidbst",
-                          contains=list("scidb","RasterBrick"),
-                          slots=c(
-                            affine = "matrix",
-                            sref = "list",
-                            tref = "list",
-                            spatial_dims = "list",
-                            temporal_dim = "character",
-                            startTime = "ANY",
-                            tExtent = "list",
-                            tResolution = "numeric",
-                            tUnit = "character",
-                            isSpatial ="logical",
-                            isTemporal = "logical"
-                          )
-)
 
 
 #' Constructor for scidbst
 #'
 #' @name scidbst
 #' @rdname scidbst-class
-#' @param name a character string name of a stored SciDB array or a valid SciDB AFL expression
-#' @param gc a logical value, TRUE means connect the SciDB array to R's garbage collector
+#' @param ... parameter that are passed on to \code{\link[scidb]{scidb}}
+#'
+#' @note At least parameter \code{name} should be provided
 #' @return scidbst object
+#'
+#' @examples
+#' \dontrun{
+#' scidbconnect(host,port,user,pwd,protocol,authtype)
+#' chicago = scidbst(name="chicago_sts")
+#' }
 #' @export
 scidbst = function(...){
-  .scidb = .scidbst_class(scidb(...))
-  .scidb@title = .scidb@name
-  .srs = iquery(paste("eo_getsrs(",.scidb@name,")",sep=""),return=TRUE)
-
-  .scidb@sref = list()
-  for (n in names(.srs)) {
-    if (n %in% c("i")) {
-      next
-    } else {
-      .scidb@sref[n] = .srs[1,n]
-    }
-  }
-
-  .trs = iquery(paste("eo_gettrs(",.scidb@name,")",sep=""),return=TRUE)
-  .scidb@tref = list()
-  for (n in names(.trs)) {
-    if (n %in% c("i")) {
-      next
-    } else {
-      .scidb@tref[n] = .trs[1,n]
-    }
-  }
+  .scidbst = new("scidbst")
+  .scidb = scidb(...)
+  .scidbst@proxy = .scidb
+  .scidbst@title = .scidb@name
 
   .extent = iquery(paste("eo_extent(",.scidb@name,")",sep=""),return=TRUE)
 
@@ -87,48 +33,105 @@ scidbst = function(...){
     stop("There is no spatial or temporal extent for this array.")
   }
 
-  .scidb@isSpatial = (nrow(.srs) > 0)
-  .scidb@isTemporal = (nrow(.trs) > 0)
+  .srs = iquery(paste("eo_getsrs(",.scidb@name,")",sep=""),return=TRUE)
+  .scidbst@isSpatial = (nrow(.srs) > 0)
 
-  if (.scidb@isTemporal) { #make sure that there is actually a temporal reference
-    .scidb@temporal_dim = .trs[,"tdim"]
-    .scidb@tResolution = as.numeric(unlist(regmatches(.trs[,"dt"],gregexpr("(\\d)+",.trs[,"dt"]))))
-    .scidb@tUnit = .findTUnit(.trs[,"dt"])
-    .scidb@startTime = .getDateTime(.trs[,"t0"],.scidb@tUnit)
-    .scidb@tExtent = list(min=.getDateTime(.extent[,"tmin"],.scidb@tUnit),max=.getDateTime(.extent[,"tmax"],.scidb@tUnit))
+  if (.scidbst@isSpatial) {
+    .scidbst@affine <- .createAffineTransformation(.srs)
+    .scidbst@srs = SRS(.srs$proj4text,dimnames=c(.srs[,"ydim"],.srs[,"xdim"]))
+    .scidbst@srs@authority = .srs$auth_name
+    .scidbst@srs@srid =.srs$auth_srid
+    .scidbst@srs@srtext = .srs$srtext
+
+    .scidbst@extent = extent(.extent[,"xmin"],.extent[,"xmax"],.extent[,"ymin"],.extent[,"ymax"])
   }
 
 
-  if (.scidb@isSpatial) {
-    .scidb@affine <- .createAffineTransformation(.srs)
-    .scidb@crs <- CRS(.srs$proj4text)
-    .scidb@spatial_dims = list(xdim=.srs[,"xdim"],ydim=.srs[,"ydim"])
-    .scidb@extent = extent(.extent[,"xmin"],.extent[,"xmax"],.extent[,"ymin"],.extent[,"ymax"])
+  .trs = iquery(paste("eo_gettrs(",.scidb@name,")",sep=""),return=TRUE)
+  .scidbst@isTemporal = (nrow(.trs) > 0)
 
-    #get minimum and maximum extent for spatial dimensions in terms of dimension indices
-    .scidb@nrows = as.integer(nrow(.scidb))
-    .scidb@ncols = as.integer(ncol(.scidb))
+  if (.scidbst@isTemporal) {
 
-    # .lengths = .getLengths(.scidb) # this only refers to the total image (original coordinate system)
-    # .scidb@nrows = as.integer(.lengths[getYDim(.scidb)])
-    # .scidb@ncols = as.integer(.lengths[getXDim(.scidb)])
+    # TRS variables
+    temporal_dim = .trs[,"tdim"]
+    tResolution = as.numeric(unlist(regmatches(.trs[,"dt"],gregexpr("(\\d)+",.trs[,"dt"]))))
+    tUnit = .findTUnit(.trs[,"dt"])
+    startTime = .getDateTime(.trs[,"t0"],tUnit)
 
+    # temporal extent variables
+    tmin = .getDateTime(.extent[,"tmin"],tUnit)
+    tmax = .getDateTime(.extent[,"tmax"],tUnit)
 
+    .scidbst@trs = TRS(temporal_dim,startTime,tResolution,tUnit)
+    .scidbst@tExtent = textent(tmin,tmax)
   }
 
-  # .attr = scidb_attributes(.scidb)
-  # .scidb@data@names = .attr
-  # .scidb@data@nlayers = length(.attr)
-  # .scidb@data@fromdisk = FALSE
-
-  return(.scidb)
+  return(.scidbst)
 }
 
+if (!isGeneric("trs")) {
+  setGeneric("trs", function(x) {
+    standardGeneric("trs")
+  })
+}
 
-#' #' @export
-#' setMethod("show",signature(object="scidbst"), function(object){
-#'   s = .toScidb(object)
-#'   show(s)
-#' })
+#' Returns the Temporal reference object
+#'
+#' @param x scidbst object
+#' @return \code{\link{TRS} object}
+#' @export
+setMethod("trs",signature(x="scidbst"), function(x){
+  if (x@isTemporal || !is.null(x@trs)) {
+    return(x@trs)
+  } else {
+    stop("Objecthas no temporal reference")
+  }
+})
 
+#' Show scidbst object
+#'
+#' Creates a printable representation about relevant information about the scidbst object.
+#'
+#' @param object scidbst object
+#'
+#' @export
+setMethod("show",signature(object="scidbst"), function(object){
+  s = as(object,"scidb")
+  cat(paste("Title:\t\t",object@title,"\n",sep=""))
+  if (object@isSpatial){
+    cat(paste("Spatial Extent:\n"))
+    cat(paste("\txmin:\t",xmin(object),"\n",sep=""))
+    cat(paste("\txmax:\t",xmax(object),"\n",sep=""))
+    cat(paste("\tymin:\t",ymin(object),"\n",sep=""))
+    cat(paste("\tymax:\t",ymax(object),"\n",sep=""))
+    cat("CRS:\n")
+    cat(paste("\t",crs(object),"\n",sep=""))
+  }
+  if (object@isTemporal) {
+    show(t.extent(object))
+    show(trs(object))
+  }
+  if(!is.null(s)) {
+    show(s)
+  }
+})
+
+setGeneric("affine", function(x) standardGeneric("affine"))
+
+#' Returns the affine transformation
+#'
+#' The function returns the stored affine transformation. The matrix has a dimensionality of 2x3 and contains the following values:
+#' x0,xres(x),xshear(x) \\ y0, yshear(x), yres(x)
+#'
+#' @param x scidbst object
+#' @return a numeric matrix containing the affine transformation parameter
+#' @export
+setMethod("affine",signature(x="scidbst"),function(x) {
+  if (x@isSpatial || !is.null(x@affine)) {
+    return(x@affine)
+  } else {
+    stop("The array is not spatial. There is no affine transformation.")
+  }
+
+})
 
