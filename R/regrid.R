@@ -8,10 +8,10 @@ NULL
       grid = rep(1,length(.dims))
       names(grid) = .dims
       if (!missing(y)) {
-          oldnx = ncol(x)
-          oldny = nrow(x)
-          newnx = ncol(y)
-          newny = nrow(y)
+          oldnx = .ncol(x)
+          oldny = .nrow(x)
+          newnx = .ncol(y)
+          newny = .nrow(y)
           if (newny > oldny && newnx > oldnx) {
             stop("Error: Cannot resample the array, because the output array has at least partially a higher resolution than the input")
           }

@@ -47,4 +47,5 @@ Collate:
     'subarray.R'
     'subset.R'
     'textent.R'
+    'transfer.R'
     'transform-apply.R'
