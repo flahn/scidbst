@@ -5,12 +5,14 @@
 \alias{join,scidbst,scidbst-method}
 \title{Joins the attributes of x and y}
 \usage{
-\S4method{join}{scidbst,scidbst}(x, y)
+\S4method{join}{scidbst,scidbst}(x, y, storeTemp = FALSE)
 }
 \arguments{
 \item{x}{scidbst object}
 
 \item{y}{scidbst object}
+
+\item{storeTemp}{logical whether or not some arrays are stored temporarily during the operation}
 }
 \value{
 scidbst object with a combined object

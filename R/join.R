@@ -29,7 +29,7 @@
 # joins attributes from A into B under the condition that both arrays are strictly spatial and have the same resolution and SRS
 .join.spatial.normalized = function(A,B) {
   # code from Marius (modified)
-  join.ref.st = transfer(A,B)
+  join.ref.st = transfer(A,B) #eo_over
   join.ref = as(join.ref.st,"scidb")
 
   attributestr = scidb:::build_attr_schema(as(A,"scidb"))
@@ -68,7 +68,7 @@
 
   ### redimension
   q.redim = paste("redimension(", join.ref@name, ",",
-                  paste(attributestr,dimensionstr,sep=""), " )", sep="")
+                  paste(attributestr,dimensionstr,sep=""), ", false )", sep="")
   # TODO join is maybe deprecated in the future (use cross_join)
   q.join = paste("join(", q.redim , ",", scidb_op(B)  ,")", sep="")
 
@@ -82,9 +82,15 @@ if (!isGeneric("join")) {
   })
 }
 
-.join = function (x,y) {
+.join = function (x,y,storeTemp=FALSE) {
   bothSpatial = x@isSpatial && y@isSpatial
   bothTemporal = x@isTemporal && y@isTemporal
+  if (storeTemp) {
+    tempResample = FALSE
+    ids = sample.int(2147483647,2,replace=FALSE)
+    tempResample.name = paste("__temp_resample_",ids[1],sep="")
+    tempB.name = paste("__temp_B_",ids[2],sep="")
+  }
 
   if (bothSpatial && !bothTemporal) {
     if (!.equalSRS(x,y)) {
@@ -98,10 +104,28 @@ if (!isGeneric("join")) {
       A = res.ls$A
       B = res.ls$B
       A = resample(A,B) # use B as target grid structure
+      if (storeTemp) {
+        B = scidbsteval(B,tempB.name,temp=TRUE)
+        tempB = TRUE
+
+        A = scidbsteval(A,tempResample.name,temp=TRUE)
+        tempResample = TRUE
+      }
+
+
     }
 
     #do normal join
-    return(.join.spatial.normalized(A,B))
+    .out = .join.spatial.normalized(A,B)
+    if (storeTemp) {
+      if (tempResample) {
+        scidbrm(tempResample.name,force=TRUE)
+      }
+      if (tempB) {
+        scidbrm(tempB.name,force=TRUE)
+      }
+    }
+    return(.out)
   }
 }
 #' Joins the attributes of x and y
@@ -114,6 +138,7 @@ if (!isGeneric("join")) {
 #'
 #' @param x scidbst object
 #' @param y scidbst object
+#' @param storeTemp logical whether or not some arrays are stored temporarily during the operation
 #' @return scidbst object with a combined object
 #'
 #' @export
