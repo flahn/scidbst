@@ -170,3 +170,26 @@ setMethod("setSRS", signature(x="scidb",srs="SRS",affine="matrix"), function (x,
     return(scidbst(x@name))
   }
 })
+
+if (!isGeneric("srs")) {
+  setGeneric("srs", function(x) {
+    standardGeneric("srs")
+  })
+}
+
+#' Returns the spatial reference
+#'
+#' The function returns the SRS object of a scidbst object.
+#'
+#' @param x scidbst
+#' @return \code{\link{SRS}} class
+#'
+#' @export
+setMethod("srs",signature(x="scidbst"), function(x) {
+  if (x@isSpatial) {
+    return(x@srs)
+  } else {
+    stop("The scidbst array has no spatial reference to return.")
+  }
+
+})
