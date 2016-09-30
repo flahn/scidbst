@@ -142,3 +142,31 @@ setMethod("res", signature(x="scidbst"), function(x) {
   }
 })
 
+
+if (!isGeneric("setSRS")) {
+  setGeneric("setSRS", function(x, srs, affine, ...) {
+    standardGeneric("setSRS")
+  })
+}
+
+#' Sets the spatial reference system to a given array
+#'
+#' By stating the srs and the affine projection together with a given scidb array, that array
+#' becomes a spatial array.
+#'
+#' @param x a scidb array
+#' @param srs a SRS class
+#' @param affine a 2x3 matrix containing the affine projection
+#' @param return logical - if a scidbst object shall be returned (default FALSE)
+#' @return a scidbst object if return=TRUE
+#'
+#' @export
+setMethod("setSRS", signature(x="scidb",srs="SRS",affine="matrix"), function (x, srs, affine, return=FALSE) {
+  #eo_setsrs:  {name,xdim,ydim,authname,authsrid,affine_str}
+  cmd = paste("eo_setsrs(",x@name,",'",xdim(srs),"','",ydim(srs),"','",srs@authority,"',",srs@srid,",'","x0=",affine[1,1]," y0=",affine[2,1]," a11=",affine[1,2]," a22=",affine(expr)[2,3]," a12=",affine[1,3]," a21=",affine[2,2],"'",")",sep="")
+  iquery(cmd)
+
+  if (return) {
+    return(scidbst(x@name))
+  }
+})

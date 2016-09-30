@@ -109,3 +109,13 @@ setMethod("resample", signature(x="scidbst", y="Raster"), function(x,y,expr) {
     grid = .prepareGrid(x,y)
     return(.regrid.scidbst(x=x,grid=grid,expr))
 })
+
+#' @rdname resample-scidbst-methods
+#' @export
+setMethod("resample", signature(x="scidbst", y="scidbst"), function(x,y,expr) {
+  grid = .prepareGrid(x,y)
+  if (missing(expr)) {
+    expr = paste("avg(",scidb_attributes(x),")",sep="",collapse=", ")
+  }
+  return(.regrid.scidbst(x=x,grid=grid,expr))
+})

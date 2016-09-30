@@ -4,11 +4,14 @@
 \name{regrid,scidbst-method}
 \alias{regrid,scidbst-method}
 \alias{resample,scidbst,Raster-method}
+\alias{resample,scidbst,scidbst-method}
 \title{Regrid / Resample operator for scidbst objects}
 \usage{
 \S4method{regrid}{scidbst}(x, grid, expr)
 
 \S4method{resample}{scidbst,Raster}(x, y, expr)
+
+\S4method{resample}{scidbst,scidbst}(x, y, expr)
 }
 \arguments{
 \item{x}{The scidbst object}

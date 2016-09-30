@@ -154,15 +154,7 @@ if (!isGeneric("getRefPeriod")) {
   })
 }
 
-#' Creates a character expression for the reference time period
-#'
-#' Returns the reference period of a scidbst object, e.g. P1D, P16D or P1M. It combines the temporal resolution with an abbreviation
-#' for the time unit. Usually the expression is used as "dt" (delta t).
-#'
-#' @param x scidbst object
-#' @return a character describing the reference period for a time unit
-#' @export
-getRefPeriod = function(x) {
+.getRefPeriod = function(x) {
   m = matrix(cbind(c("P(\\d)+D","P(\\d)+M","P(\\d)+Y","P(\\d)+W","P(\\d)+h","P(\\d)+m","P(\\d)+s"),
                    c("days","months","years","weeks","hours","mins","secs"),
                    c("D","M","Y","W","h","m","s")),ncol=3)
@@ -172,8 +164,48 @@ getRefPeriod = function(x) {
   return(out)
 }
 
+#' Creates a character expression for the reference time period
+#'
+#' Returns the reference period of a scidbst object, e.g. P1D, P16D or P1M. It combines the temporal resolution with an abbreviation
+#' for the time unit. Usually the expression is used as "dt" (delta t).
+#'
+#' @name getRefPeriod
+#' @rdname getRefPeriod-method
+#' @param x scidbst object
+#' @return a character describing the reference period for a time unit
+#' @export
+setMethod("getRefPeriod",signature(x="scidbst"), .getRefPeriod )
+
+#' @rdname getRefPeriod-method
+#' @export
+setMethod("getRefPeriod",signature(x="TRS"), .getRefPeriod)
+
 #' @export
 setMethod("show",signature(object="TRS"), function(object){
   out = paste("TRS:\n","\tdimension: \t\"",tdim(object),"\"\n","\tt0: \t\t",t0(object),"\n","\tdt: \t\t",getRefPeriod(object),"\n",sep="")
   cat(out)
+})
+
+if (!isGeneric("setTRS")) {
+  setGeneric("setTRS", function(x,trs, ...) {
+    standardGeneric("setTRS")
+  })
+}
+
+#' Add a TRS to a scidb array
+#'
+#' The function adds a temporal reference to a scidb array and returns a scidbst object
+#'
+#' @param x scidb
+#' @param trs TRS
+#' @param return logical - if a scidbst object shall be returned (default FALSE)
+#' @return scidbst if parameter return=TRUE
+#'
+#' @export
+setMethod("setTRS", signature(x="scidb",trs="TRS"), function(x,trs, return=FALSE) {
+  cmd = paste("eo_settrs(",x@name,",'",tdim(trs),"','",as.character(t0(trs)),"','",getRefPeriod(trs),"'",")",sep="")
+  iquery(cmd)
+  if (return) {
+    return(scidbst(x@name))
+  }
 })
