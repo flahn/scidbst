@@ -36,6 +36,7 @@ Collate:
     'crop.R'
     'cumulate.R'
     'extent.R'
+    'join.R'
     'names.R'
     'pkg.R'
     'project.R'
