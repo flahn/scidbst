@@ -161,9 +161,10 @@ if (!isGeneric("setSRS")) {
 #' @return a scidbst object if return=TRUE
 #'
 #' @export
-setMethod("setSRS", signature(x="scidb",srs="SRS",affine="matrix"), function (x, srs, affine, return=FALSE) {
+setMethod("setSRS", signature(x="ANY",srs="SRS",affine="matrix"), function (x, srs, affine, return=FALSE) {
   #eo_setsrs:  {name,xdim,ydim,authname,authsrid,affine_str}
-  cmd = paste("eo_setsrs(",x@name,",'",xdim(srs),"','",ydim(srs),"','",srs@authority,"',",srs@srid,",'","x0=",affine[1,1]," y0=",affine[2,1]," a11=",affine[1,2]," a22=",affine(expr)[2,3]," a12=",affine[1,3]," a21=",affine[2,2],"'",")",sep="")
+  # if (!inherits(x,"scidb")) stop("Parameter x is no scidb array")
+  cmd = paste("eo_setsrs(",x@name,",'",xdim(srs),"','",ydim(srs),"','",srs@authority,"',",srs@srid,",'","x0=",affine[1,1]," y0=",affine[2,1]," a11=",affine[1,2]," a22=",affine[2,3]," a12=",affine[1,3]," a21=",affine[2,2],"'",")",sep="")
   iquery(cmd)
 
   if (return) {
@@ -186,7 +187,7 @@ if (!isGeneric("srs")) {
 #'
 #' @export
 setMethod("srs",signature(x="scidbst"), function(x) {
-  if (x@isSpatial) {
+  if (x@isSpatial || !is.null(x@srs)) {
     return(x@srs)
   } else {
     stop("The scidbst array has no spatial reference to return.")

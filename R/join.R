@@ -82,9 +82,14 @@ if (!isGeneric("join")) {
   })
 }
 
-.join = function (x,y,storeTemp=FALSE) {
+.join = function (x,y,storeTemp=FALSE,name) {
   bothSpatial = x@isSpatial && y@isSpatial
   bothTemporal = x@isTemporal && y@isTemporal
+
+  if (storeTemp && missing(name)) {
+    stop("There is no name for the resulting array, if you want to optimize the process with temporary storing.")
+  }
+
   if (storeTemp) {
     tempResample = FALSE
     ids = sample.int(2147483647,2,replace=FALSE)
@@ -118,6 +123,8 @@ if (!isGeneric("join")) {
     #do normal join
     .out = .join.spatial.normalized(A,B)
     if (storeTemp) {
+      .out = scidbsteval(.out,name)
+
       if (tempResample) {
         scidbrm(tempResample.name,force=TRUE)
       }
