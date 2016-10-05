@@ -82,7 +82,8 @@ if (!isGeneric("join")) {
   })
 }
 
-.join = function (x,y,storeTemp=FALSE,name) {
+.join = function (x,y,storeTemp=FALSE,name,raf="avg") {
+
   bothSpatial = x@isSpatial && y@isSpatial
   bothTemporal = x@isTemporal && y@isTemporal
 
@@ -108,7 +109,8 @@ if (!isGeneric("join")) {
       # resample A into B
       A = res.ls$A
       B = res.ls$B
-      A = resample(A,B) # use B as target grid structure
+      expr = .createExpression(A,raf)
+      A = resample(A,B,expr) # use B as target grid structure
       if (storeTemp) {
         B.attr = paste(B@title,"_",scidb_attributes(B),sep="")
         B@proxy = attribute_rename(as(B,"scidb"),scidb_attributes(B),B.attr)
@@ -128,6 +130,7 @@ if (!isGeneric("join")) {
     .out = .join.spatial.normalized(A,B)
     if (storeTemp) {
       .out = scidbsteval(.out,name)
+      .out = scidbst(name) #clean possible extent differences
 
       if (tempResample) {
         scidbrm(tempResample.name,force=TRUE)
@@ -150,6 +153,8 @@ if (!isGeneric("join")) {
 #' @param x scidbst object
 #' @param y scidbst object
 #' @param storeTemp logical whether or not some arrays are stored temporarily during the operation
+#' @param name The name of the joined output array (required if storeTemp==TRUE)
+#' @param raf the aggregation function to be applied during the spatial regrid
 #' @return scidbst object with a combined object
 #'
 #' @export

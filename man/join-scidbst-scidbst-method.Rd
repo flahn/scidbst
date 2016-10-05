@@ -5,7 +5,7 @@
 \alias{join,scidbst,scidbst-method}
 \title{Joins the attributes of x and y}
 \usage{
-\S4method{join}{scidbst,scidbst}(x, y, storeTemp = FALSE, name)
+\S4method{join}{scidbst,scidbst}(x, y, storeTemp = FALSE, name, raf = "avg")
 }
 \arguments{
 \item{x}{scidbst object}
@@ -13,6 +13,10 @@
 \item{y}{scidbst object}
 
 \item{storeTemp}{logical whether or not some arrays are stored temporarily during the operation}
+
+\item{name}{The name of the joined output array (required if storeTemp==TRUE)}
+
+\item{raf}{the aggregation function to be applied during the spatial regrid}
 }
 \value{
 scidbst object with a combined object

@@ -30,6 +30,8 @@ NULL
 }
 
 .regrid.scidbst = function(x, grid, expr) {
+  expr = .createExpression(expr)
+
   .dims = dimensions(x)
   names(grid) = .dims
 
@@ -68,6 +70,16 @@ NULL
   return(x)
 }
 
+#x: scidbst object
+#af: abbreviation of the aggregation function
+.createExpression=function(x,af) {
+  if (af %in% c("avg","sum","prod","max","min","stdev","var","count")) {
+    return(paste(af,"(",scidb_attributes(x),")",sep="",collapse=", "))
+  } else {
+    return(af) # probably it is an expression term otherwise it will crash in scidb operation
+  }
+}
+
 #' Regrid / Resample operator for scidbst objects
 #'
 #' This function changes the resolution of certain dimensions of the scidbst object. 'Regrid' is in this case the targeted scidb operation and reflects
@@ -76,14 +88,15 @@ NULL
 #' of scidb, the aggregation functions are quite limited (min/max, average, sum, standard deviation) and do not support more elaborated function like bilinear
 #' interpolation.
 #'
-#' @note For information on the aggregation statements in scidb have a look on the supported AFL functions (\url{http://paradigm4.com/HTMLmanual/13.3/scidb_ug/ch12.html})
+#' @note For information on the aggregation statements in scidb have a look on the supported AFL functions (\url{http://paradigm4.com/HTMLmanual/13.3/scidb_ug/ch12.html}).
+#' To make the query formulation easier we allow also to pass the aggregation function name of the AFL function as parameter "af", which
+#' will be used on all attributes.
 #'
 #' @rdname resample-scidbst-methods
 #'
 #' @param x The scidbst object
-#' @param grid a vector of grid sizes having the same length as dimensions(x)
-#' @param expr (optional) aggregation function applied to every attribute on the grid, or a quoted SciDB aggregation expression
-#' @param y raster object
+#' @param y target object
+#' @param af (optional) aggregation function applied to every attribute on the grid, or a quoted SciDB aggregation expression
 #'
 #' @examples
 #' \dontrun{
@@ -96,6 +109,7 @@ NULL
 #'
 #' r = raster(scidbst.obj, nrows=300, ncols=200) # resample by setting the number of rows and columns of the target
 #' resampled = resample(scidbst.obj,r,"avg(attribute1)")
+#' resampled2 = resample(scidbst.obj,r,"sum") # aggregation function applied on all attributes
 #' }
 #'
 #' @return scidbst object with new resolution information (adapted affine transformation)
@@ -105,17 +119,16 @@ setMethod("regrid", signature(x="scidbst"), .regrid.scidbst)
 
 #' @rdname resample-scidbst-methods
 #' @export
-setMethod("resample", signature(x="scidbst", y="Raster"), function(x,y,expr) {
+setMethod("resample", signature(x="scidbst", y="Raster"), function(x,y,af="avg") {
     grid = .prepareGrid(x,y)
-    return(.regrid.scidbst(x=x,grid=grid,expr))
+    return(.regrid.scidbst(x=x,grid=grid,af))
 })
 
 #' @rdname resample-scidbst-methods
 #' @export
-setMethod("resample", signature(x="scidbst", y="scidbst"), function(x,y,expr) {
+setMethod("resample", signature(x="scidbst", y="scidbst"), function(x,y,af="avg") {
   grid = .prepareGrid(x,y)
-  if (missing(expr)) {
-    expr = paste("avg(",scidb_attributes(x),")",sep="",collapse=", ")
-  }
-  return(.regrid.scidbst(x=x,grid=grid,expr))
+
+
+  return(.regrid.scidbst(x=x,grid=grid,af))
 })
