@@ -110,9 +110,13 @@ if (!isGeneric("join")) {
       B = res.ls$B
       A = resample(A,B) # use B as target grid structure
       if (storeTemp) {
+        B.attr = paste(B@title,"_",scidb_attributes(B),sep="")
+        B@proxy = attribute_rename(as(B,"scidb"),scidb_attributes(B),B.attr)
         B = scidbsteval(B,tempB.name,temp=TRUE)
         tempB = TRUE
 
+        A.attr = paste(A@title,"_regridded_",scidb_attributes(A),sep="")
+        A@proxy = attribute_rename(as(A,"scidb"),scidb_attributes(A),A.attr)
         A = scidbsteval(A,tempResample.name,temp=TRUE)
         tempResample = TRUE
       }
