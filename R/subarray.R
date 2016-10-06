@@ -167,7 +167,7 @@ setMethod("subarray",signature(x="scidbst",limits="character"), subarray.scidbst
 #' @rdname subarray-scidbst-method
 #' @export
 setMethod("subarray",signature(x="scidbst",limits="Extent"),function(x, limits, between = FALSE) {
-  .crop(x,limits,between=between)
+  .crop.scidbst(x,limits,between=between)
 })
 
 #' @name subarray,scidbst

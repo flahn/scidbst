@@ -30,7 +30,7 @@ NULL
 }
 
 .regrid.scidbst = function(x, grid, expr) {
-  expr = .createExpression(expr)
+  expr = .createExpression(x,expr)
 
   .dims = dimensions(x)
   names(grid) = .dims
@@ -121,7 +121,7 @@ setMethod("regrid", signature(x="scidbst"), .regrid.scidbst)
 #' @export
 setMethod("resample", signature(x="scidbst", y="Raster"), function(x,y,af="avg") {
     grid = .prepareGrid(x,y)
-    return(.regrid.scidbst(x=x,grid=grid,af))
+    return(.regrid.scidbst(x=x,grid=grid,expr=af))
 })
 
 #' @rdname resample-scidbst-methods
@@ -130,5 +130,5 @@ setMethod("resample", signature(x="scidbst", y="scidbst"), function(x,y,af="avg"
   grid = .prepareGrid(x,y)
 
 
-  return(.regrid.scidbst(x=x,grid=grid,af))
+  return(.regrid.scidbst(x=x,grid=grid,expr=af))
 })

@@ -69,10 +69,24 @@
   ### redimension
   q.redim = paste("redimension(", join.ref@name, ",",
                   paste(attributestr,dimensionstr,sep=""), ", false )", sep="")
-  # TODO join is maybe deprecated in the future (use cross_join)
-  q.join = paste("join(", q.redim , ",", scidb_op(B)  ,")", sep="")
 
-  B@proxy = scidb(q.join)
+  # TODO join is maybe deprecated in the future (use cross_join)
+  q.redim.scidb = scidb(q.redim)
+  B.scidb = as(B,"scidb")
+
+  ### Option join
+  # q.join = paste("join(", q.redim , ",", scidb_op(B)  ,")", sep="")
+  # B@proxy = scidb(q.join)
+
+  ### Option merge (either join, equi_join or cross_join)
+  # joined.scidb = merge(q.redim.scidb,B.scidb,by=intersect(scidb::dimensions(q.redim.scidb),scidb::dimensions(B.scidb)))
+  # B@proxy = joined.scidb
+
+  ### Option cross_join explicit
+  dim.match = paste(c("A","B"),rbind(scidb::dimensions(q.redim.scidb),dimensions(B)),sep=".",collapse=",")
+  q.cjoin = paste("cross_join(", q.redim , " as A,", scidb_op(B)  ,"as B,",dim.match,")", sep="")
+  B@proxy = scidb(q.cjoin)
+
   return(B)
 }
 
