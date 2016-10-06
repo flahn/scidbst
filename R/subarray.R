@@ -83,18 +83,44 @@ subarray.scidbst = function (x, limits, between = FALSE) {
   return(x)
 }
 
-.subarray.TemporalExtent = function(x,limits,between=FALSE) {
-  if (!x@isTemporal) {
-    stop("Cannot set limit for time dimension. Array has no such dimension.")
-  }
+.createSpLimitExpr = function(x, limits, limitExpr) {
+  xdim = xdim(x)
+  ydim = ydim(x)
+  dims = dimensions(x)
+  bounds = scidb_coordinate_bounds(x)
 
+  if (missing("limitExpr")) limitExpr = c(bounds$start,bounds$end)
+  xminPos = which(dims==xdim)
+  xmaxPos = xminPos + length(dims)
+
+  yminPos = which(dims==ydim)
+  ymaxPos = yminPos + length(dims)
+
+  e = extent(limits)
+
+  if (xmin(e) < xmin(x)) xmin(e) = xmin(x)
+  if (ymin(e) < ymin(x)) ymin(e) = ymin(x)
+  if (xmax(e) > xmax(x)) xmax(e) = xmax(x)
+  if (ymax(e) > ymax(x)) ymax(e) = ymax(x)
+
+  newe = .calculateDimIndices(x,e)
+  limitExpr[xminPos] = xmin(newe)
+  limitExpr[yminPos] = ymin(newe)
+  limitExpr[xmaxPos] = xmax(newe)
+  limitExpr[ymaxPos] = ymax(newe)
+
+  return(limitExpr)
+}
+
+.createTLimitExpr = function(x,limits, limitExpr) {
   tdim = tdim(x)
   dims = dimensions(x)
   bounds = scidb_coordinate_bounds(x)
 
-  limitExpr = c(bounds$start,bounds$end)
+  if (missing(limitExpr)) limitExpr = c(bounds$start,bounds$end)
+
   tminPos = which(dims==tdim)
-  tmaxPos = 2*tminPos
+  tmaxPos = tminPos + length(dims)
 
   tmin = .calcTDimIndex(x,tmin(limits))
   tmax = .calcTDimIndex(x,tmax(limits))
@@ -105,7 +131,29 @@ subarray.scidbst = function (x, limits, between = FALSE) {
 
   limitExpr[tminPos] = tmin
   limitExpr[tmaxPos] = tmax
+
+  return(limitExpr)
+}
+
+.subarray.TemporalExtent = function(x,limits,between=FALSE) {
+  if (!x@isTemporal) {
+    stop("Cannot set limit for time dimension. Array has no such dimension.")
+  }
+  limitExpr = .createTLimitExpr(x,limits)
+
   # now call subarray again with a list of indices
+  return(subarray(x,limits=limitExpr,between=between))
+}
+
+.subarray.with.scidbst = function(x,limits,between=FALSE) {
+  if (!x@isSpatial) {
+    stop("Cannot set limit for spatial dimensions. Array has no such dimensions.")
+  }
+  if (!x@isTemporal) {
+    stop("Cannot set limit for time dimension. Array has no such dimension.")
+  }
+  limitExpr = .createSpLimitExpr(x,limits)
+  limitExpr = .createTLimitExpr(x,limits,limitExpr=limitExpr)
   return(subarray(x,limits=limitExpr,between=between))
 }
 
@@ -174,3 +222,8 @@ setMethod("subarray",signature(x="scidbst",limits="Extent"),function(x, limits, 
 #' @rdname subarray-scidbst-method
 #' @export
 setMethod("subarray",signature(x="scidbst",limits="TemporalExtent"), .subarray.TemporalExtent)
+
+#' @name subarray,scidbst
+#' @rdname subarray-scidbst-method
+#' @export
+setMethod("subarray",signature(x="scidbst",limits="scidbst"), .subarray.with.scidbst)

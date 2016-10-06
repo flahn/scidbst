@@ -202,7 +202,7 @@ if (!isGeneric("setTRS")) {
 #' @return scidbst if parameter return=TRUE
 #'
 #' @export
-setMethod("setTRS", signature(x="scidb",trs="TRS"), function(x,trs, return=FALSE) {
+setMethod("setTRS", signature(x="ANY",trs="TRS"), function(x,trs, return=FALSE) {
   cmd = paste("eo_settrs(",x@name,",'",tdim(trs),"','",as.character(t0(trs)),"','",getRefPeriod(trs),"'",")",sep="")
   iquery(cmd)
   if (return) {
