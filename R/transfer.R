@@ -4,10 +4,16 @@ if (!isGeneric("transfer")) {
   })
 }
 
-
+# x: scidbst; y: scidbst
 .eo_over = function (x, y) {
-  #TODO "join" might be deprecated in future releases of scidb... use cross_join
-  q.join = paste("join(eo_over(", scidb_op(x),", ", scidb_op(y) ,"),",  scidb_op(x)  ,")", sep="")
+  xdims = dimensions(x)
+  ydims = dimensions(y)
+  if (length(xdims) != length(ydims)) stop("Cannot perform eo_over. Unequal number of dimensions detected.")
+
+  dim.match = paste(c("A","B"),rbind(dimensions(x),dimensions(x)),sep=".",collapse=",") # eo_over returns dimensions of x with
+  # attributes over_* (* the dimension names in y)
+
+  q.join = paste("cross_join(","eo_over(", scidb_op(x),", ", scidb_op(y) ,") as A,",  scidb_op(x)  ," as B," ,dim.match,")", sep="")
   join.ref = scidb(q.join)
   x@proxy = join.ref
 

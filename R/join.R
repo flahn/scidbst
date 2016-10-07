@@ -84,7 +84,7 @@
 
   ### Option cross_join explicit
   dim.match = paste(c("A","B"),rbind(scidb::dimensions(q.redim.scidb),dimensions(B)),sep=".",collapse=",")
-  q.cjoin = paste("cross_join(", q.redim , " as A,", scidb_op(B)  ,"as B,",dim.match,")", sep="")
+  q.cjoin = paste("cross_join(", q.redim , " as A,", scidb_op(B)  ," as B,",dim.match,")", sep="")
   B@proxy = scidb(q.cjoin)
 
   return(B)
@@ -105,6 +105,7 @@ if (!isGeneric("join")) {
     stop("There is no name for the resulting array, if you want to optimize the process with temporary storing.")
   }
 
+  # prepare some temporary array names
   if (storeTemp) {
     tempResample = FALSE
     ids = sample.int(2147483647,2,replace=FALSE)
@@ -112,13 +113,14 @@ if (!isGeneric("join")) {
     tempB.name = paste("__temp_B_",ids[2],sep="")
   }
 
+  # case 1: both arrays are spatial, but not temporal
   if (bothSpatial && !bothTemporal) {
     if (!.equalSRS(x,y)) {
       stop("The arrays have different spatial reference systems. Currently resampling methods are not provided by 'scidbst' or in 'SciDB'")
     }
 
     if (!.equalRes(x,y)) {
-      # bring resolution together (regrid)
+      # bring resolution together (regrid) and sort from higher resolution to lower
       res.ls = .compareRes(x,y)
       # resample A into B
       A = res.ls$A
@@ -143,7 +145,7 @@ if (!isGeneric("join")) {
     #do normal join
     .out = .join.spatial.normalized(A,B)
     if (storeTemp) {
-      .out = scidbsteval(.out,name)
+      scidbsteval(.out,name)
       .out = scidbst(name) #clean possible extent differences
 
       if (tempResample) {
