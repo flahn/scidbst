@@ -240,6 +240,48 @@ transformAllTemporalIndices = function(obj,df) {
 .downloadData = function(object) {
   cat("Downloading data...\n")
   .data = iquery(object@proxy@name,return=T) #query scidb for data
-  cat("Download done.")
+  cat("Done.\n")
   return(.data)
+}
+
+# Calculates the amount of values that can be expected if the attribute data is downloaded
+#x: scidbst object
+.countValues = function(x) {
+  attr.statement = paste("count(",scidb_attributes(x),")",sep="",collapse=",")
+  agg.cmd = paste("aggregate(",scidb_op(x),", ",attr.statement,")",sep="")
+  values = as.double(iquery(agg.cmd,return=TRUE))
+  values = values[-1]
+  names(values) = scidb_attributes(x)
+
+  return(values)
+}
+
+# x: scidbst object
+.memorySize = function(x,unit) {
+  unit = toupper(unit)
+  if (!unit %in% c("KB","MB","GB")) stop("Unrecognized data storage unit.")
+
+  # number of dimension x 64 Bit (stored as int64) ~ do use R positive 52-bit integer values as rough equivalent
+  size = length(dimensions(x))*52
+  attr.count = .countValues(x)
+  types = scidb_types(as(x,"scidb"))
+  types[types == "double"] = 53
+  types[types == "unit8" | types == "int8" | types == "int16" | types == "uint16"] = 32
+  types = as.numeric(types)
+  avg.count = mean(attr.count)
+
+  dim.space = avg.count * size
+  attr.space = sum(types * attr.count)
+  total=dim.space + attr.space # in Bit
+
+  if (unit == "KB") {
+    return(total/(8*1024))
+  }
+  if (unit == "MB") {
+    return(total/(8*1024*1024))
+  }
+  if (unit == "GB") {
+    return(total/(8*1024*1024*1024))
+  }
+
 }

@@ -2,10 +2,10 @@
 NULL
 
 # prepares the grid statement for the scidb call, which reflects the new resolution in dimension
-# indice units
+# indices (how many cells are to be combined in each array dimension)
 .prepareGrid = function (x, y) {
       .dims = dimensions(x)
-      grid = rep(1,length(.dims))
+      grid = rep(1,length(.dims)) #if no changes here, then we get a copy (1 to 1 cell relation)
       names(grid) = .dims
       if (!missing(y)) {
           oldnx = .ncol(x)
@@ -87,6 +87,7 @@ NULL
 #' spatial dimensions. The grid parameter reflects the number of cells per dimension that are used as a block for resampling. As for the current development
 #' of scidb, the aggregation functions are quite limited (min/max, average, sum, standard deviation) and do not support more elaborated function like bilinear
 #' interpolation.
+#' The resample method performs the same operation as regrid, but it is limited to change the spatial resoultion.
 #'
 #' @note For information on the aggregation statements in scidb have a look on the supported AFL functions (\url{http://paradigm4.com/HTMLmanual/13.3/scidb_ug/ch12.html}).
 #' To make the query formulation easier we allow also to pass the aggregation function name of the AFL function as parameter "af", which
