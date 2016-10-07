@@ -29,6 +29,7 @@ a more general regrid approach. 'Resample' is based on the respective function o
 spatial dimensions. The grid parameter reflects the number of cells per dimension that are used as a block for resampling. As for the current development
 of scidb, the aggregation functions are quite limited (min/max, average, sum, standard deviation) and do not support more elaborated function like bilinear
 interpolation.
+The resample method performs the same operation as regrid, but it is limited to change the spatial resoultion.
 }
 \note{
 For information on the aggregation statements in scidb have a look on the supported AFL functions (\url{http://paradigm4.com/HTMLmanual/13.3/scidb_ug/ch12.html}).

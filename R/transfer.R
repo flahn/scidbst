@@ -8,7 +8,7 @@ if (!isGeneric("transfer")) {
 .eo_over = function (x, y) {
   xdims = dimensions(x)
   ydims = dimensions(y)
-  if (length(xdims) != length(ydims)) stop("Cannot perform eo_over. Unequal number of dimensions detected.")
+  # if (length(xdims) != length(ydims)) stop("Cannot perform eo_over. Unequal number of dimensions detected.")
 
   dim.match = paste(c("A","B"),rbind(dimensions(x),dimensions(x)),sep=".",collapse=",") # eo_over returns dimensions of x with
   # attributes over_* (* the dimension names in y)

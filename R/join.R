@@ -55,9 +55,9 @@
     attrrename = rbind(attrrename, c("over_x",  xdim(B) ))
     attrrename = rbind(attrrename, c("over_y",  ydim(B) ))
   }
-  if (B@isTemporal) {
-    attrrename = rbind(attrrename, c("over_t",  tdim(B) ))
-  }
+  # if (B@isTemporal) {
+  #   attrrename = rbind(attrrename, c("over_t",  tdim(B) ))
+  # }
   ### rename attributes in scidb
   join.ref = attribute_rename(join.ref,attrrename[,1],attrrename[,2])
 
@@ -83,11 +83,31 @@
   # B@proxy = joined.scidb
 
   ### Option cross_join explicit
-  dim.match = paste(c("A","B"),rbind(scidb::dimensions(q.redim.scidb),dimensions(B)),sep=".",collapse=",")
-  q.cjoin = paste("cross_join(", q.redim , " as A,", scidb_op(B)  ," as B,",dim.match,")", sep="")
-  B@proxy = scidb(q.cjoin)
+  # if both are not temporal it is ok
+  # if not then the temporal array needs to be passed as first argument
+  # in both cases B is spatial target and will be used for SRS and extent
+  if (A@isTemporal || (!A@isTemporal && !B@isTemporal)) {
+    # dim.match = paste(c("A","B"),cbind(rep(intersect(scidb::dimensions(q.redim.scidb),dimensions(B)),2)),sep=".",collapse=",")
+    dim.match = paste(c("A","B"),matrix(rep(intersect(dimensions(A),dimensions(B)),2),ncol=2,byrow=T),sep=".",collapse=",")
+    q.cjoin = paste("cross_join(", q.redim , " as A,", scidb_op(B)  ," as B,",dim.match,")", sep="")
+    B@proxy = scidb(q.cjoin)
+    if (A@isTemporal) {
+      B@isTemporal = TRUE
+      B@tExtent = A@tExtent
+      B@trs = trs(A)
+    }
 
-  return(B)
+    return(B)
+  } else { # B has temporal ref
+    # dim.match = paste(c("B","A"),cbind(rep(intersect(dimensions(B),scidb::dimensions(q.redim.scidb)),2)),sep=".",collapse=",")
+    dim.match = paste(c("B","A"),matrix(rep(intersect(dimensions(B),dimensions(A)),2),ncol=2,byrow=T),sep=".",collapse=",")
+    q.cjoin = paste("cross_join(", scidb_op(B) , " as B,",  q.redim ," as A,",dim.match,")", sep="")
+    B@proxy = scidb(q.cjoin)
+
+    return(B)
+  }
+
+
 }
 
 if (!isGeneric("join")) {
@@ -113,11 +133,15 @@ if (!isGeneric("join")) {
     tempB.name = paste("__temp_B_",ids[2],sep="")
   }
 
-  # case 1: both arrays are spatial, but not temporal
-  if (bothSpatial && !bothTemporal) {
+  if (bothSpatial) {
     if (!.equalSRS(x,y)) {
       stop("The arrays have different spatial reference systems. Currently resampling methods are not provided by 'scidbst' or in 'SciDB'")
     }
+  }
+
+  # case 1: both arrays are spatial, but not temporal
+  # case 2: both arrays are spatial, and 1 is temporal
+  if (bothSpatial && !bothTemporal) {
 
     if (!.equalRes(x,y)) {
       # bring resolution together (regrid) and sort from higher resolution to lower
@@ -138,8 +162,6 @@ if (!isGeneric("join")) {
         A = scidbsteval(A,tempResample.name,temp=TRUE)
         tempResample = TRUE
       }
-
-
     }
 
     #do normal join
@@ -157,6 +179,8 @@ if (!isGeneric("join")) {
     }
     return(.out)
   }
+
+
 }
 #' Joins the attributes of x and y
 #'
