@@ -60,7 +60,7 @@ NULL
 #' @param snap Character. One of 'near', 'in', or 'out', for use with alignExtent
 #' @param ...	Additional arguments as for writeRaster
 #' @param between (logical) whether or not to use 'between' or 'subarray' as scidb operation
-#' @importFrom raster as.vector intersect alignExtent raster extent
+#' @importFrom raster intersect alignExtent raster extent
 #' @return scidbst object with refined spatial extent
 #'
 #' @seealso \code{\link[raster]{crop}} or \code{\link[scidbst]{subarray,scidbst}}
