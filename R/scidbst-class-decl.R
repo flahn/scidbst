@@ -4,12 +4,12 @@
 NULL
 
 # just a precaution, since the class was not exported in the package SciDBR (remvoed S3Methods=TRUE for now)
-setClass("scidb",
-         representation(name="character",
-                        meta="environment",
-                        gc="environment"),
-         S3methods = TRUE
-)
+# setClass("scidb",
+#          representation(name="character",
+#                         meta="environment",
+#                         gc="environment"),
+#          S3methods = TRUE
+# )
 
 setClassUnion("SRSOrNULL",c("SRS","NULL"))
 

@@ -84,7 +84,7 @@ setMethod("trs",signature(x="scidbst"), function(x){
   if (x@isTemporal || !is.null(x@trs)) {
     return(x@trs)
   } else {
-    stop("Objecthas no temporal reference")
+    stop("Object has no temporal reference")
   }
 })
 

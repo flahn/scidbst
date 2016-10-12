@@ -1,3 +1,18 @@
+#' @include scidbst-class-decl.R
+NULL
+
+.ncol = function(x) {
+  if (x@isSpatial) {
+    indices = .calculateDimIndices(x,extent(x))
+    ncols=xmax(indices)-xmin(indices)
+    return(ncols)
+
+  } else if (x@isTemporal) {
+    # delta_t/t_res
+    return((as.numeric(difftime(tmax(x),tmin(x),tunit(x)))+1)/tres(x))
+  }
+}
+
 #' Number of columns
 #'
 #' returns the number of columns
@@ -6,23 +21,4 @@
 #' @return number of columns for a scidbst object
 #'
 #' @export
-setMethod("ncol",signature(x="scidbst"),function(x) {
-  if (x@isSpatial) {
-    # if (!hasValues(x)) {
-      # lengths = .getLengths(x)
-      # if (length(lengths) == 1) {
-      #   return(lengths[1])
-      # } else {
-      #   return(lengths[xdim(x)])
-      # }
-    # } else {
-    #   return(x@ncols)
-    # }
-    indices = .calculateDimIndices(x,extent(x))
-    return(xmax(indices)-xmin(indices))
-
-  } else if (x@isTemporal) {
-    # delta_t/t_res
-    return((as.numeric(difftime(tmax(x),tmin(x),tunit(x)))+1)/tres(x))
-  }
-})
+setMethod("ncol",signature(x="scidbst"),.ncol)

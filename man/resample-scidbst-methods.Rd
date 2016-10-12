@@ -4,20 +4,21 @@
 \name{regrid,scidbst-method}
 \alias{regrid,scidbst-method}
 \alias{resample,scidbst,Raster-method}
+\alias{resample,scidbst,scidbst-method}
 \title{Regrid / Resample operator for scidbst objects}
 \usage{
 \S4method{regrid}{scidbst}(x, grid, expr)
 
-\S4method{resample}{scidbst,Raster}(x, y, expr)
+\S4method{resample}{scidbst,Raster}(x, y, af = "avg")
+
+\S4method{resample}{scidbst,scidbst}(x, y, af = "avg")
 }
 \arguments{
 \item{x}{The scidbst object}
 
-\item{grid}{a vector of grid sizes having the same length as dimensions(x)}
+\item{y}{target object}
 
-\item{expr}{(optional) aggregation function applied to every attribute on the grid, or a quoted SciDB aggregation expression}
-
-\item{y}{raster object}
+\item{af}{(optional) aggregation function applied to every attribute on the grid, or a quoted SciDB aggregation expression}
 }
 \value{
 scidbst object with new resolution information (adapted affine transformation)
@@ -28,9 +29,12 @@ a more general regrid approach. 'Resample' is based on the respective function o
 spatial dimensions. The grid parameter reflects the number of cells per dimension that are used as a block for resampling. As for the current development
 of scidb, the aggregation functions are quite limited (min/max, average, sum, standard deviation) and do not support more elaborated function like bilinear
 interpolation.
+The resample method performs the same operation as regrid, but it is limited to change the spatial resoultion.
 }
 \note{
-For information on the aggregation statements in scidb have a look on the supported AFL functions (\url{http://paradigm4.com/HTMLmanual/13.3/scidb_ug/ch12.html})
+For information on the aggregation statements in scidb have a look on the supported AFL functions (\url{http://paradigm4.com/HTMLmanual/13.3/scidb_ug/ch12.html}).
+To make the query formulation easier we allow also to pass the aggregation function name of the AFL function as parameter "af", which
+will be used on all attributes.
 }
 \examples{
 \dontrun{
@@ -43,6 +47,7 @@ regridded = regrid(scidbst.obj,c(50,50,1),sum) #resample (upscaling 50x50 dimens
 
 r = raster(scidbst.obj, nrows=300, ncols=200) # resample by setting the number of rows and columns of the target
 resampled = resample(scidbst.obj,r,"avg(attribute1)")
+resampled2 = resample(scidbst.obj,r,"sum") # aggregation function applied on all attributes
 }
 
 }

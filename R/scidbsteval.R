@@ -100,14 +100,16 @@ if (!isGeneric("scidbsteval")) {
 
   # set spatial and temporal references if applicable
   if (expr@isSpatial) {
+    setSRS(scidb.obj,srs(expr),affine(expr))
     #eo_setsrs:  {name,xdim,ydim,authname,authsrid,affine_str}
-    cmd = paste("eo_setsrs(",name,",'",xdim(expr),"','",ydim(expr),"','",expr@srs@authority,"',",expr@srs@srid,",'","x0=",affine(expr)[1,1]," y0=",affine(expr)[2,1]," a11=",affine(expr)[1,2]," a22=",affine(expr)[2,3]," a12=",affine(expr)[1,3]," a21=",affine(expr)[2,2],"'",")",sep="")
-    iquery(cmd)
+    # cmd = paste("eo_setsrs(",name,",'",xdim(expr),"','",ydim(expr),"','",expr@srs@authority,"',",expr@srs@srid,",'","x0=",affine(expr)[1,1]," y0=",affine(expr)[2,1]," a11=",affine(expr)[1,2]," a22=",affine(expr)[2,3]," a12=",affine(expr)[1,3]," a21=",affine(expr)[2,2],"'",")",sep="")
+    # iquery(cmd)
   }
 
   if (expr@isTemporal) {
-    cmd = paste("eo_settrs(",name,",'",tdim(expr),"','",as.character(t0(expr)),"','",getRefPeriod(expr),"'",")",sep="")
-    iquery(cmd)
+    # cmd = paste("eo_settrs(",name,",'",tdim(expr),"','",as.character(t0(expr)),"','",getRefPeriod(expr),"'",")",sep="")
+    # iquery(cmd)
+    setTRS(scidb.obj,trs(expr))
   }
 
   # rename the array, since the name was changed due to store

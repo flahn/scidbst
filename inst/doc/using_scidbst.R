@@ -9,14 +9,15 @@ library(scidbst)
 opts_chunk$set(collapse = T, comment = "#>")
 opts_chunk$set(cache.extra = list(R.version, sessionInfo(), format(Sys.Date(), '%Y-%m')))
 opts_chunk$set(fig.width=10, fig.height=8)
-outputFolder = "./assests/"
+outputFolder = "/assests/"
 
 ## ----loadCredentials, include=FALSE--------------------------------------
 source("/home/lahn/GitHub/scidbst/vignettes/assets/credentials.R")
 
 ## ----connect-------------------------------------------------------------
 scidbconnect(host=host,port=port,user=user,password=password,protocol="https",auth_type = "digest")
-scidbst.ls()
+array.list = scidbst.ls()
+array.list
 
 ## ---- cache=1------------------------------------------------------------
 l7_ethiopia = scidbst("L7_SW_ETHOPIA")
@@ -43,9 +44,14 @@ ls.brazil.name = "LS7_BRAZIL"
 regrid.name = "LS7_BRAZIL_REGRID"
 ndvi.name = "LS7_BRAZIL_REGRID_NDVI"
 
-## ----ndviDeletes, include=FALSE,eval=FALSE-------------------------------
-#  scidbrm(regrid.name,force=TRUE)
-#  scidbrm(ndvi.name, force=TRUE)
+## ----ndviDeletes, include=FALSE------------------------------------------
+if (any(array.list$name == regrid.name)) {
+  scidbrm(regrid.name,force=TRUE)
+}
+
+if (any(array.list$name == ndvi.name)) {
+  scidbrm(ndvi.name, force=TRUE)
+}
 
 ## ----ndviResolution, cache=1---------------------------------------------
 ls7_brazil = scidbst(ls.brazil.name)
@@ -98,4 +104,34 @@ te = textent(as.POSIXct("2010-01-01"),as.POSIXct("2013-01-01"))
 tsubset = subarray(daily.avg.ethiopia,limits=te,between=TRUE)
 ts = as(tsubset,"xts")
 plot(ts,major.ticks="months",minor.ticks=FALSE,main="Average precipitation for Ethiopia Landsat scene from 2010 to 2013")
+
+## ----joinArraysPreperation, cache=1--------------------------------------
+joined.name = "join_ls7ndvi_srtm_ethiopia"
+
+ls7_ethiopia = scidbst("L7_SW_ETHOPIA")
+srtm = scidbst("SRTM_AFRICA")
+ls7.slice = slice(ls7_ethiopia,"t",7)
+
+extent(ls7.slice)
+extent(srtm)
+srtm.sub = crop(srtm,ls7.slice)
+
+## ----joinArraysResolution, cache=1---------------------------------------
+res(ls7.slice)
+res(srtm.sub)
+
+## ----removeJoined, include=FALSE-----------------------------------------
+
+if (any(array.list$name == joined.name)) {
+  scidbrm(joined.name,force=TRUE)
+}
+
+## ----joinExecution, cache=1----------------------------------------------
+joined.array = join(ls7.slice,srtm.sub,storeTemp=TRUE,name=joined.name)
+joined.array.brick = as(joined.array,"RasterBrick")
+# joined.array.brick = writeRaster(joined.array.brick,filename="joined_slice.tif",format="GTiff")
+
+## ----joinVisual, cache=1-------------------------------------------------
+spplot(subset(joined.array.brick,1)/max(values(subset(joined.array.brick,1)),na.rm=TRUE),main="Landsat NDVI (regridded)")
+spplot(subset(joined.array.brick,2),main="SRTM heights in m")
 

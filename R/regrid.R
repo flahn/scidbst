@@ -2,16 +2,16 @@
 NULL
 
 # prepares the grid statement for the scidb call, which reflects the new resolution in dimension
-# indice units
+# indices (how many cells are to be combined in each array dimension)
 .prepareGrid = function (x, y) {
       .dims = dimensions(x)
-      grid = rep(1,length(.dims))
+      grid = rep(1,length(.dims)) #if no changes here, then we get a copy (1 to 1 cell relation)
       names(grid) = .dims
       if (!missing(y)) {
-          oldnx = ncol(x)
-          oldny = nrow(x)
-          newnx = ncol(y)
-          newny = nrow(y)
+          oldnx = .ncol(x)
+          oldny = .nrow(x)
+          newnx = .ncol(y)
+          newny = .nrow(y)
           if (newny > oldny && newnx > oldnx) {
             stop("Error: Cannot resample the array, because the output array has at least partially a higher resolution than the input")
           }
@@ -30,6 +30,8 @@ NULL
 }
 
 .regrid.scidbst = function(x, grid, expr) {
+  expr = .createExpression(x,expr)
+
   .dims = dimensions(x)
   names(grid) = .dims
 
@@ -68,6 +70,16 @@ NULL
   return(x)
 }
 
+#x: scidbst object
+#af: abbreviation of the aggregation function
+.createExpression=function(x,af) {
+  if (af %in% c("avg","sum","prod","max","min","stdev","var","count")) {
+    return(paste(af,"(",scidb_attributes(x),")",sep="",collapse=", "))
+  } else {
+    return(af) # probably it is an expression term otherwise it will crash in scidb operation
+  }
+}
+
 #' Regrid / Resample operator for scidbst objects
 #'
 #' This function changes the resolution of certain dimensions of the scidbst object. 'Regrid' is in this case the targeted scidb operation and reflects
@@ -75,15 +87,17 @@ NULL
 #' spatial dimensions. The grid parameter reflects the number of cells per dimension that are used as a block for resampling. As for the current development
 #' of scidb, the aggregation functions are quite limited (min/max, average, sum, standard deviation) and do not support more elaborated function like bilinear
 #' interpolation.
+#' The resample method performs the same operation as regrid, but it is limited to change the spatial resoultion.
 #'
-#' @note For information on the aggregation statements in scidb have a look on the supported AFL functions (\url{http://paradigm4.com/HTMLmanual/13.3/scidb_ug/ch12.html})
+#' @note For information on the aggregation statements in scidb have a look on the supported AFL functions (\url{http://paradigm4.com/HTMLmanual/13.3/scidb_ug/ch12.html}).
+#' To make the query formulation easier we allow also to pass the aggregation function name of the AFL function as parameter "af", which
+#' will be used on all attributes.
 #'
 #' @rdname resample-scidbst-methods
 #'
 #' @param x The scidbst object
-#' @param grid a vector of grid sizes having the same length as dimensions(x)
-#' @param expr (optional) aggregation function applied to every attribute on the grid, or a quoted SciDB aggregation expression
-#' @param y raster object
+#' @param y target object
+#' @param af (optional) aggregation function applied to every attribute on the grid, or a quoted SciDB aggregation expression
 #'
 #' @examples
 #' \dontrun{
@@ -96,6 +110,7 @@ NULL
 #'
 #' r = raster(scidbst.obj, nrows=300, ncols=200) # resample by setting the number of rows and columns of the target
 #' resampled = resample(scidbst.obj,r,"avg(attribute1)")
+#' resampled2 = resample(scidbst.obj,r,"sum") # aggregation function applied on all attributes
 #' }
 #'
 #' @return scidbst object with new resolution information (adapted affine transformation)
@@ -105,7 +120,16 @@ setMethod("regrid", signature(x="scidbst"), .regrid.scidbst)
 
 #' @rdname resample-scidbst-methods
 #' @export
-setMethod("resample", signature(x="scidbst", y="Raster"), function(x,y,expr) {
+setMethod("resample", signature(x="scidbst", y="Raster"), function(x,y,af="avg") {
     grid = .prepareGrid(x,y)
-    return(.regrid.scidbst(x=x,grid=grid,expr))
+    return(.regrid.scidbst(x=x,grid=grid,expr=af))
+})
+
+#' @rdname resample-scidbst-methods
+#' @export
+setMethod("resample", signature(x="scidbst", y="scidbst"), function(x,y,af="avg") {
+  grid = .prepareGrid(x,y)
+
+
+  return(.regrid.scidbst(x=x,grid=grid,expr=af))
 })

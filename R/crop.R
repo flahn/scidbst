@@ -19,9 +19,11 @@ NULL
       validObject(y)
 
       e <- intersect(extent(x), extent(y))
-      rasterStruct = raster(x=extent(x),crs=crs(x))
-      nrow(rasterStruct) = as.integer(nrow(x))
-      ncol(rasterStruct) = as.integer(ncol(x))
+      # calculate dim indices for using the affine transformation of x
+
+      rasterStruct = raster(x=extent(x),crs=crs(x),resolution=c(xres(x),yres(x)))
+      # xres(rasterStruct) = xres(x)
+      # yres(rasterStruct) = yres(x)
       e <- alignExtent(e, rasterStruct, snap=snap)
 
       # make list of dimension indices and use subarray again
@@ -58,7 +60,7 @@ NULL
 #' @param snap Character. One of 'near', 'in', or 'out', for use with alignExtent
 #' @param ...	Additional arguments as for writeRaster
 #' @param between (logical) whether or not to use 'between' or 'subarray' as scidb operation
-#' @importFrom raster as.vector intersect alignExtent raster extent
+#' @importFrom raster intersect alignExtent raster extent
 #' @return scidbst object with refined spatial extent
 #'
 #' @seealso \code{\link[raster]{crop}} or \code{\link[scidbst]{subarray,scidbst}}

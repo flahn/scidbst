@@ -42,6 +42,7 @@ setAs("scidbst","SpatialPointsDataFrame",function(from,to) {
 #' @importClassesFrom raster RasterBrick
 setAs("scidbst","RasterBrick",function(from,to) {
   points = as(from,"SpatialPointsDataFrame")
+  cat("Processing image structure...\n")
   gridded(points) = TRUE
   b = suppressWarnings(brick(points))
   return(b)
