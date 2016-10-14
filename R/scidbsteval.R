@@ -115,6 +115,23 @@ if (!isGeneric("scidbsteval")) {
   # rename the array, since the name was changed due to store
   expr@proxy@name = name
   expr@title = name
+
+  if (temp) {
+    if(is.null(expr@temps)) {
+      expr@temps=c(name)
+    } else {
+      expr@temps=c(name,expr@temps)
+    }
+  } else {
+    if(!is.null(expr@temps)) {
+      # TODO remove temporary arrays
+      list = scidbls()
+      existingArrays = expr@temps[expr@temps %in% list]
+      scidbrm(existingArrays,force=TRUE)
+      expr@temps = NULL
+    }
+  }
+
   return(expr)
 }
 

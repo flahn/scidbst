@@ -15,7 +15,7 @@
 #returns a list of scidbst objects in the order A has a higher resolution as B (to merge A into B)
 # A: scidst , B: scidbst
 # return: list of scidbst with object A having a lower resolution as object B
-.compareRes = function (A,B) {
+.compareSpRes = function (A,B) {
   if (all(res(A)>res(B))) {
     return(list(A=B,B=A))
   } else if (all(res(A)<=res(B))) {
@@ -70,7 +70,7 @@
   q.redim = paste("redimension(", join.ref@name, ",",
                   paste(attributestr,dimensionstr,sep=""), ", false )", sep="")
 
-  # TODO join is maybe deprecated in the future (use cross_join)
+  # TODO join is maybe deprecated in the future (use cross_join) --> done
   q.redim.scidb = scidb(q.redim)
   B.scidb = as(B,"scidb")
 
@@ -78,7 +78,7 @@
   # q.join = paste("join(", q.redim , ",", scidb_op(B)  ,")", sep="")
   # B@proxy = scidb(q.join)
 
-  ### Option merge (either join, equi_join or cross_join)
+  ### Option scidb::merge (either join, equi_join or cross_join)
   # joined.scidb = merge(q.redim.scidb,B.scidb,by=intersect(scidb::dimensions(q.redim.scidb),scidb::dimensions(B.scidb)))
   # B@proxy = joined.scidb
 
@@ -96,7 +96,7 @@
       B@tExtent = A@tExtent
       B@trs = trs(A)
     }
-
+    B@temps = c(B@temps,A@temps)
     return(B)
   } else { # B has temporal ref
     # dim.match = paste(c("B","A"),cbind(rep(intersect(dimensions(B),scidb::dimensions(q.redim.scidb)),2)),sep=".",collapse=",")
@@ -104,6 +104,7 @@
     q.cjoin = paste("cross_join(", scidb_op(B) , " as B,",  q.redim ," as A,",dim.match,")", sep="")
     B@proxy = scidb(q.cjoin)
 
+    B@temps = c(B@temps,A@temps)
     return(B)
   }
 
@@ -116,6 +117,67 @@ if (!isGeneric("join")) {
   })
 }
 
+# returns a vector of names for potential temporary arrays
+# x: scidbst, n: number of names to be created
+.getTempNames = function(x,n) {
+  if (!is.null(x@temps)) {
+    usedIDs = as.integer(regmatches(x@temps,regexpr("(\\d)+$",x@temps)))
+    ids = sample.int(2147483647,n,replace=FALSE)
+
+    # rule out that there are any double ids
+    loglist = any(ids %in% usedIDs)
+    startExpr = loglist
+    while(startExpr) {
+      doublets = ids[startExpr]
+      amount = length(doublets)
+      newIds = sample.int(2147483647,amount,replace=FALSE)
+      ids[startExpr] = newIds
+      startExpr = any(ids %in% usedIDs)
+    }
+  } else {
+    ids = sample.int(2147483647,n,replace=FALSE)
+  }
+
+  names = paste("__temp_",x@title,"_",ids,sep="")
+  return(names)
+}
+
+# prepares the arrays in the form that both arrays have the same spatial resolution
+# x,y : scidbst objects
+# raf the aggregation function for the regridding
+# return list with two scidbst objects (A - the resampled array (former higher resolution),
+# B - the target array in terms of spatial resolution)
+.equalizeSpatial = function(x,y,raf) {
+
+  bothSpatial = x@isSpatial && y@isSpatial
+  if (!bothSpatial) stop("Arrays are not spatial. This feature is currently not supported")
+
+  if (!.equalSRS(x,y)) stop("The arrays have different spatial reference systems. Currently resampling methods are not provided by 'scidbst' or in 'SciDB'")
+
+  #TODO check extents and crop if needed
+
+  if (!.equalRes(x,y)) {
+    # bring resolution together (regrid) and sort from higher resolution to lower
+    res.ls = .compareSpRes(x,y)
+    # resample A into B
+    A = res.ls$A
+    B = res.ls$B
+    expr = .createExpression(A,raf)
+    A = resample(A,B,expr) # use B as target grid structure
+
+    if (storeTemp) {
+      B = scidbsteval(B, .getTempNames(B,1), temp=TRUE)
+      A = scidbsteval(A, .getTempNames(A,1), temp=TRUE)
+    }
+    return(list(A=A,B=B))
+  } else {
+    # nothing to do here
+    return(list(A=x,B=y))
+  }
+
+}
+
+
 .join = function (x,y,storeTemp=FALSE,name,raf="avg") {
 
   bothSpatial = x@isSpatial && y@isSpatial
@@ -125,59 +187,24 @@ if (!isGeneric("join")) {
     stop("There is no name for the resulting array, if you want to optimize the process with temporary storing.")
   }
 
-  # prepare some temporary array names
-  if (storeTemp) {
-    tempResample = FALSE
-    ids = sample.int(2147483647,2,replace=FALSE)
-    tempResample.name = paste("__temp_resample_",ids[1],sep="")
-    tempB.name = paste("__temp_B_",ids[2],sep="")
-  }
-
-  if (bothSpatial) {
-    if (!.equalSRS(x,y)) {
-      stop("The arrays have different spatial reference systems. Currently resampling methods are not provided by 'scidbst' or in 'SciDB'")
-    }
-  }
-
   # case 1: both arrays are spatial, but not temporal
   # case 2: both arrays are spatial, and 1 is temporal
   if (bothSpatial && !bothTemporal) {
-
-    if (!.equalRes(x,y)) {
-      # bring resolution together (regrid) and sort from higher resolution to lower
-      res.ls = .compareRes(x,y)
-      # resample A into B
-      A = res.ls$A
-      B = res.ls$B
-      expr = .createExpression(A,raf)
-      A = resample(A,B,expr) # use B as target grid structure
-      if (storeTemp) {
-        B.attr = paste(B@title,"_",scidb_attributes(B),sep="")
-        B@proxy = attribute_rename(as(B,"scidb"),scidb_attributes(B),B.attr)
-        B = scidbsteval(B,tempB.name,temp=TRUE)
-        tempB = TRUE
-
-        A.attr = paste(A@title,"_regridded_",scidb_attributes(A),sep="")
-        A@proxy = attribute_rename(as(A,"scidb"),scidb_attributes(A),A.attr)
-        A = scidbsteval(A,tempResample.name,temp=TRUE)
-        tempResample = TRUE
-      }
-    }
+    arrays = .equalizeSpatial(x,y)
+    A = arrays$A
+    B = arrays$B
 
     #do normal join
     .out = .join.spatial.normalized(A,B)
     if (storeTemp) {
-      scidbsteval(.out,name)
+      scidbsteval(.out,name) #scidbsteval will delete the temporary arrays automatically
       .out = scidbst(name) #clean possible extent differences
-
-      if (tempResample) {
-        scidbrm(tempResample.name,force=TRUE)
-      }
-      if (tempB) {
-        scidbrm(tempB.name,force=TRUE)
-      }
     }
     return(.out)
+  } else if (bothSpatial && bothTemporal) { #case 3: both spatial and temporal
+
+  } else {
+    stop("Should not go here... Please contact the package author")
   }
 
 

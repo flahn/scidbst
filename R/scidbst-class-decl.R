@@ -20,6 +20,8 @@ setClassUnion("TRSOrNULL",c("TRS","NULL"))
 
 setClassUnion("TemporalExtentOrNULL",c("TemporalExtent","NULL"))
 
+setClassUnion("CharacterOrNULL",c("character","NULL"))
+
 #' Class scidbst
 #'
 #' The scidbst class contains several objects in order to describe a SciDB array spatially and temporally. Therefore the
@@ -50,7 +52,8 @@ setClass("scidbst",
                   isTemporal = "logical",
                   trs = "TRSOrNULL",
                   srs = "SRSOrNULL",
-                  proxy = "ANY"
+                  proxy = "ANY",
+                  temps = "CharacterOrNULL"
                 ),
                 prototype = list(
                   title=character(1),
@@ -61,6 +64,7 @@ setClass("scidbst",
                   srs=NULL,
                   extent=NULL,
                   tExtent=NULL,
-                  proxy = NULL
+                  proxy = NULL,
+                  temps = NULL
                 )
 )
