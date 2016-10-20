@@ -50,7 +50,7 @@ scidbsteval(sliced,new_name)
 
 # aggregation over space and storing
 agg.t = aggregate(x=scidbst.obj,by=list("t"),FUN="avg(attribute1)")
-scidbsteval(agg.t,name=new_name)
+scidbsteval(agg.t,name=new_name, drop=FALSE) #does not remove spatial dimensions, but adapts resolution and extent (values would be 0)
 }
 }
 \seealso{

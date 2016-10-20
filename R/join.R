@@ -5,6 +5,20 @@
   return(x@srs@authority == y@srs@authority && x@srs@srid == y@srs@srid)
 }
 
+# checks if two scidnst objects have the same temporal reference
+# x,y : scidbst object
+# returns : logical
+.equalTRS = function(x,y) {
+  if (!(x@isTemporal && y@isTemporal)) {
+    stop("One array does not have a time dimension.")
+  }
+  sameUnit = (tunit(x) == tunit(y))
+  sameT0 = (t0(x) == t0(y))
+  sameTRes = (tres(x) == tres(y))
+
+  return((sameUnit && sameT0 && sameTRes))
+}
+
 # checks if two scidbst arrays have the same spatial resolution
 # x:scidbst, y: scidbst
 # returns: logical
@@ -23,6 +37,48 @@
   } else {
     stop("The spatial resolution is in one arrays dimension higher than the other and in the other lower.")
   }
+}
+
+.tres2seconds = function(A) {
+  if (!A@isTemporal) {
+    stop("Array has no time dimension")
+  }
+  unit = tunit(A)
+  res = tres(A)
+  allUnits = c("secs", "mins", "hours", "days", "weeks")
+  factors = c(1, 60, 60*60, 60*60*24, 60*60*24*7)
+  if (!unit %in% allUnits) {
+    stop("Cannot convert time resolution into seconds. Temporal Unit is not supported")
+  } else {
+    res = res * factors[allUnits == unit]
+
+    #note: might be a  problem with daylight saving times -> will be off about 1 hour if it changes
+  }
+
+  return(res)
+}
+
+.compareTRes = function(A,B) {
+  if (tunit(A) != tunit(B)) {
+    # no comparable tUnit translate into seconds as "smallest unit"
+    A.sec = .tres2seconds(A)
+    B.sec = .tres2seconds(B)
+
+    if (A.sec > B.sec) { # the higher resolution value means to be the target
+      return(list(A=B,B=A))
+    } else {
+      return(list(A=A,B=B))
+    }
+  } else {
+    if (tres(A) > tres(B)) {
+      return(list(A=B,B=A))
+    } else {
+      return(list(A=A,B=B))
+    }
+  }
+
+
+
 }
 
 
@@ -177,6 +233,62 @@ if (!isGeneric("join")) {
 
 }
 
+# x,y: scidbst objects
+#taf: the temporal aggregation function (a scidb aggregation function)
+.equalizeTemporal = function(x,y,taf) {
+
+  # 0. sort arrays for their temporal resoultion
+  sortedList = .compareTRes(x,y)
+  A = sortedList$A #origin the higher resolution
+  B = sortedList$B #target the lower resolution
+
+  A.temp.names = .getTempNames(A,3)
+  B.temp.names = .getTempNames(B,3)
+
+
+  if (t0(A) != t0(B)) {
+    # 1. get temporal extents
+    A.te = t.extent(A)
+    B.te = t.extent(B)
+
+    # 2. calculate intersection (use the one with the lower resolution (e.g. pick 16 days over 12 hours))
+    if (tmin(B) <= tmin(A)) {
+      min = tmin(B)
+    } else {
+      # take tmin(A) and calculate "nearest" value in B and transform back to Date
+      tminA.in.B = .calcTDimIndex(B,tmin(A))
+      min = .calculatePOSIXfromIndex(B,tminA.in.B)
+    }
+
+    if (tmax(B) >= tmax(A)) {
+      max = tmax(B)
+    } else {
+      # take tmin(A) and calculate "nearest" value in B and transform back to Date
+      tmaxA.in.B = .calcTDimIndex(B,tmax(A))
+      max = .calculatePOSIXfromIndex(B,tmaxA.in.B)
+    }
+    te = textent(min,max)
+
+    # 3. create subarrays (between=FALSE) to set both arrays to the same t0
+    A = subarray(A,te)
+    B = subarray(B,te)
+    # 4. store temporarily
+    A = scidbsteval(A,A.temp.names[1],temp=TRUE)
+    B = scidbsteval(B,B.temp.names[1],temp=TRUE)
+
+  }
+  A.res.sec = .tres2seconds(A)
+  B.res.sec = .tres2seconds(B)
+
+  if (A.res.sec != B.res.sec) {
+    #if the time span is unequal then we need a regrid
+  } else {
+    #nothing to do here
+    return(list(A=A,B=B))
+  }
+
+}
+
 
 .join = function (x,y,storeTemp=FALSE,name,raf="avg") {
 
@@ -203,7 +315,7 @@ if (!isGeneric("join")) {
     return(.out)
   } else if (bothSpatial && bothTemporal) { #case 3: both spatial and temporal
 
-  } else {
+  } else { # probably if both are temporal but not spatial...
     stop("Should not go here... Please contact the package author")
   }
 

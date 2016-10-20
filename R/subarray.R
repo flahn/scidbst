@@ -11,7 +11,6 @@ subarray.scidbst = function (x, limits, between = FALSE) {
     limits = gsub("\\*","Inf",limits)
     limits = as.numeric(unlist(strsplit(limits,",")))
   }
-  #TODO limits = scidbst object
 
   if (length(limits) != 2*ndim) {
     stop("limits do not match dimension description [#limits != (2*#dims)]")

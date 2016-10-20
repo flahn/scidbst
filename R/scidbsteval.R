@@ -101,14 +101,9 @@ if (!isGeneric("scidbsteval")) {
   # set spatial and temporal references if applicable
   if (expr@isSpatial) {
     setSRS(scidb.obj,srs(expr),affine(expr))
-    #eo_setsrs:  {name,xdim,ydim,authname,authsrid,affine_str}
-    # cmd = paste("eo_setsrs(",name,",'",xdim(expr),"','",ydim(expr),"','",expr@srs@authority,"',",expr@srs@srid,",'","x0=",affine(expr)[1,1]," y0=",affine(expr)[2,1]," a11=",affine(expr)[1,2]," a22=",affine(expr)[2,3]," a12=",affine(expr)[1,3]," a21=",affine(expr)[2,2],"'",")",sep="")
-    # iquery(cmd)
   }
 
   if (expr@isTemporal) {
-    # cmd = paste("eo_settrs(",name,",'",tdim(expr),"','",as.character(t0(expr)),"','",getRefPeriod(expr),"'",")",sep="")
-    # iquery(cmd)
     setTRS(scidb.obj,trs(expr))
   }
 
@@ -171,7 +166,7 @@ if (!isGeneric("scidbsteval")) {
 #'
 #' # aggregation over space and storing
 #' agg.t = aggregate(x=scidbst.obj,by=list("t"),FUN="avg(attribute1)")
-#' scidbsteval(agg.t,name=new_name)
+#' scidbsteval(agg.t,name=new_name, drop=FALSE) #does not remove spatial dimensions, but adapts resolution and extent (values would be 0)
 #' }
 #' @export
 setMethod("scidbsteval", signature(expr="scidbst", name="character"), .scidbeval.scidbst )
