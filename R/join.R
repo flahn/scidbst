@@ -83,7 +83,7 @@
 
 
 # joins attributes from A into B under the condition that both arrays are strictly spatial and have the same resolution and SRS
-.join.spatial.normalized = function(A,B) {
+.join.normalized = function(A,B) {
   # code from Marius (modified)
   join.ref.st = transfer(A,B) #eo_over
   join.ref = as(join.ref.st,"scidb")
@@ -99,6 +99,9 @@
   if (ydim(A) == ydim(B)) {
     dimrename = rbind(dimrename, c(ydim(A), paste(ydim(A), "_orig", sep="")))
   }
+  if (A@isTemporal) {
+    dimrename = rbind(dimrename, c(tdim(A), paste(tdim(A), "_orig", sep="")))
+  }
 
   ### rename dimensions in scidb
   if (!is.null(dimrename)) {
@@ -111,12 +114,12 @@
     attrrename = rbind(attrrename, c("over_x",  xdim(B) ))
     attrrename = rbind(attrrename, c("over_y",  ydim(B) ))
   }
-  # if (B@isTemporal) {
-  #   attrrename = rbind(attrrename, c("over_t",  tdim(B) ))
-  # }
+  if (B@isTemporal && A@isTemporal) {
+    attrrename = rbind(attrrename, c("over_t",  tdim(B) ))
+  }
   ### rename attributes in scidb
   join.ref = attribute_rename(join.ref,attrrename[,1],attrrename[,2])
-
+  # now: join.ref is the array A which was translated into the dimension index space of B, renamed and joined values
 
   ### create array expression for scidb
   attributestr = scidb:::build_attr_schema(as(A,"scidb"))
@@ -126,7 +129,6 @@
   q.redim = paste("redimension(", join.ref@name, ",",
                   paste(attributestr,dimensionstr,sep=""), ", false )", sep="")
 
-  # TODO join is maybe deprecated in the future (use cross_join) --> done
   q.redim.scidb = scidb(q.redim)
   B.scidb = as(B,"scidb")
 
@@ -141,7 +143,7 @@
   ### Option cross_join explicit
   # if both are not temporal it is ok
   # if not then the temporal array needs to be passed as first argument
-  # in both cases B is spatial target and will be used for SRS and extent
+  # in both cases B is the target and will be used for SRS and extent
   if (A@isTemporal || (!A@isTemporal && !B@isTemporal)) {
     # dim.match = paste(c("A","B"),cbind(rep(intersect(scidb::dimensions(q.redim.scidb),dimensions(B)),2)),sep=".",collapse=",")
     dim.match = paste(c("A","B"),matrix(rep(intersect(dimensions(A),dimensions(B)),2),ncol=2,byrow=T),sep=".",collapse=",")
@@ -154,7 +156,7 @@
     }
     B@temps = c(B@temps,A@temps)
     return(B)
-  } else { # B has temporal ref
+  } else { # B has temporal ref or both have
     # dim.match = paste(c("B","A"),cbind(rep(intersect(dimensions(B),scidb::dimensions(q.redim.scidb)),2)),sep=".",collapse=",")
     dim.match = paste(c("B","A"),matrix(rep(intersect(dimensions(B),dimensions(A)),2),ncol=2,byrow=T),sep=".",collapse=",")
     q.cjoin = paste("cross_join(", scidb_op(B) , " as B,",  q.redim ," as A,",dim.match,")", sep="")
@@ -163,8 +165,6 @@
     B@temps = c(B@temps,A@temps)
     return(B)
   }
-
-
 }
 
 if (!isGeneric("join")) {
@@ -203,7 +203,7 @@ if (!isGeneric("join")) {
 # raf the aggregation function for the regridding
 # return list with two scidbst objects (A - the resampled array (former higher resolution),
 # B - the target array in terms of spatial resolution)
-.equalizeSpatial = function(x,y,raf) {
+.equalizeSpatial = function(x,y,storeTemp,raf) {
 
   bothSpatial = x@isSpatial && y@isSpatial
   if (!bothSpatial) stop("Arrays are not spatial. This feature is currently not supported")
@@ -235,15 +235,12 @@ if (!isGeneric("join")) {
 
 # x,y: scidbst objects
 #taf: the temporal aggregation function (a scidb aggregation function)
-.equalizeTemporal = function(x,y,taf) {
+.equalizeTemporal = function(x,y,storeTemp,taf) {
 
   # 0. sort arrays for their temporal resoultion
   sortedList = .compareTRes(x,y)
   A = sortedList$A #origin the higher resolution
   B = sortedList$B #target the lower resolution
-
-  A.temp.names = .getTempNames(A,3)
-  B.temp.names = .getTempNames(B,3)
 
 
   if (t0(A) != t0(B)) {
@@ -272,18 +269,25 @@ if (!isGeneric("join")) {
     # 3. create subarrays (between=FALSE) to set both arrays to the same t0
     A = subarray(A,te)
     B = subarray(B,te)
-    # 4. store temporarily
-    A = scidbsteval(A,A.temp.names[1],temp=TRUE)
-    B = scidbsteval(B,B.temp.names[1],temp=TRUE)
 
+    if (storeTemp) {
+      # 4. store temporarily
+      A = scidbsteval(A,.getTempNames(A,1),temp=TRUE)
+      B = scidbsteval(B,.getTempNames(B,1),temp=TRUE)
+    }
   }
   A.res.sec = .tres2seconds(A)
   B.res.sec = .tres2seconds(B)
 
   if (A.res.sec != B.res.sec) {
     #if the time span is unequal then we need a regrid
-    expr = .createExpression(A,raf)
+    expr = .createExpression(A,taf)
     A = resample(A,B,expr,type="T") # use B as target grid structure for time
+
+    if (storeTemp) {
+      A = scidbsteval(A,.getTempNames(A,1),temp=TRUE)
+    }
+    return(list(A=A,B=B))
   } else {
     #nothing to do here
     return(list(A=A,B=B))
@@ -292,7 +296,7 @@ if (!isGeneric("join")) {
 }
 
 
-.join = function (x,y,storeTemp=FALSE,name,raf="avg") {
+.join = function (x,y,storeTemp=FALSE,name,raf="avg",taf="avg") {
 
   bothSpatial = x@isSpatial && y@isSpatial
   bothTemporal = x@isTemporal && y@isTemporal
@@ -304,19 +308,28 @@ if (!isGeneric("join")) {
   # case 1: both arrays are spatial, but not temporal
   # case 2: both arrays are spatial, and 1 is temporal
   if (bothSpatial && !bothTemporal) {
-    arrays = .equalizeSpatial(x,y)
+    arrays = .equalizeSpatial(x,y,storeTemp,raf)
     A = arrays$A
     B = arrays$B
 
     #do normal join
-    .out = .join.spatial.normalized(A,B)
+    .out = .join.normalized(A,B)
     if (storeTemp) {
       scidbsteval(.out,name) #scidbsteval will delete the temporary arrays automatically
       .out = scidbst(name) #clean possible extent differences
     }
     return(.out)
   } else if (bothSpatial && bothTemporal) { #case 3: both spatial and temporal
-
+    arrays = .equalizeSpatial(x,y,storeTemp,raf)
+    arrays = .equalizeTemporal(arrays$A, arrays$B, storeTemp, taf)
+    #at this point the arrays should have the same resolutions (temporally and spatial)
+    #do normal join
+    .out = .join.normalized(arrays$A,arrays$B)
+    if (storeTemp) {
+      scidbsteval(.out,name) #scidbsteval will delete the temporary arrays automatically
+      .out = scidbst(name) #clean possible extent differences
+    }
+    return(.out)
   } else { # probably if both are temporal but not spatial...
     stop("Should not go here... Please contact the package author")
   }
