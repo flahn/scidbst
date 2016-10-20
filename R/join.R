@@ -282,6 +282,8 @@ if (!isGeneric("join")) {
 
   if (A.res.sec != B.res.sec) {
     #if the time span is unequal then we need a regrid
+    expr = .createExpression(A,raf)
+    A = resample(A,B,expr,type="T") # use B as target grid structure for time
   } else {
     #nothing to do here
     return(list(A=A,B=B))

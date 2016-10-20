@@ -3,28 +3,41 @@ NULL
 
 # prepares the grid statement for the scidb call, which reflects the new resolution in dimension
 # indices (how many cells are to be combined in each array dimension)
-.prepareGrid = function (x, y) {
+.prepareGrid = function (x, y, type="S") {
+      type = toupper(type)
       .dims = dimensions(x)
       grid = rep(1,length(.dims)) #if no changes here, then we get a copy (1 to 1 cell relation)
       names(grid) = .dims
       if (!missing(y)) {
-          oldnx = .ncol(x)
-          oldny = .nrow(x)
-          newnx = .ncol(y)
-          newny = .nrow(y)
-          if (newny > oldny && newnx > oldnx) {
-            stop("Error: Cannot resample the array, because the output array has at least partially a higher resolution than the input")
-          }
-          #resample way
-          e = extent(y)
-          xsize = round(oldnx/newnx)
-          ysize = round(oldny/newny)
-
-          #replace spatial grid sizes
-          if(x@isSpatial) {
+          if (type=="S" || type == "ST") {
+            oldnx = .ncol(x)
+            oldny = .nrow(x)
+            newnx = .ncol(y)
+            newny = .nrow(y)
+            if (newny > oldny && newnx > oldnx) {
+              stop("Error: Cannot resample the array, because the output array has at least partially a higher resolution than the input")
+            }
+            #resample way
+            e = extent(y)
+            xsize = round(oldnx/newnx)
+            ysize = round(oldny/newny)
+            #replace spatial grid sizes
+            if(x@isSpatial) {
               grid[xdim(x)] = xsize
               grid[ydim(x)] = ysize
+            }
           }
+
+          if (type=="T" || type=="ST") {
+            tfactor = .tres2seconds(y)/.tres2seconds(x)
+            #TODO check if the factor differs more that a certain dt from the next integer
+            tsize = round(tfactor)
+
+            if (x@isTemporal) {
+              grid[tdim(x)] = tsize
+            }
+          }
+
       }
       return(grid)
 }
@@ -127,8 +140,13 @@ setMethod("resample", signature(x="scidbst", y="Raster"), function(x,y,af="avg")
 
 #' @rdname resample-scidbst-methods
 #' @export
-setMethod("resample", signature(x="scidbst", y="scidbst"), function(x,y,af="avg") {
-  grid = .prepareGrid(x,y)
+setMethod("resample", signature(x="scidbst", y="scidbst"), function(x,y,af="avg",type="S") {
+  type = toupper(type)
+  if (!(type %in% c("S","ST","T"))) {
+    grid = .prepareGrid(x,y,type)
+  } else {
+    stop("Cannot recognize type parameter. Please use 'S' for spatial resampling, 'T' for temporal and 'ST' for both.")
+  }
 
 
   return(.regrid.scidbst(x=x,grid=grid,expr=af))

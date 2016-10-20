@@ -6,12 +6,12 @@
 #' @rdname TRS-class
 #' @name TRS
 #' @slot t0 POSIXt derivative as the datum for this TRS
-#' @slot tUnit character - The unit definition as used in \link{\code{difftime}}
+#' @slot tUnit character - The unit definition as used in \code{\link{difftime}}
 #' @slot tResolution numeric - The amount of tUnits that make up the resolution
 #' @slot dimname character - The dimension name
 
 #'
-#' @details The tUnit is mostly used in cases where the function \link{\code{difftime}} is called. Therefore tUnit can either be "secs", "mins",
+#' @details The tUnit is mostly used in cases where the function \code{\link{difftime}} is called. Therefore tUnit can either be "secs", "mins",
 #' "hours", "days" or "weeks".
 #'
 #' @exportClass TRS
