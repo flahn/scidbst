@@ -97,10 +97,10 @@ subarray.scidbst = function (x, limits, between = FALSE) {
 
   e = extent(limits)
 
-  if (xmin(e) > xmin(x)) xmin(e) = xmin(x)
-  if (ymin(e) > ymin(x)) ymin(e) = ymin(x)
-  if (xmax(e) < xmax(x)) xmax(e) = xmax(x)
-  if (ymax(e) < ymax(x)) ymax(e) = ymax(x)
+  if (xmin(e) < xmin(x)) xmin(e) = xmin(x)
+  if (ymin(e) < ymin(x)) ymin(e) = ymin(x)
+  if (xmax(e) > xmax(x)) xmax(e) = xmax(x)
+  if (ymax(e) > ymax(x)) ymax(e) = ymax(x)
 
   newe = .calculateDimIndices(x,e)
   limitExpr[xminPos] = xmin(newe)
@@ -121,15 +121,18 @@ subarray.scidbst = function (x, limits, between = FALSE) {
   tminPos = which(dims==tdim)
   tmaxPos = tminPos + length(dims)
 
-  tmin = .calcTDimIndex(x,tmin(limits))
-  tmax = .calcTDimIndex(x,tmax(limits))
+  # tmin = .calcTDimIndex(x,tmin(limits))
+  # tmax = .calcTDimIndex(x,tmax(limits))
+  tmin = tmin(limits)
+  tmax = tmax(limits)
 
-  if (tmax > tmax(x)) tmax = tmax(x)
-  if (tmin > tmin(x)) tmin = tmin(x)
+  # if bounds of limits is out of the arrays bounds, set extent to the arrays bounds
+  if (tmax(limits) > tmax(x)) tmax = tmax(x)
+  if (tmin(limits) < tmin(x)) tmin = tmin(x)
 
 
-  limitExpr[tminPos] = tmin
-  limitExpr[tmaxPos] = tmax
+  limitExpr[tminPos] = .calcTDimIndex(x,tmin)
+  limitExpr[tmaxPos] = .calcTDimIndex(x,tmax)
 
   return(limitExpr)
 }

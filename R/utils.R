@@ -156,7 +156,7 @@
     stop("currently no other temporal unit supported")
   }
 
-  val = as.POSIXlt(as.character(t0(x) + n * tres(x) * baseTime))
+  val = round(as.POSIXlt(as.character(t0(x) + n * tres(x) * baseTime)),units=tunit(x))
   return(val)
 }
 
