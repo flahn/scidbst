@@ -84,6 +84,7 @@
 
 # joins attributes from A into B under the condition that both arrays are strictly spatial and have the same resolution and SRS
 .join.normalized = function(A,B) {
+
   # code from Marius (modified)
   join.ref.st = transfer(A,B) #eo_over
   join.ref = as(join.ref.st,"scidb")
@@ -120,6 +121,7 @@
   ### rename attributes in scidb
   join.ref = attribute_rename(join.ref,attrrename[,1],attrrename[,2])
   # now: join.ref is the array A which was translated into the dimension index space of B, renamed and joined values
+  # also join.ref is a scidb object
 
   ### create array expression for scidb
   attributestr = scidb:::build_attr_schema(as(A,"scidb"))
@@ -130,6 +132,10 @@
                   paste(attributestr,dimensionstr,sep=""), ", false )", sep="")
 
   q.redim.scidb = scidb(q.redim)
+  #q.redim is now the redimensioned array of join.ref (translated array A)
+
+  #TODO evaluate statement and store as proxy of A, also overwrite the dimension names with the values of B (in case they are differently named)
+
   B.scidb = as(B,"scidb")
 
   ### Option join
@@ -146,10 +152,19 @@
   # in both cases B is the target and will be used for SRS and extent
   if (A@isTemporal || (!A@isTemporal && !B@isTemporal)) {
     # dim.match = paste(c("A","B"),cbind(rep(intersect(scidb::dimensions(q.redim.scidb),dimensions(B)),2)),sep=".",collapse=",")
-    dim.match = paste(c("A","B"),matrix(rep(intersect(dimensions(A),dimensions(B)),2),ncol=2,byrow=T),sep=".",collapse=",")
+
+    # intersectingDim = intersect(dimensions(A),dimensions(B))
+    # dim.match = paste(c("A","B"),matrix(rep(intersectingDim ,2),ncol=length(intersectingDim),byrow=T),sep=".",collapse=",")
+
+    dim.match = paste("A.",ydim(A),", B.",ydim(B),", A.", xdim(A),", B.",xdim(B),sep="")
+
+    if (A@isTemporal && B@isTemporal) {
+      dim.match = paste(dim.match,", A.",tdim(A),", B.",tdim(B),sep="")
+    }
+
     q.cjoin = paste("cross_join(", q.redim , " as A,", scidb_op(B)  ," as B,",dim.match,")", sep="")
     B@proxy = scidb(q.cjoin)
-    if (A@isTemporal) {
+    if (A@isTemporal && !B@isTemporal) {
       B@isTemporal = TRUE
       B@tExtent = A@tExtent
       B@trs = trs(A)
@@ -158,7 +173,12 @@
     return(B)
   } else { # B has temporal ref or both have
     # dim.match = paste(c("B","A"),cbind(rep(intersect(dimensions(B),scidb::dimensions(q.redim.scidb)),2)),sep=".",collapse=",")
-    dim.match = paste(c("B","A"),matrix(rep(intersect(dimensions(B),dimensions(A)),2),ncol=2,byrow=T),sep=".",collapse=",")
+    # dim.match = paste(c("B","A"),matrix(rep(intersect(dimensions(B),dimensions(A)),2),ncol=2,byrow=T),sep=".",collapse=",")
+
+    dim.match = paste("B.",ydim(B),", A.",ydim(A),", B.", xdim(B),", A.",xdim(A),sep="")
+    if (A@isTemporal && B@isTemporal) {
+      dim.match = paste(dim.match,", B.",tdim(B),", A.",tdim(A),sep="")
+    }
     q.cjoin = paste("cross_join(", scidb_op(B) , " as B,",  q.redim ," as A,",dim.match,")", sep="")
     B@proxy = scidb(q.cjoin)
 

@@ -143,7 +143,7 @@ setMethod("resample", signature(x="scidbst", y="Raster"), function(x,y,af="avg")
 #' @export
 setMethod("resample", signature(x="scidbst", y="scidbst"), function(x,y,af="avg",type="S") {
   type = toupper(type)
-  if (!(type %in% c("S","ST","T"))) {
+  if (type %in% c("S","ST","T")) {
     grid = .prepareGrid(x,y,type)
   } else {
     stop("Cannot recognize type parameter. Please use 'S' for spatial resampling, 'T' for temporal and 'ST' for both.")

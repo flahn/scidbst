@@ -114,10 +114,10 @@
 
   indices = extent(c(range(img1[1],img2[1]),range(img1[2],img2[2])))
   # use inner bounding box in case of doubt => means that there will be values!
-  xmin(indices) = ceiling(xmin(indices))
-  ymin(indices) = ceiling(ymin(indices))
-  xmax(indices) = floor(xmax(indices))
-  ymax(indices) = floor(ymax(indices))
+  xmin(indices) = floor(xmin(indices))
+  ymin(indices) = floor(ymin(indices))
+  xmax(indices) = ceiling(xmax(indices))
+  ymax(indices) = ceiling(ymax(indices))
   return(indices)
 }
 
