@@ -11,7 +11,7 @@
 
 \S4method{resample}{scidbst,Raster}(x, y, af = "avg")
 
-\S4method{resample}{scidbst,scidbst}(x, y, af = "avg")
+\S4method{resample}{scidbst,scidbst}(x, y, af = "avg", type = "S")
 }
 \arguments{
 \item{x}{The scidbst object}
@@ -19,6 +19,8 @@
 \item{y}{target object}
 
 \item{af}{(optional) aggregation function applied to every attribute on the grid, or a quoted SciDB aggregation expression}
+
+\item{type}{(optional) when using a scidbst array for 'y' on resample, 'type' describes the dimensionality for resampling ('S' [default],'T' and 'ST')}
 }
 \value{
 scidbst object with new resolution information (adapted affine transformation)

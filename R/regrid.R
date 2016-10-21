@@ -111,6 +111,7 @@ NULL
 #' @param x The scidbst object
 #' @param y target object
 #' @param af (optional) aggregation function applied to every attribute on the grid, or a quoted SciDB aggregation expression
+#' @param type (optional) when using a scidbst array for 'y' on resample, 'type' describes the dimensionality for resampling ('S' [default],'T' and 'ST')
 #'
 #' @examples
 #' \dontrun{

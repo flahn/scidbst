@@ -97,10 +97,10 @@ subarray.scidbst = function (x, limits, between = FALSE) {
 
   e = extent(limits)
 
-  if (xmin(e) < xmin(x)) xmin(e) = xmin(x)
-  if (ymin(e) < ymin(x)) ymin(e) = ymin(x)
-  if (xmax(e) > xmax(x)) xmax(e) = xmax(x)
-  if (ymax(e) > ymax(x)) ymax(e) = ymax(x)
+  if (xmin(e) > xmin(x)) xmin(e) = xmin(x)
+  if (ymin(e) > ymin(x)) ymin(e) = ymin(x)
+  if (xmax(e) < xmax(x)) xmax(e) = xmax(x)
+  if (ymax(e) < ymax(x)) ymax(e) = ymax(x)
 
   newe = .calculateDimIndices(x,e)
   limitExpr[xminPos] = xmin(newe)
