@@ -230,14 +230,44 @@ if (!isGeneric("join")) {
 
   if (!.equalSRS(x,y)) stop("The arrays have different spatial reference systems. Currently resampling methods are not provided by 'scidbst' or in 'SciDB'")
 
-  #TODO check extents and crop if needed
+  #compare the spatial resolution and sort descending in resolution
+  res.ls = .compareSpRes(x,y)
+  A = res.ls$A
+  B = res.ls$B
+
+  #check extents and crop if needed
+  ex = extent(A)
+  ey = extent(B)
+  diffs = c(abs(xmin(ex)-xmin(ey)),abs(xmax(ex)-xmax(ey)),abs(ymin(ex)-ymin(ey)),abs(ymax(ex)-ymax(ey)))
+
+  #calculate tolerance
+  rx = max(xres(x),xres(y))
+  ry = max(yres(x),yres(y))
+  delta = sqrt(rx^2 + ry^2)
+
+  if (any(diffs > delta)) {
+    # TODO crop
+    ei = intersect(ex,ey)
+
+    ei.B = .calculateDimIndices(B,ei) #lower resolution and potentially larger extent
+    ei.A = .calculateDimIndices(A,ei.B) #calculate the bbox for A from Bs intersected extent
+    ei = intersect(ei.A,ei.B) # should be close to the correct one
+
+    cropped.A = crop(A,ei)
+    cropped.B = crop(B,ei)
+    if (storeTemp) {
+      A = scidbsteval(cropped.A,temp=TRUE,name=.getTempNames(cropped.A,1))
+      B = scidbsteval(cropped.B,temp=TRUE,name=.getTempNames(cropped.B,1))
+    } else {
+      A = cropped.A
+      B = cropped.B
+    }
+  }
 
   if (!.equalRes(x,y)) {
     # bring resolution together (regrid) and sort from higher resolution to lower
-    res.ls = .compareSpRes(x,y)
     # resample A into B
-    A = res.ls$A
-    B = res.ls$B
+
     expr = .createExpression(A,raf)
     A = resample(A,B,expr) # use B as target grid structure
 

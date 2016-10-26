@@ -2,9 +2,9 @@
 % Please edit documentation in R/coerce.R
 \name{as-xts}
 \alias{as-xts}
-\title{Creates a RasterBrick from scidbst}
+\title{Creates a xts object from a scidbst object}
 \description{
-Creates a RasterBrick from scidbst
+Creates a xts object from a scidbst object
 }
 \seealso{
 Other scidbst: \code{\link{as-RasterBrick}},

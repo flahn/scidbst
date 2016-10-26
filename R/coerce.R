@@ -100,7 +100,7 @@ setAs("scidbst","STSDF",function(from,to) {
 
 setOldClass("xts")
 
-#' Creates a RasterBrick from scidbst
+#' Creates a xts object from a scidbst object
 #'
 #' @name as-xts
 #' @family scidbst

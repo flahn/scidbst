@@ -22,6 +22,27 @@
   }
 }
 
+setGeneric("tindex",function(x,...) {
+  standardGeneric("tindex")
+})
+
+#' Calculates the temporal index of a date time string or POSIXt object
+#'
+#' @param x scidbst array
+#' @param time a character string representing a valid date time or a POSIXt object
+#' @return integer the nearest temporal index for specified date time
+#'
+#' @export
+setMethod("tindex",signature(x="scidbst"),function(x,time) {
+  if (!x@isTemporal) {
+    stop("Cannot calculate temporal index, because the array has no temporal reference.")
+  }
+  if (missing(time)) {
+    stop("Cannot find time parameter to calculate the temporal index from.")
+  }
+  return(.calcTDimIndex(x,time))
+})
+
 # Tries to match the temporal resolution string against some regexpressions in order to find
 # the correct POSIX time resolution for functions like 'difftime'
 #
@@ -160,6 +181,31 @@
   return(val)
 }
 
+setGeneric("datetime",function(x,...) {
+  standardGeneric("datetime")
+})
+
+#' Calculates a POSIXt from a time index
+#'
+#' The function calculates the appropriate POSIXt object given an scidbst array and a time index.
+#'
+#' @param x scidbst object
+#' @param n integer value
+#' @return POSIXt object for the time index n
+#'
+#' @export
+setMethod("datetime",signature(x="scidbst"), function(x, n) {
+  if (!x@isTemporal) {
+    stop("Scidbst array is not temporal. Cannot find a time dimension.")
+  }
+  if (missing(n) || !is.numeric(n)) {
+    stop("No time index to translate.")
+  }
+
+  return(.calculatePOSIXfromIndex(x,n))
+})
+
+
 #' Lists all scidb arrays with a dimension reference
 #'
 #' This function will list all the SciDB arrays that have a special reference on one or more dimensions. It will also list the type of
@@ -258,7 +304,7 @@ transformAllTemporalIndices = function(obj,df) {
 }
 
 # x: scidbst object
-.memorySize = function(x,unit) {
+.memorySize = function(x,unit="MB") {
   unit = toupper(unit)
   if (!unit %in% c("KB","MB","GB")) stop("Unrecognized data storage unit.")
 
@@ -286,3 +332,19 @@ transformAllTemporalIndices = function(obj,df) {
   }
 
 }
+
+setGeneric("estimateFileSize", function(x, ...) {
+  standardGeneric("estimateFileSize")
+})
+
+#' Estimates the file size for a scidbst array
+#'
+#' This function uses the meta information on a scidbst array to estimate the potential file size.
+#'
+#' @param x scidbst array
+#' @param unit (optional) one of c("KB","MB","GB") to specify the digital storage unit. Default is MB
+#' @return numeric the estimated file size in the unit specified
+#' @export
+setMethod("estimateFileSize",signature(x="scidbst"), function(x, unit="MB") {
+  return(.memorySize(x, unit))
+})
