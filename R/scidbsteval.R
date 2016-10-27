@@ -109,7 +109,12 @@ if (!isGeneric("scidbsteval")) {
 
   # rename the array, since the name was changed due to store
   expr@proxy@name = name
-  expr@title = name
+
+  if (!temp) {
+    # if temp is false, we can re-set the title of the array, otherwise we would have this __temp_title_34534 expression
+    expr@title = name
+  }
+
 
   if (temp) {
     if(is.null(expr@temps)) {

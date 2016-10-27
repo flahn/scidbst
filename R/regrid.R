@@ -86,7 +86,9 @@ NULL
 #x: scidbst object
 #af: abbreviation of the aggregation function
 .createExpression=function(x,af) {
-  if (af %in% c("avg","sum","prod","max","min","stdev","var","count")) {
+  aggregate.operators = unique(iquery("list('aggregates')",return=TRUE)$name)
+
+  if (af %in% aggregate.operators) {
     return(paste(af,"(",scidb_attributes(x),")",sep="",collapse=", "))
   } else {
     return(af) # probably it is an expression term otherwise it will crash in scidb operation

@@ -29,7 +29,7 @@
 #returns a list of scidbst objects in the order A has a higher resolution as B (to merge A into B)
 # A: scidst , B: scidbst
 # return: list of scidbst with object A having a lower resolution as object B
-.compareSpRes = function (A,B) {
+.sortSpRes = function (A,B) {
   if (all(res(A)>res(B))) {
     return(list(A=B,B=A))
   } else if (all(res(A)<=res(B))) {
@@ -39,26 +39,23 @@
   }
 }
 
-.tres2seconds = function(A) {
-  if (!A@isTemporal) {
-    stop("Array has no time dimension")
-  }
-  unit = tunit(A)
-  res = tres(A)
-  allUnits = c("secs", "mins", "hours", "days", "weeks")
-  factors = c(1, 60, 60*60, 60*60*24, 60*60*24*7)
-  if (!unit %in% allUnits) {
-    stop("Cannot convert time resolution into seconds. Temporal Unit is not supported")
+# return B>A -> 1; A>B -> -1; A==B -> 0
+.compareSpRes = function(A,B) {
+  diff = res(B) - res(A)
+  if (all(diff < 0)) {
+    return(-1)
+  } else if (all(diff > 0)) {
+    return(1)
+  } else if (all(diff == 0)) {
+    return(0)
   } else {
-    res = res * factors[allUnits == unit]
-
-    #note: might be a  problem with daylight saving times -> will be off about 1 hour if it changes
+    stop("The spatial resolution is in one arrays dimension higher than the other and in the other lower. This is currently not supported.")
   }
-
-  return(res)
 }
 
-.compareTRes = function(A,B) {
+
+
+.sortTRes = function(A,B) {
   if (tunit(A) != tunit(B)) {
     # no comparable tUnit translate into seconds as "smallest unit"
     A.sec = .tres2seconds(A)
@@ -76,9 +73,31 @@
       return(list(A=A,B=B))
     }
   }
+}
 
+# return B>A -> 1; A>B -> -1; A==B -> 0
+.compareTRes = function(A,B) {
+  if (tunit(A) != tunit(B)) {
+    # no comparable tUnit translate into seconds as "smallest unit"
+    A.sec = .tres2seconds(A)
+    B.sec = .tres2seconds(B)
 
-
+    if (A.sec > B.sec) { # the higher resolution value means to be the target
+      return(-1)
+    } else if (A.sec < B.sec) {
+      return(1)
+    } else {
+      return(0)
+    }
+  } else {
+    if (tres(A) > tres(B)) {
+      return(-1)
+    } else if (tres(A) < tres(B)){
+      return(1)
+    } else {
+      return(0)
+    }
+  }
 }
 
 
@@ -238,41 +257,44 @@ setGeneric("equalize",function(x,y,...) {
 #' @return the modified scidbst array source array with the dimensional representation as the target
 #' @export
 #' @seealso \href{http://www.paradigm4.com/HTMLmanual/15.7/scidb_ug/Aggregates.html}{scidb aggregation functions}
-setMethod("equalize", signature(x="scidbst",y="scidbst"), function(x,y,type,storeTemp,raf,taf) {
+setMethod("equalize", signature(x="scidbst",y="scidbst"), function(x,y,type,storeTemp,saf,taf) {
   type = toupper(type)
   if (!type %in% c("S","T","ST")) {
     stop("Please specifiy how in which dimension(s) the arrays shall be equalized")
   }
   if (type == "S") {
     #TODO rework equalizeSpatial to distinguish source and target array, using either aggregate or xgrid
-    return(.equalizeSpatial(x,y,storeTemp,raf))
-  }
-  if (type == "T") {
+    arrays = .equalizeSpatial(x,y,storeTemp,saf)
+  } else if (type == "T") {
     #TODO same thing as for equalizeSpatial
-    return(.equalizeTemporal(x,y,storeTemp,taf))
+    arrays = .equalizeTemporal(x,y,storeTemp,taf)
+  } else if (type == "ST") {
+    arrays = .equalizeSpatial(x,y,storeTemp,saf)
+    arrays = .equalizeTemporal(arrays$A, arrays$B, storeTemp, taf)
+  } else {
+    stop("This should not happened. Wrong type.")
   }
+  return(arrays$A) #returns the adapted source array
 })
 
 # prepares the arrays in the form that both arrays have the same spatial resolution
 # x,y : scidbst objects
-# raf the aggregation function for the regridding
+# saf the aggregation function for the regridding
 # return list with two scidbst objects (A - the resampled array (former higher resolution),
 # B - the target array in terms of spatial resolution)
-.equalizeSpatial = function(x,y,storeTemp,raf) {
+.equalizeSpatial = function(x,y,storeTemp,saf) {
 
   bothSpatial = x@isSpatial && y@isSpatial
   if (!bothSpatial) stop("Arrays are not spatial. This feature is currently not supported")
 
   if (!.equalSRS(x,y)) stop("The arrays have different spatial reference systems. Currently resampling methods are not provided by 'scidbst' or in 'SciDB'")
 
-  #compare the spatial resolution and sort descending in resolution
-  res.ls = .compareSpRes(x,y)
-  A = res.ls$A
-  B = res.ls$B
 
   #check extents and crop if needed
-  ex = extent(A)
-  ey = extent(B)
+  ex = extent(x)
+  ey = extent(y)
+
+  ei = intersect(ex,ey)
   diffs = c(abs(xmin(ex)-xmin(ey)),abs(xmax(ex)-xmax(ey)),abs(ymin(ex)-ymin(ey)),abs(ymax(ex)-ymax(ey)))
 
   #calculate tolerance
@@ -280,51 +302,66 @@ setMethod("equalize", signature(x="scidbst",y="scidbst"), function(x,y,type,stor
   ry = max(yres(x),yres(y))
   delta = sqrt(rx^2 + ry^2)
 
-  if (any(diffs > delta)) {
-    # TODO crop
-    ei = intersect(ex,ey)
+  compXY = .compareSpRes(x,y)
 
-    ei.B = .calculateDimIndices(B,ei) #lower resolution and potentially larger extent
-    ei.A = .calculateDimIndices(A,ei.B) #calculate the bbox for A from Bs intersected extent
-    ei = intersect(ei.A,ei.B) # should be close to the correct one
+  if (compXY < 0) {
+    # x < y means x has a higher resolution than y -> regrid/aggregate
+    if (any(diffs > delta)) {
 
-    cropped.A = crop(A,ei)
-    cropped.B = crop(B,ei)
-    if (storeTemp) {
-      A.title = A@title
-      B.title = B@title
-      A = scidbsteval(cropped.A,temp=TRUE,name=.getTempNames(cropped.A,1))
-      B = scidbsteval(cropped.B,temp=TRUE,name=.getTempNames(cropped.B,1))
-      #rename the title because otherwise we will have internal temp_xxx_2345234534 chains for temp arrays
-      A@title = A.title
-      B@title = B.title
-    } else {
-      A = cropped.A
-      B = cropped.B
+
+      ei.y = .calculateDimIndices(y,ei) #lower resolution and potentially larger extent
+      ei.x = .calculateDimIndices(x,ei.y) #calculate the bbox for A from Bs intersected extent
+      ei = intersect(ei.x,ei.y) # should be close to the correct one
+
+      cropped.x = crop(x,ei)
+      cropped.y = crop(y,ei)
+      if (storeTemp) {
+        x = scidbsteval(cropped.x,temp=TRUE,name=.getTempNames(cropped.x,1))
+        y = scidbsteval(cropped.y,temp=TRUE,name=.getTempNames(cropped.y,1))
+        #rename the title because otherwise we will have internal temp_xxx_2345234534 chains for temp arrays
+      } else {
+        x = cropped.x
+        y = cropped.y
+      }
     }
-  }
-
-  if (!.equalRes(x,y)) { #TODO compare resolution and result -1 or 1 for higher or lower res A to B
-    #if y higherRes x: DO
 
     # bring resolution together (regrid) and sort from higher resolution to lower
     # resample A into B
 
-    expr = .createExpression(A,raf)
-    A = resample(A,B,expr) # use B as target grid structure
+    expr = .createExpression(x,saf)
+    x = resample(x,y,expr) # use B as target grid structure
 
     if (storeTemp) {
-      A.title = A@title
-      B.title = B@title
-      B = scidbsteval(B, .getTempNames(B,1), temp=TRUE)
-      A = scidbsteval(A, .getTempNames(A,1), temp=TRUE)
-      A@title = A.title
-      B@title = B.title
+      # y = scidbsteval(y, .getTempNames(y,1), temp=TRUE) #shouldn't be necessary since there are no changes really
+      x = scidbsteval(x, .getTempNames(x,1), temp=TRUE)
     }
-    return(list(A=A,B=B))
-  } else {
-    # nothing to do here
     return(list(A=x,B=y))
+
+  } else if (compXY > 0) {
+    # x > y means x has a lower resolution than y -> break down with xgrid
+    stop("Currently not supported.")
+    if (any(diffs > delta)) {
+
+
+      ei.x = .calculateDimIndices(x,ei) #lower resolution and potentially larger extent
+      ei.y = .calculateDimIndices(y,ei.x) #calculate the bbox for A from Bs intersected extent
+      ei = intersect(ei.y,ei.x) # should be close to the correct one
+
+      cropped.y = crop(y,ei)
+      cropped.x = crop(x,ei)
+      if (storeTemp) {
+        x = scidbsteval(cropped.x,temp=TRUE,name=.getTempNames(cropped.x,1))
+        y = scidbsteval(cropped.y,temp=TRUE,name=.getTempNames(cropped.y,1))
+        #rename the title because otherwise we will have internal temp_xxx_2345234534 chains for temp arrays
+      } else {
+        x = cropped.x
+        y = cropped.y
+      }
+    }
+
+  } else {
+    #nothing to do here, simply return the array. both arrays have the same spatial resolution
+    return(x)
   }
 
 }
@@ -334,7 +371,7 @@ setMethod("equalize", signature(x="scidbst",y="scidbst"), function(x,y,type,stor
 .equalizeTemporal = function(x,y,storeTemp,taf) {
 
   # 0. sort arrays for their temporal resoultion
-  sortedList = .compareTRes(x,y)
+  sortedList = .sortTRes(x,y)
   A = sortedList$A #origin the higher resolution
   B = sortedList$B #target the lower resolution
 
@@ -368,12 +405,8 @@ setMethod("equalize", signature(x="scidbst",y="scidbst"), function(x,y,type,stor
 
     if (storeTemp) {
       # 4. store temporarily
-      A.title = A@title
-      B.title = B@title
       A = scidbsteval(A,.getTempNames(A,1),temp=TRUE)
       B = scidbsteval(B,.getTempNames(B,1),temp=TRUE)
-      A@title = A.title
-      B@title = B.title
     }
   }
   A.res.sec = .tres2seconds(A)
@@ -398,7 +431,7 @@ setMethod("equalize", signature(x="scidbst",y="scidbst"), function(x,y,type,stor
 }
 
 
-.join = function (x,y,storeTemp=FALSE,name,raf="avg",taf="avg") {
+.join = function (x,y,storeTemp=FALSE,name,saf="avg",taf="avg") {
 
   bothSpatial = x@isSpatial && y@isSpatial
   bothTemporal = x@isTemporal && y@isTemporal
@@ -406,13 +439,21 @@ setMethod("equalize", signature(x="scidbst",y="scidbst"), function(x,y,type,stor
   if (storeTemp && missing(name)) {
     stop("There is no name for the resulting array, if you want to optimize the process with temporary storing.")
   }
+
+  # rename the attribute names to distinguish the attributes later on
+  x.attr = paste(x@title,scidb_attributes(x),sep="_")
+  y.attr = paste(y@title,scidb_attributes(y),sep="_")
+
+  x@proxy = attribute_rename(as(x,"scidb"),scidb_attributes(x),x.attr)
+  y@proxy = attribute_rename(as(y,"scidb"),scidb_attributes(y),y.attr)
+
   #TODO rework this function to accept two arrays that are dimension/resolution wise similar given a certain
   #tolerance
 
   # case 1: both arrays are spatial, but not temporal
   # case 2: both arrays are spatial, and 1 is temporal
   if (bothSpatial && !bothTemporal) {
-    arrays = .equalizeSpatial(x,y,storeTemp,raf)
+    arrays = .equalizeSpatial(x,y,storeTemp,saf)
     A = arrays$A
     B = arrays$B
 
@@ -424,7 +465,7 @@ setMethod("equalize", signature(x="scidbst",y="scidbst"), function(x,y,type,stor
     }
     return(.out)
   } else if (bothSpatial && bothTemporal) { #case 3: both spatial and temporal
-    arrays = .equalizeSpatial(x,y,storeTemp,raf)
+    arrays = .equalizeSpatial(x,y,storeTemp,saf)
     arrays = .equalizeTemporal(arrays$A, arrays$B, storeTemp, taf)
     #at this point the arrays should have the same resolutions (temporally and spatial)
     #do normal join

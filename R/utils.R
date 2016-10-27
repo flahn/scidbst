@@ -348,3 +348,23 @@ setGeneric("estimateFileSize", function(x, ...) {
 setMethod("estimateFileSize",signature(x="scidbst"), function(x, unit="MB") {
   return(.memorySize(x, unit))
 })
+
+# recalculates the temporal resolution in seconds
+.tres2seconds = function(A) {
+  if (!A@isTemporal) {
+    stop("Array has no time dimension")
+  }
+  unit = tunit(A)
+  res = tres(A)
+  allUnits = c("secs", "mins", "hours", "days", "weeks")
+  factors = c(1, 60, 60*60, 60*60*24, 60*60*24*7)
+  if (!unit %in% allUnits) {
+    stop("Cannot convert time resolution into seconds. Temporal Unit is not supported")
+  } else {
+    res = res * factors[allUnits == unit]
+
+    #note: might be a  problem with daylight saving times -> will be off about 1 hour if it changes
+  }
+
+  return(res)
+}
