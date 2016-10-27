@@ -218,6 +218,41 @@ if (!isGeneric("join")) {
   return(names)
 }
 
+setGeneric("equalize",function(x,y,...) {
+  standardGeneric("equalize")
+})
+
+#' Equalizes the dimensionality of two scidbst arrays
+#'
+#' This function modifies the dimension properties of a source scidbst array to match the spatial
+#' and/or temporal resolution of a target array. Therefore scidb will perform either an aggregation
+#' for upscaling (higher to lower resolution) or it breaks down cells for a downscaling (lower to higher
+#' resolution)
+#'
+#' @param x source scidbst array
+#' @param y target scidbst array
+#' @param type character one of c("S","T","ST") two equalize spatial, temporal or spatio-temporal
+#' @param storeTemp logical - whether or not to preevaluate the arrays and store them temporarily
+#' @param raf the spatial aggregation function to apply
+#' @param taf the temporal aggregation function to apply
+#' @return the modified scidbst array source array with the dimensional representation as the target
+#' @export
+#' @seealso \href{http://www.paradigm4.com/HTMLmanual/15.7/scidb_ug/Aggregates.html}{scidb aggregation functions}
+setMethod("equalize", signature(x="scidbst",y="scidbst"), function(x,y,type,storeTemp,raf,taf) {
+  type = toupper(type)
+  if (!type %in% c("S","T","ST")) {
+    stop("Please specifiy how in which dimension(s) the arrays shall be equalized")
+  }
+  if (type == "S") {
+    #TODO rework equalizeSpatial to distinguish source and target array, using either aggregate or xgrid
+    return(.equalizeSpatial(x,y,storeTemp,raf))
+  }
+  if (type == "T") {
+    #TODO same thing as for equalizeSpatial
+    return(.equalizeTemporal(x,y,storeTemp,taf))
+  }
+})
+
 # prepares the arrays in the form that both arrays have the same spatial resolution
 # x,y : scidbst objects
 # raf the aggregation function for the regridding
@@ -256,15 +291,22 @@ if (!isGeneric("join")) {
     cropped.A = crop(A,ei)
     cropped.B = crop(B,ei)
     if (storeTemp) {
+      A.title = A@title
+      B.title = B@title
       A = scidbsteval(cropped.A,temp=TRUE,name=.getTempNames(cropped.A,1))
       B = scidbsteval(cropped.B,temp=TRUE,name=.getTempNames(cropped.B,1))
+      #rename the title because otherwise we will have internal temp_xxx_2345234534 chains for temp arrays
+      A@title = A.title
+      B@title = B.title
     } else {
       A = cropped.A
       B = cropped.B
     }
   }
 
-  if (!.equalRes(x,y)) {
+  if (!.equalRes(x,y)) { #TODO compare resolution and result -1 or 1 for higher or lower res A to B
+    #if y higherRes x: DO
+
     # bring resolution together (regrid) and sort from higher resolution to lower
     # resample A into B
 
@@ -272,8 +314,12 @@ if (!isGeneric("join")) {
     A = resample(A,B,expr) # use B as target grid structure
 
     if (storeTemp) {
+      A.title = A@title
+      B.title = B@title
       B = scidbsteval(B, .getTempNames(B,1), temp=TRUE)
       A = scidbsteval(A, .getTempNames(A,1), temp=TRUE)
+      A@title = A.title
+      B@title = B.title
     }
     return(list(A=A,B=B))
   } else {
@@ -322,8 +368,12 @@ if (!isGeneric("join")) {
 
     if (storeTemp) {
       # 4. store temporarily
+      A.title = A@title
+      B.title = B@title
       A = scidbsteval(A,.getTempNames(A,1),temp=TRUE)
       B = scidbsteval(B,.getTempNames(B,1),temp=TRUE)
+      A@title = A.title
+      B@title = B.title
     }
   }
   A.res.sec = .tres2seconds(A)
@@ -335,7 +385,9 @@ if (!isGeneric("join")) {
     A = resample(A,B,expr,type="T") # use B as target grid structure for time
 
     if (storeTemp) {
+      A.title = A@title
       A = scidbsteval(A,.getTempNames(A,1),temp=TRUE)
+      A@title = A.title
     }
     return(list(A=A,B=B))
   } else {
@@ -354,6 +406,8 @@ if (!isGeneric("join")) {
   if (storeTemp && missing(name)) {
     stop("There is no name for the resulting array, if you want to optimize the process with temporary storing.")
   }
+  #TODO rework this function to accept two arrays that are dimension/resolution wise similar given a certain
+  #tolerance
 
   # case 1: both arrays are spatial, but not temporal
   # case 2: both arrays are spatial, and 1 is temporal
