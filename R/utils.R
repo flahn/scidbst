@@ -368,3 +368,28 @@ setMethod("estimateFileSize",signature(x="scidbst"), function(x, unit="MB") {
 
   return(res)
 }
+
+# returns a vector of names for potential temporary arrays
+# x: scidbst, n: number of names to be created
+.getTempNames = function(x,n) {
+  if (!is.null(x@temps)) {
+    usedIDs = as.integer(regmatches(x@temps,regexpr("(\\d)+$",x@temps)))
+    ids = sample.int(2147483647,n,replace=FALSE)
+
+    # rule out that there are any double ids
+    loglist = any(ids %in% usedIDs)
+    startExpr = loglist
+    while(startExpr) {
+      doublets = ids[startExpr]
+      amount = length(doublets)
+      newIds = sample.int(2147483647,amount,replace=FALSE)
+      ids[startExpr] = newIds
+      startExpr = any(ids %in% usedIDs)
+    }
+  } else {
+    ids = sample.int(2147483647,n,replace=FALSE)
+  }
+
+  names = paste("__temp_",x@title,"_",ids,sep="")
+  return(names)
+}

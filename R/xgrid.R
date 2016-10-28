@@ -5,7 +5,9 @@ if (!isGeneric("xgrid")) {
 }
 
 # x,y scidbst objects
-.prepareXGrid = function(x,y) {
+.prepareXGrid = function(x,y,type) {
+  #TODO make sure that the resolutions are correct res(x) < res(y) for dims(type)
+
   dims.x = dimensions(x)
   dims.y = dimensions(y)
 
@@ -15,7 +17,7 @@ if (!isGeneric("xgrid")) {
 
   grid = rep(1,length(dims.x)) # use 1 because it will result into identical dimension space for non-changed dimensions
 
-  if (x@isSpatial && y@isSpatial) {
+  if (x@isSpatial && y@isSpatial && type !="T") {
     if (!.equalSRS(x,y)) {
       stop("Error while preparing xgrid statement. SRS do not match.")
     }
@@ -28,7 +30,7 @@ if (!isGeneric("xgrid")) {
     grid[ypos] = yres.fac
   }
 
-  if (x@isTemporal && y@isTemporal) {
+  if (x@isTemporal && y@isTemporal && type != "S") {
     tres.fac = round(.tres2seconds(x) / .tres2seconds(y))
     tpos = which(dims.x ==tdim(x))
     grid[tpos] = tres.fac
@@ -37,14 +39,32 @@ if (!isGeneric("xgrid")) {
   return(grid)
 }
 
+#' Enlarge function
+#'
+#' This function can be used to enlarge the dimensional resolution of an array, e.g. changing the spatial resolution
+#' from a low resolution to a higher one. It calls the same called function in SciDB to execute the operation. There
+#' will be no interpolation of new values. The "old" cell value will be repeated the amount of times stated with the
+#' 'grid' statement.
+#'
+#' @note It is important to mention, that the dimensional scaling factor needs to be a integer value, other values will
+#' be rounded to the nearest integer. This is due to the fact that SciDB operates with int64 values as dimensional values.
+#'
+#' @param x scidbst array
+#' @param grid vector of integers which correspond to each dimension or a scidbst array
+#' @param type character (one of c("S","T","ST")) determining the dimensions to use for scaling
+#' @return a modified version of x (scidbst array) with changed dimensionality
+#'
 #' @export
-setMethod("xgrid",signature(x="scidbst"),function(x,grid) {
+setMethod("xgrid",signature(x="scidbst"),function(x,grid,type="S") {
+
+  if (!type %in% c("S","T","ST"))
+
   dims = dimensions(x)
 
   .scidb = as(x,"scidb")
 
   if (class(grid) == "scidbst") {
-    grid = .prepareXGrid(x,grid)
+    grid = .prepareXGrid(x,grid,type)
   }
 
   grid = as.integer(grid)
@@ -57,7 +77,7 @@ setMethod("xgrid",signature(x="scidbst"),function(x,grid) {
       .scidb = xgrid(.scidb,grid)
 
       #change resolutions
-      if (x@isSpatial) {
+      if (x@isSpatial && type!="T") {
         xpos = which(dims == xdim(x))
         ypos = which(dims == ydim(x))
         a = affine(x)
@@ -65,7 +85,7 @@ setMethod("xgrid",signature(x="scidbst"),function(x,grid) {
         a[2,3] = a[2,3] / grid[ypos]
         x@affine = a
       }
-      if (x@isTemporal) {
+      if (x@isTemporal && type != "S") {
         tpos = which(dims == tdim(x))
         newRes = x@trs@tResolution / grid[tpos]
         while (newRes < 1 && tunit(x) != "secs") {
