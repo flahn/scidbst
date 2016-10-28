@@ -5,7 +5,7 @@
 \alias{equalize,scidbst,scidbst-method}
 \title{Equalizes the dimensionality of two scidbst arrays}
 \usage{
-\S4method{equalize}{scidbst,scidbst}(x, y, type, storeTemp, raf, taf)
+\S4method{equalize}{scidbst,scidbst}(x, y, type, storeTemp, saf, taf)
 }
 \arguments{
 \item{x}{source scidbst array}
@@ -16,9 +16,9 @@
 
 \item{storeTemp}{logical - whether or not to preevaluate the arrays and store them temporarily}
 
-\item{raf}{the spatial aggregation function to apply}
-
 \item{taf}{the temporal aggregation function to apply}
+
+\item{raf}{the spatial aggregation function to apply}
 }
 \value{
 the modified scidbst array source array with the dimensional representation as the target

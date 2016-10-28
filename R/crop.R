@@ -1,7 +1,7 @@
 #' @include scidbst-class.R
 NULL
 
-.crop.scidbst = function(x, y, snap='near', ..., between=TRUE) {
+.crop.scidbst = function(x, y, snap='out', ..., between=TRUE) {
       proxy = x@proxy
       .dims = dimensions(x)
       ndim = length(.dims)
@@ -31,11 +31,11 @@ NULL
 
       xindex = which(.dims==xdim(x)) #get position of "x" values
       limits[xindex] = xmin(out)
-      limits[xindex+ndim] = xmax(out)
+      limits[xindex+ndim] = xmax(out) - 1
 
       yindex = which(.dims==ydim(x)) #position of "y" values
       limits[yindex] = ymin(out)
-      limits[yindex+ndim] = ymax(out)
+      limits[yindex+ndim] = ymax(out) - 1
 
       res = subarray(x=x,limits=limits,between=between) #use modified subarray version
       if (between) {

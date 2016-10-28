@@ -43,7 +43,7 @@ setMethod("xgrid",signature(x="scidbst"),function(x,grid) {
 
   .scidb = as(x,"scidb")
 
-  if (isClass(grid,"scidbst")) {
+  if (class(grid) == "scidbst") {
     grid = .prepareXGrid(x,grid)
   }
 
@@ -63,6 +63,7 @@ setMethod("xgrid",signature(x="scidbst"),function(x,grid) {
         a = affine(x)
         a[1,2] = a[1,2] / grid[xpos]
         a[2,3] = a[2,3] / grid[ypos]
+        x@affine = a
       }
       if (x@isTemporal) {
         tpos = which(dims == tdim(x))

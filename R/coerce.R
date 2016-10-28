@@ -19,6 +19,10 @@ setAs("scidbst","SpatialPointsDataFrame",function(from,to) {
       res = t(affine(from) %*% coords) #much faster than the previous
       colnames(res) = c("sx","sy")
 
+      #grid will be aligned to center, so shift the point values by half resolution to maintain the original extent
+      res[,"sx"] = res[,"sx"] + (xres(from)/2)
+      res[,"sy"] = res[,"sy"] - (yres(from)/2)
+
       res = as.data.frame(res)
       coordinates(res) <- ~sx+sy
       crs(res) <- crs(from)

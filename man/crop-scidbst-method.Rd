@@ -5,7 +5,7 @@
 \alias{crop,scidbst}
 \title{Crop / spatial subset function}
 \usage{
-\S4method{crop}{scidbst}(x, y, snap = "near", ..., between = TRUE)
+\S4method{crop}{scidbst}(x, y, snap = "out", ..., between = TRUE)
 }
 \arguments{
 \item{x}{scidbst object}

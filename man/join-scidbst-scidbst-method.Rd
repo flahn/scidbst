@@ -5,7 +5,7 @@
 \alias{join,scidbst,scidbst-method}
 \title{Joins the attributes of x and y}
 \usage{
-\S4method{join}{scidbst,scidbst}(x, y, storeTemp = FALSE, name, raf = "avg",
+\S4method{join}{scidbst,scidbst}(x, y, storeTemp = FALSE, name, saf = "avg",
   taf = "avg")
 }
 \arguments{
