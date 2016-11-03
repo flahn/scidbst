@@ -160,6 +160,8 @@ if (!isGeneric("join")) {
 
   #join.normalized
   .out = .join.equalized(x,y)
+
+
   if (storeTemp) {
     scidbsteval(.out,name) #scidbsteval will delete the temporary arrays automatically
     .out = scidbst(name) #clean possible extent differences

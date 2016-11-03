@@ -35,6 +35,7 @@ Collate:
     'coerce.R'
     'crop.R'
     'cumulate.R'
+    'equalize.R'
     'extent.R'
     'join.R'
     'names.R'

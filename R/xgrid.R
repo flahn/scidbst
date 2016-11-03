@@ -1,5 +1,6 @@
 if (!isGeneric("xgrid")) {
-  setGeneric("xgrid",function(x,...) {
+  # same statement as in scidb
+  setGeneric("xgrid",function(x, grid, expr) {
     standardGeneric("xgrid")
   })
 }
@@ -51,20 +52,20 @@ if (!isGeneric("xgrid")) {
 #'
 #' @param x scidbst array
 #' @param grid vector of integers which correspond to each dimension or a scidbst array
-#' @param type character (one of c("S","T","ST")) determining the dimensions to use for scaling
+#' @param expr character specifiying the type (one of c("S","T","ST")) that determins the dimensions to use for scaling
 #' @return a modified version of x (scidbst array) with changed dimensionality
 #'
 #' @export
-setMethod("xgrid",signature(x="scidbst"),function(x,grid,type="S") {
+setMethod("xgrid",signature(x="scidbst"),function(x,grid,expr="S") {
 
-  if (!type %in% c("S","T","ST"))
+  if (!expr %in% c("S","T","ST"))
 
   dims = dimensions(x)
 
   .scidb = as(x,"scidb")
 
   if (class(grid) == "scidbst") {
-    grid = .prepareXGrid(x,grid,type)
+    grid = .prepareXGrid(x,grid,expr)
   }
 
   grid = as.integer(grid)
@@ -77,7 +78,7 @@ setMethod("xgrid",signature(x="scidbst"),function(x,grid,type="S") {
       .scidb = xgrid(.scidb,grid)
 
       #change resolutions
-      if (x@isSpatial && type!="T") {
+      if (x@isSpatial && expr!="T") {
         xpos = which(dims == xdim(x))
         ypos = which(dims == ydim(x))
         a = affine(x)
@@ -85,7 +86,7 @@ setMethod("xgrid",signature(x="scidbst"),function(x,grid,type="S") {
         a[2,3] = a[2,3] / grid[ypos]
         x@affine = a
       }
-      if (x@isTemporal && type != "S") {
+      if (x@isTemporal && expr != "S") {
         tpos = which(dims == tdim(x))
         newRes = x@trs@tResolution / grid[tpos]
         while (newRes < 1 && tunit(x) != "secs") {
