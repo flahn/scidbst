@@ -5,7 +5,8 @@
 \alias{equalize,scidbst,scidbst-method}
 \title{Equalizes the dimensionality of two scidbst arrays}
 \usage{
-\S4method{equalize}{scidbst,scidbst}(x, y, type, storeTemp, saf, taf)
+\S4method{equalize}{scidbst,scidbst}(x, y, type = "S", storeTemp = FALSE,
+  saf = "avg", taf = "avg")
 }
 \arguments{
 \item{x}{source scidbst array}

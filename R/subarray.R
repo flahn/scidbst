@@ -148,14 +148,22 @@ subarray.scidbst = function (x, limits, between = FALSE) {
 }
 
 .subarray.with.scidbst = function(x,limits,between=FALSE) {
-  if (!x@isSpatial) {
-    stop("Cannot set limit for spatial dimensions. Array has no such dimensions.")
+  limitExpr = NULL
+
+  if (x@isSpatial && limits@isSpatial) {
+    #stop("Cannot set limit for spatial dimensions. Array has no such dimensions.")
+    limitExpr = .createSpLimitExpr(x,limits)
   }
-  if (!x@isTemporal) {
-    stop("Cannot set limit for time dimension. Array has no such dimension.")
+
+  if (x@isTemporal && limits@isTemporal) {
+    #stop("Cannot set limit for time dimension. Array has no such dimension.")
+    if (is.null(limitExpr)) {
+      limitExpr = .createTLimitExpr(x,limits)
+    }else {
+      limitExpr = .createTLimitExpr(x,limits,limitExpr=limitExpr)
+    }
   }
-  limitExpr = .createSpLimitExpr(x,limits)
-  limitExpr = .createTLimitExpr(x,limits,limitExpr=limitExpr)
+
   return(subarray(x,limits=limitExpr,between=between))
 }
 

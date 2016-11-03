@@ -123,20 +123,20 @@ setGeneric("equalize",function(x,y,...) {
 #' @return the modified scidbst array source array with the dimensional representation as the target
 #' @export
 #' @seealso \href{http://www.paradigm4.com/HTMLmanual/15.7/scidb_ug/Aggregates.html}{scidb aggregation functions}
-setMethod("equalize", signature(x="scidbst",y="scidbst"), function(x,y,type,storeTemp,saf,taf) {
+setMethod("equalize", signature(x="scidbst",y="scidbst"), function(x,y,type="S",storeTemp=FALSE,saf="avg",taf="avg") {
   type = toupper(type)
   if (!type %in% c("S","T","ST")) {
     stop("Please specifiy how in which dimension(s) the arrays shall be equalized")
   }
   if (type == "S") {
-    #TODO rework equalizeSpatial to distinguish source and target array, using either aggregate or xgrid
-    arrays = .equalizeSpatial(x,y,storeTemp,saf)
+    #rework equalizeSpatial to distinguish source and target array, using either aggregate or xgrid
+    arrays = .equalizeSpatial(x=x,y=y,storeTemp=storeTemp,saf=saf)
   } else if (type == "T") {
-    #TODO same thing as for equalizeSpatial
-    arrays = .equalizeTemporal(x,y,storeTemp,taf)
+    # same thing as for equalizeSpatial
+    arrays = .equalizeTemporal(x=x,y=y,storeTemp=storeTemp,taf=taf)
   } else if (type == "ST") {
-    arrays = .equalizeSpatial(x,y,storeTemp,saf)
-    arrays = .equalizeTemporal(arrays$A, arrays$B, storeTemp, taf)
+    arrays = .equalizeSpatial(x=x,y=y,storeTemp = storeTemp,saf = saf)
+    arrays = .equalizeTemporal(x=arrays$A, y=arrays$B, storeTemp = storeTemp, taf=taf)
   } else {
     stop("This should not happened. Wrong type.")
   }
@@ -148,7 +148,7 @@ setMethod("equalize", signature(x="scidbst",y="scidbst"), function(x,y,type,stor
 # saf the aggregation function for the regridding
 # return list with two scidbst objects (A - the resampled array (former higher resolution),
 # B - the target array in terms of spatial resolution)
-.equalizeSpatial = function(x,y,storeTemp,saf) {
+.equalizeSpatial = function(x,y,storeTemp=FALSE,saf) {
 
   bothSpatial = x@isSpatial && y@isSpatial
   if (!bothSpatial) stop("Arrays are not spatial. This feature is currently not supported")
@@ -224,7 +224,7 @@ setMethod("equalize", signature(x="scidbst",y="scidbst"), function(x,y,type,stor
         y = cropped.y
       }
     }
-    x = xgrid(x,y,type="S")
+    x = xgrid(x,y,expr="S")
     if (storeTemp) {
       x = scidbsteval(x,.getTempNames(x,1), temp=TRUE)
     }
@@ -238,7 +238,7 @@ setMethod("equalize", signature(x="scidbst",y="scidbst"), function(x,y,type,stor
 
 # x,y: scidbst objects
 #taf: the temporal aggregation function (a scidb aggregation function)
-.equalizeTemporal = function(x,y,storeTemp,taf) {
+.equalizeTemporal = function(x,y,storeTemp=FALSE,taf) {
 
   # 0. sort arrays for their temporal resoultion
   sortedList = .sortTRes(x,y)
