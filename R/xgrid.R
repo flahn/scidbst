@@ -7,7 +7,13 @@ if (!isGeneric("xgrid")) {
 
 # x,y scidbst objects
 .prepareXGrid = function(x,y,type) {
-  #TODO make sure that the resolutions are correct res(x) < res(y) for dims(type)
+  #make sure that the resolutions are correct res(x) > res(y) for dims(type)
+  if (xres(x) < xres(y) && yres(x) < yres(y)) {
+    warning("Target array has a lower resolution than the source array. Switching source and target to continue.")
+    tmp = x
+    x = y
+    y = tmp
+  }
 
   dims.x = dimensions(x)
   dims.y = dimensions(y)
@@ -58,7 +64,9 @@ if (!isGeneric("xgrid")) {
 #' @export
 setMethod("xgrid",signature(x="scidbst"),function(x,grid,expr="S") {
 
-  if (!expr %in% c("S","T","ST"))
+  if (!expr %in% c("S","T","ST")) {
+    stop("Cannot relate expression parameter to a known equalization type.")
+  }
 
   dims = dimensions(x)
 

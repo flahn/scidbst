@@ -152,7 +152,8 @@ if (!isGeneric("join")) {
   #calculate sp tolerance
   rx = max(xres(x),xres(y))
   ry = max(yres(x),yres(y))
-  delta = sqrt(rx^2 + ry^2)
+  delta = 2*sqrt(rx^2 + ry^2)
+  # at least the
   if (!all(diffs <= delta)) stop("The spatial dimensions, do not have a similar extent. Please consider cropping first.")
 
   #TODO check temporal extent
@@ -161,7 +162,7 @@ if (!isGeneric("join")) {
   #join.normalized
   .out = .join.equalized(x,y)
 
-
+  #TODO think about the scidbsteval at the end. maybe just return .out
   if (storeTemp) {
     scidbsteval(.out,name) #scidbsteval will delete the temporary arrays automatically
     .out = scidbst(name) #clean possible extent differences
