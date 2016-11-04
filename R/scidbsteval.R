@@ -124,12 +124,17 @@ if (!isGeneric("scidbsteval")) {
     }
   } else {
     if(!is.null(expr@temps)) {
-      # TODO remove temporary arrays
+      # remove temporary arrays
       list = scidbls()
       existingArrays = expr@temps[expr@temps %in% list]
       scidbrm(existingArrays,force=TRUE)
       expr@temps = NULL
     }
+  }
+
+  # now to correct some issues with the true extent after an operation fetch the array anew
+  if (!temp) {
+    expr = scidbst(name)
   }
 
   return(expr)

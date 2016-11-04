@@ -5,7 +5,7 @@
 \alias{join,scidbst,scidbst-method}
 \title{Joins the attributes of x and y}
 \usage{
-\S4method{join}{scidbst,scidbst}(x, y, storeTemp = FALSE, name)
+\S4method{join}{scidbst,scidbst}(x, y, storeTemp = FALSE)
 }
 \arguments{
 \item{x}{scidbst object}
@@ -13,18 +13,20 @@
 \item{y}{scidbst object}
 
 \item{storeTemp}{logical whether or not some arrays are stored temporarily during the operation}
-
-\item{name}{The name of the joined output array (required if storeTemp==TRUE)}
 }
 \value{
 scidbst object with a combined object
 }
 \description{
-This function executes a join operation on two scidbst arrays, where all attributes of x and y are joined.
+This function executes a join operation on two scidbst arrays, where all attributes of x and y are joined. To make it more concrete
+the array dimension structure of y will be used as target structure for the dimensions. Read the method as "join x into y".
 }
 \details{
-At this point the join operation works spatial arrays only (this will be extended in the future). As a merge strategy the array with the
-lower resolution will be choosen as the target array. The array with the higher resolution will be regridded into the target array structure, so that
-cells can be merged by transfering the coordinates into the target arrays dimension indices.
+The join function will assume that the two arrays are similar in their dimensional representation. To be more concrete, x will
+be modified into the array structure including lower and upper dimensional boundaries, overlaps and chunksizes. To make sure the arrays
+are similar start by using \code{\link{equalize}} to smooth the transition by equalizing the cell resolution.
+}
+\seealso{
+\code{\link[scidb]{merge.scidb}}, \code{\link{equalize}}
 }
 
