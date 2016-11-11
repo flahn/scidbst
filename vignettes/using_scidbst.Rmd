@@ -199,7 +199,7 @@ plot(ts,major.ticks="months",minor.ticks=FALSE,main="Average precipitation for E
 ```
 
 ## Joining spatial arrays with different resolution
-In this use case we show how to combine the attributes of two spatial arrays. As input arrays we use the Landsat NDVI dataset of Ethiopia and the SRTM dataset of Africa. As a requirement both datasets need to share the same spatial reference system (in this case WGS84 with latitude and longitude coordinates). We use the landsat scene as the main extent and therefore we create a spatial subset of the SRTM dataset using the spatial extent of the Landsat 7 slice.
+In this use case we show how to combine the attributes of different spatio-temporal arrays. As input arrays we use the Landsat NDVI dataset of Ethiopia and the SRTM dataset of Africa. As a requirement both datasets need to share the same spatial reference system (in this case WGS84 with latitude and longitude coordinates). We use the landsat scene as the main extent and therefore we create a spatial subset of the SRTM dataset using the spatial extent of the Landsat 7 slice.
 
 ```{r joinArraysPreperation, cache=1}
 joined.name = "join_ls7ndvi_srtm_ethiopia"
@@ -213,12 +213,31 @@ extent(srtm)
 srtm.sub = crop(srtm,ls7.slice)
 ```
 
+In this case we adapt the spatial resolution of the Landsat 7 slice, in a way that it fits with the SRTM subset. We also specify the spatial aggregation function using the averaging function. It is advised to check the nature of the data whether or not it makes sense to chose "average" as an aggregation function over for example "sum".
+
 ```{r joinArraysResolution, cache=1}
 res(ls7.slice)
 res(srtm.sub)
+
+#srtm has a lower resolution than landsat
+#case 1 aggregation ls7 => srtm
+ls7.eq = equalize(ls7.slice,srtm.sub,type="S",saf="avg")
 ```
 
-We can see that the spatial resolution of this two arrays differs, which makes it difficult to join cells approriately. Internally the join function will use the array with the lower resolution as target and resamples the higher resolution array with an aggregation function.
+Depending on the intended join direction you will need to equalize the source array towards the target array. In this example you might want to use the higher spatial resolution of the Landsat image as target to keep the rich information it provides. If so you need to change the SRTM subset. What happens internally is the following: the function uses SciDBs "xgrid" function, which repeats a cells value a certain times. The used multiplication factor happens to be an integer so that aspect ratio will be rounded.
+
+```{r}
+srtm.eq = equalize(srtm.sub,ls7.slice,type="S",saf="avg")
+```
+
+The final step is the join operation. Read the function as "join x into y". This means that depending on the dimensionality of the arrays a spatial array might be joined into each time step of a spatio-temporal array or they are joined spatial-spatial or spatio-temporal - spatio-temporal. It is important to not that only those cells are merged that have non-empty cell values in both arrays.
+
+```{r}
+ls7.joined.1 = join(ls7.eq, srtm.sub)
+ls7.joined.2 = join(srtm.sub, ls7.slice)
+```
+
+
 
 ```{r removeJoined, include=FALSE}
 

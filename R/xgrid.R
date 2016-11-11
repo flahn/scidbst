@@ -17,10 +17,10 @@ if (!isGeneric("xgrid")) {
 
   dims.x = dimensions(x)
   dims.y = dimensions(y)
-
-  if (length(dims.x) != length(dims.y)) {
-    stop("Error while preparing xgrid statement from scidbst arrays. Dimensionality differs.")
-  }
+#
+#   if (length(dims.x) != length(dims.y)) {
+#     stop("Error while preparing xgrid statement from scidbst arrays. Dimensionality differs.")
+#   }
 
   grid = rep(1,length(dims.x)) # use 1 because it will result into identical dimension space for non-changed dimensions
 

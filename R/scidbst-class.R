@@ -43,6 +43,7 @@ scidbst = function(...){
     .scidbst@srs@srid =.srs$auth_srid
     .scidbst@srs@srtext = .srs$srtext
 
+    #TODO / NOTE: eo_extent returns just the transformed coordinates but does not include the area of a cell
     .scidbst@extent = extent(.extent[,"xmin"],.extent[,"xmax"],.extent[,"ymin"],.extent[,"ymax"])
   }
 

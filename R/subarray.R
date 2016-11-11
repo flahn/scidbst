@@ -17,35 +17,35 @@ subarray.scidbst = function (x, limits, between = FALSE) {
   }
 
   # adapt extent
-  # if (!between) { #subarray call
-    if (x@isSpatial) {
-      #image origin has been shifted towards limits
-      xindex = which(dimensions(x)==xdim(x)) #get position of "x" values
-      xvals = c(limits[xindex],limits[xindex+ndim]) #min/max for xdim
+  if (x@isSpatial) {
+    #image origin has been shifted towards limits
+    xindex = which(dimensions(x)==xdim(x)) #get position of "x" values
 
-      yindex = which(dimensions(x)==ydim(x)) #position of "y" values
-      yvals = c(limits[yindex],limits[yindex+ndim]) #min/max for ydim
+    #subtract 1 if the
+    xvals = c(limits[xindex],limits[xindex+ndim]) #min/max for xdim
 
-      #calculate upper left coordinate (origin of image coordinate system)
-      ul = .transformToWorld(affine(x),xvals[1],yvals[1]) #note: image coordinate system trans(i0) > trans(iEnd)
+    yindex = which(dimensions(x)==ydim(x)) #position of "y" values
+    yvals = c(limits[yindex],limits[yindex+ndim]) #min/max for ydim
 
-      lr = .transformToWorld(affine(x),xvals[2],yvals[2]) #to get an extent
-      newExtent = extent(ul[1],lr[1],lr[2],ul[2])
+    #calculate upper left coordinate (origin of image coordinate system)
+    ul = .transformToWorld(affine(x),xvals[1],yvals[1]) #note: image coordinate system trans(i0) > trans(iEnd)
+
+    lr = .transformToWorld(affine(x),xvals[2],yvals[2]) #to get an extent
+    newExtent = extent(ul[1],lr[1],lr[2],ul[2])
+  }
+
+  if (x@isTemporal) {
+    tindex = which(dimensions(x)==tdim(x))
+    tvals = c(limits[tindex],limits[tindex+ndim]) #min/max for xdim
+
+    t0 = .calculatePOSIXfromIndex(x,tvals[1])
+    if (tvals[2]==Inf) {
+      tEnd = tmax(x)
+    } else {
+      tEnd = .calculatePOSIXfromIndex(x,tvals[2])
     }
 
-    if (x@isTemporal) {
-      tindex = which(dimensions(x)==tdim(x))
-      tvals = c(limits[tindex],limits[tindex+ndim]) #min/max for xdim
-
-      t0 = .calculatePOSIXfromIndex(x,tvals[1])
-      if (tvals[2]==Inf) {
-        tEnd = tmax(x)
-      } else {
-        tEnd = .calculatePOSIXfromIndex(x,tvals[2])
-      }
-
-    }
-  # }
+  }
 
   scidb.obj = as(x,"scidb")
   scidb.obj = scidb::subarray(scidb.obj, limits, between)

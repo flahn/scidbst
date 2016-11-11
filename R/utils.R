@@ -135,10 +135,15 @@ setMethod("tindex",signature(x="scidbst"),function(x,time) {
 
   indices = extent(c(range(img1[1],img2[1]),range(img1[2],img2[2])))
   # use inner bounding box in case of doubt => means that there will be values!
-  xmin(indices) = floor(xmin(indices))
-  ymin(indices) = floor(ymin(indices))
-  xmax(indices) = ceiling(xmax(indices))
-  ymax(indices) = ceiling(ymax(indices))
+  # xmin(indices) = floor(xmin(indices))
+  # ymin(indices) = floor(ymin(indices))
+  # xmax(indices) = ceiling(xmax(indices))
+  # ymax(indices) = ceiling(ymax(indices))
+
+  xmin(indices) = round(xmin(indices))
+  ymin(indices) = round(ymin(indices))
+  xmax(indices) = round(xmax(indices))
+  ymax(indices) = round(ymax(indices))
   return(indices)
 }
 

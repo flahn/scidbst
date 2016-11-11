@@ -8,12 +8,9 @@
 
   ### rename the dimensions of the eo_over output (e.g. x,y,t -> x_old, y_old, t_old)
   dimrename = NULL
-  if (xdim(A) == xdim(B)) {
-    dimrename = rbind(dimrename, c(xdim(A),
-                                   paste(xdim(A), "_orig", sep="")))
-  }
-  if (ydim(A) == ydim(B)) {
+  if (A@isSpatial) {
     dimrename = rbind(dimrename, c(ydim(A), paste(ydim(A), "_orig", sep="")))
+    dimrename = rbind(dimrename, c(xdim(A), paste(xdim(A), "_orig", sep="")))
   }
   if (A@isTemporal) {
     dimrename = rbind(dimrename, c(tdim(A), paste(tdim(A), "_orig", sep="")))
@@ -25,24 +22,37 @@
   }
 
   #make sure the calculated over values are within the dimensional bounds of B, otherwise redimension will fail
-  dimsB = c("over_y","over_x")
-  if (B@isTemporal) {
-    dimsB = c(dimsB,"over_t")
-  }
   startsB = scidb_coordinate_start(as(B,"scidb"))
   endsB = scidb_coordinate_end(as(B,"scidb"))
-  #TODO check if there are more dimensions that might interfer with this approach
+  boundsB = NULL
+  if (A@isSpatial) {
+    dimsB = c("over_y","over_x")
+    ypos = which(dimensions(B) == ydim(B))
+    xpos = which(dimensions(B) == xdim(B))
+    boundsB = cbind(c(startsB[ypos],startsB[xpos]),c(endsB[ypos],endsB[xpos]))
+  }
 
-  filter_expr = paste(dimsB,">=",startsB," and ",dimsB,"<=",endsB,collapse=" and ",sep="")
+  if (A@isTemporal) {
+    dimsB = c(dimsB,"over_t")
+    tpos = which(dimensions(B) == tdim(B))
+    if (is.null(boundsB)) {
+      boundsB = cbind(c(startsB[tpos]),c(endsB[tpos]))
+    } else {
+      boundsB[,1] = c(boundsB[,1],startsB[tpos])
+      boundsB[,2] = c(boundsB[,2],endsB[tpos])
+    }
+  }
+
+  filter_expr = paste(dimsB,">=",boundsB[,1]," and ",dimsB,"<=",boundsB[,2])
   join.ref = scidb:::filter_scidb(join.ref,filter_expr)
-
+  browser()
   ### rename attributes into dimension (over_x, over_y, over_t -> x,y,t)
   attrrename = NULL
-  if (B@isSpatial) {
+  if (A@isSpatial) {
     attrrename = rbind(attrrename, c("over_x",  xdim(B) ))
     attrrename = rbind(attrrename, c("over_y",  ydim(B) ))
   }
-  if (B@isTemporal) {
+  if (A@isTemporal) { # A is the source... we want to modify A for B, if A not temporal than don't rename it
 
     attrrename = rbind(attrrename, c("over_t",  tdim(B) ))
   }
@@ -54,17 +64,21 @@
   ### create array expression for scidb
 
   # attributestr = scidb:::build_attr_schema(as(A,"scidb"))
-  dimensionstr = scidb:::build_dim_schema(as(B,"scidb"))
+  # dimensionstr = scidb:::build_dim_schema(as(B,"scidb")) # build on our own... if A is not temporal and B is this leads to problems
+  # [y=0:1836,2048,0,x=0:1836,2048,0,t=0:64,1,0]
+  dimensionstr = .dimStr(A,B)
 
-  ### redimension
+
+  ### redimension (Attribute of old A [redimAttr])
   q.redim = paste("redimension(", join.ref@name, ",",
                   paste(redimAttr,dimensionstr,sep=""), ", false )", sep="")
 
   q.redim.scidb = scidb(q.redim)
   A@proxy = q.redim.scidb
 
-  A@isSpatial = B@isSpatial
-  A@isTemporal = B@isTemporal
+  # if A was not temporal or spatial don't force it...
+  # A@isSpatial = B@isSpatial
+  # A@isTemporal = B@isTemporal
 
   if (A@isSpatial) {
     A@srs@dimnames = B@srs@dimnames #since B is target structure only dimnames of B are valid
@@ -83,6 +97,32 @@
   }
 
   return(A)
+}
+
+#creates a subset of a dimension string
+.dimStr = function (A,B) {
+  # A is the source array
+  # B is the target array from which we will take the boundaries
+  expr = ""
+  dimension = dimensions(B)
+  start = scidb_coordinate_start(B)
+  end = scidb_coordinate_end(B)
+  chunk = scidb_coordinate_chunksize(B)
+  overlap = scidb_coordinate_overlap(B)
+  if (A@isSpatial) {
+    ypos = which(dimension == ydim(B))
+    ydimExpr = paste(dimension[ypos],"=",start[ypos],":",end[ypos],",",chunk[ypos],",",overlap[ypos],sep="")
+    xpos = which(dimension == xdim(B))
+    xdimExpr = paste(dimension[xpos],"=",start[xpos],":",end[xpos],",",chunk[xpos],",",overlap[xpos],sep="")
+    expr = paste(ydimExpr,", ",xdimExpr,sep="")
+  }
+  if (A@isTemporal) {
+    tpos = which(dimension == tdim(B))
+    tdimExpr = paste(dimension[tpos],"=",start[tpos],":",end[tpos],",",chunk[tpos],",",overlap[tpos],sep="")
+    expr = paste(expr,", ",tdimExpr,sep="")
+  }
+  expr = paste("[",expr,"]",sep="")
+  return(expr)
 }
 
 # joins attributes from A into B under the condition that both arrays are strictly spatial and have the same resolution and SRS
@@ -119,6 +159,7 @@
     stop("There are no matching dimensions for a join. Probably the one or both arrays are neither spatially nor temporally referenced.")
   }
 
+
   q.cjoin = paste("cross_join(", scidb_op(B) , " as B,",  scidb_op(A) ," as A,",dim.match,")", sep="")
   B@proxy = scidb(q.cjoin)
 
@@ -134,13 +175,12 @@ if (!isGeneric("join")) {
 
 
 .join = function (x,y,storeTemp=FALSE) {
+  if (x@isSpatial && x@isTemporal && !y@isTemporal) {
+    stop("Error: Attempting to join a spatio-temporal array into a spatial array. Please consider aggregation over time of the first array or switch arrays.")
+  }
 
   bothSpatial = x@isSpatial && y@isSpatial
   bothTemporal = x@isTemporal && y@isTemporal
-
-  # if (storeTemp && missing(name)) {
-  #   stop("There is no name for the resulting array, if you want to optimize the process with temporary storing.")
-  # }
 
   # rename the attribute names to distinguish the attributes later on
   x.attr = paste(x@title,scidb_attributes(x),sep="_")
@@ -178,7 +218,7 @@ if (!isGeneric("join")) {
 
   if (bothTemporal) {
     dif.t = abs(.tres2seconds(x)-.tres2seconds(y))
-    if (dif.t/max(.tres2seconds(x), .tres2seconds(y)) < 0.1) {
+    if (dif.t/max(.tres2seconds(x), .tres2seconds(y)) > 0.1) {
       stop("Temporal resolution differs. Please consider using 'equalize' before the join")
     }
 
