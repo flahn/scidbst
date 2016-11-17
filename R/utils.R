@@ -14,7 +14,7 @@
     t0 = t0(x)
     dt = tres(x)
     unit = tunit(x)
-    index  = floor(as.numeric(difftime(time,t0,unit))/dt)
+    index  = floor(as.numeric(difftime(time,t0,units=unit))/dt)
 
     return(index)
   } else {
