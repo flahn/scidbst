@@ -9,7 +9,7 @@ NULL
 
   } else if (x@isTemporal) {
     # delta_t/t_res
-    return((as.numeric(difftime(tmax(x),tmin(x),tunit(x)))+1)/tres(x))
+    return((as.numeric(difftime(tmax(x),tmin(x),units=tunit(x)))+1)/tres(x))
   }
 }
 
