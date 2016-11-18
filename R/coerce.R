@@ -26,6 +26,7 @@ setAs("scidbst","SpatialPointsDataFrame",function(from,to) {
       res = as.data.frame(res)
       coordinates(res) <- ~sx+sy
       crs(res) <- crs(from)
+      #create a spatialpointsdataframe using the transformed coordinates "res" and a selection of .data as attributes
       res = suppressWarnings(SpatialPointsDataFrame(res,as.data.frame(.data[,names(.data) %in% scidb_attributes(from)])))
       names(res@data) = scidb_attributes(from)
 

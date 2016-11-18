@@ -213,7 +213,7 @@ extent(srtm)
 srtm.sub = crop(srtm,ls7.slice)
 ```
 
-In this case we adapt the spatial resolution of the Landsat 7 slice, in a way that it fits with the SRTM subset. We also specify the spatial aggregation function using the averaging function. It is advised to check the nature of the data whether or not it makes sense to chose "average" as an aggregation function over for example "sum".
+In this case we adapt the spatial resolution of the Landsat 7 slice, in a way that it fits with the SRTM subset. We also specify the spatial aggregation function using the averaging function. It is advised to check the nature of the data whether or not the aggregation function provides a meaningful result, e.g. to chose "sum" as an aggregation function over "average", when dealing with absolute precipitation values per area.
 
 ```{r joinArraysResolution, cache=1}
 res(ls7.slice)
@@ -224,7 +224,7 @@ res(srtm.sub)
 ls7.eq = equalize(ls7.slice,srtm.sub,type="S",saf="avg")
 ```
 
-Depending on the intended join direction you will need to equalize the source array towards the target array. In this example you might want to use the higher spatial resolution of the Landsat image as target to keep the rich information it provides. If so you need to change the SRTM subset. What happens internally is the following: the function uses SciDBs "xgrid" function, which repeats a cells value a certain times. The used multiplication factor happens to be an integer so that aspect ratio will be rounded.
+Depending on the intended join direction you will need to equalize the source array towards the target array. In this example you might want to use the higher spatial resolution of the Landsat image as target to keep the rich information it provides. If so you need to adapt the spatial structure of the SRTM subset. What happens internally is the following: the function uses SciDBs "xgrid" function, which repeats a cells value a certain times. The used multiplication factor happens to be an integer so that aspect ratio will be rounded.
 
 ```{r}
 srtm.eq = equalize(srtm.sub,ls7.slice,type="S",saf="avg")

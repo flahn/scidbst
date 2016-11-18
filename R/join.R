@@ -43,9 +43,9 @@
     }
   }
 
-  filter_expr = paste(dimsB,">=",boundsB[,1]," and ",dimsB,"<=",boundsB[,2])
+  filter_expr = paste(dimsB," >= ",boundsB[,1]," and ",dimsB," <= ",boundsB[,2], collapse=" and ",sep="")
   join.ref = scidb:::filter_scidb(join.ref,filter_expr)
-  browser()
+
   ### rename attributes into dimension (over_x, over_y, over_t -> x,y,t)
   attrrename = NULL
   if (A@isSpatial) {
@@ -212,8 +212,8 @@ if (!isGeneric("join")) {
     rx = max(xres(x),xres(y))
     ry = max(yres(x),yres(y))
     delta = 2*sqrt(rx^2 + ry^2)
-    # at least the
-    if (!all(diffs <= delta)) stop("The spatial dimensions, do not have a similar extent. Please consider cropping first.")
+
+    # if (!all(diffs <= delta)) stop("The spatial dimensions, do not have a similar extent. Please consider cropping first.")
   }
 
   if (bothTemporal) {

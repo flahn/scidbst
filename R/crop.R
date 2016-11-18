@@ -31,16 +31,21 @@ NULL
 
       xindex = which(.dims==xdim(x)) #get position of "x" values
       limits[xindex] = xmin(out)
-      limits[xindex+ndim] = xmax(out) - 1
+      # limits[xindex+ndim] = xmax(out) - 1
+      limits[xindex+ndim] = xmax(out)
 
       yindex = which(.dims==ydim(x)) #position of "y" values
       limits[yindex] = ymin(out)
-      limits[yindex+ndim] = ymax(out) - 1
+      # limits[yindex+ndim] = ymax(out) - 1
+      limits[yindex+ndim] = ymax(out)
 
+      # limits in this case is no longer the Extent, it is a numeric vector
       res = subarray(x=x,limits=limits,between=between) #use modified subarray version
-      if (between) {
-        res@extent = e
-      }
+
+      # note: this should be taken care in subarray
+      # if (between) {
+      #   res@extent = e
+      # }
 
 
       return(res)

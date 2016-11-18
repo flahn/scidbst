@@ -398,3 +398,23 @@ setMethod("estimateFileSize",signature(x="scidbst"), function(x, unit="MB") {
   names = paste("__temp_",x@title,"_",ids,sep="")
   return(names)
 }
+
+.rescaleAffine = function(x, xresfac, yresfac) {
+  scale_matrix = matrix(c(1,0,0, 0,xresfac,0, 0,0,yresfac),ncol=3)
+  #scale
+  scaled_matrix = affine(x) %*% scale_matrix
+
+  #retrieve array origin and transform it to real world coordinate
+  .starts = as.numeric(scidb_coordinate_start(x))
+  names(.starts) = dimensions(x)
+  origin.rw = .transformToWorld(affine(x),.starts[xdim(x)],.starts[ydim(x)])
+
+  #create temporary matrix to calculate the new origin
+  help.matrix = cbind(origin.rw,-(scaled_matrix[,2:3]))
+  new.origin = help.matrix %*% c(1,.starts[xdim(x)],.starts[ydim(x)])
+
+  #bind new origin and the scaling parameter
+  x@affine = cbind(new.origin,scaled_matrix[,2:3])
+
+  return(x)
+}

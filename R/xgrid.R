@@ -28,8 +28,8 @@ if (!isGeneric("xgrid")) {
     if (!.equalSRS(x,y)) {
       stop("Error while preparing xgrid statement. SRS do not match.")
     }
-    xres.fac = floor(xres(x)/xres(y))
-    yres.fac = floor(yres(x)/yres(y))
+    xres.fac = round(xres(x)/xres(y))
+    yres.fac = round(yres(x)/yres(y))
 
     xpos = which(dims.x == xdim(x))
     ypos = which(dims.x == ydim(x))
@@ -42,7 +42,6 @@ if (!isGeneric("xgrid")) {
     tpos = which(dims.x ==tdim(x))
     grid[tpos] = tres.fac
   }
-
   return(grid)
 }
 
@@ -78,22 +77,21 @@ setMethod("xgrid",signature(x="scidbst"),function(x,grid,expr="S") {
 
   grid = as.integer(grid)
 
+
   if (is.integer(grid)) {
     if (length(dims) == length(grid) || length(grid) == 1) {
       if (length(grid) == 1) {
         grid = rep(grid,length(dims))
       }
-      .scidb = xgrid(.scidb,grid)
+      .scidb = scidb::xgrid(.scidb,grid)
 
       #change resolutions
       if (x@isSpatial && expr!="T") {
-        xpos = which(dims == xdim(x))
-        ypos = which(dims == ydim(x))
-        a = affine(x)
-        a[1,2] = a[1,2] / grid[xpos]
-        a[2,3] = a[2,3] / grid[ypos]
-        x@affine = a
+        names(grid) = dims
+        # divide resolution by the amount of repetitions for xgrid and adapt origin
+        x = .rescaleAffine(x,xresfac=(1/grid[xdim(x)]),yresfac=(1/grid[ydim(x)]))
       }
+
       if (x@isTemporal && expr != "S") {
         tpos = which(dims == tdim(x))
         newRes = x@trs@tResolution / grid[tpos]

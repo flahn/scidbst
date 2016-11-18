@@ -54,24 +54,27 @@ NULL
   x@proxy = sci.obj
 
   if (x@isSpatial && (grid[xdim(x)] > 1 || grid[ydim(x)] > 1)) {
-    #adapt affine transformation
-    scale_matrix = matrix(c(1,0,0,0,grid[xdim(x)],0,0,0,grid[ydim(x)]),ncol=3)
-    #scale
-    scaled_matrix = affine(x) %*% scale_matrix
+    # #adapt affine transformation
+    # scale_matrix = matrix(c(1,0,0,0,grid[xdim(x)],0,0,0,grid[ydim(x)]),ncol=3)
+    # #scale
+    # scaled_matrix = affine(x) %*% scale_matrix
+    #
+    # #calculate real world origin with min dim indices
+    # .starts = as.numeric(scidb_coordinate_start(x))
+    # names(.starts) = dimensions(x)
+    # origin.rw = .transformToWorld(affine(x),.starts[xdim(x)],.starts[ydim(x)])
+    #
+    # #create temporary matrix to calculate the new origin
+    # help.matrix = cbind(origin.rw,-(scaled_matrix[,2:3]))
+    # new.origin = help.matrix %*% c(1,.starts[xdim(x)],.starts[ydim(x)])
+    #
+    # #bind new origin and the scaling parameter
+    # out.affine = cbind(new.origin,scaled_matrix[,2:3])
+    #
+    # x@affine = out.affine
 
-    #calculate real world origin with min dim indices
-    .starts = as.numeric(scidb_coordinate_start(x))
-    names(.starts) = dimensions(x)
-    origin.rw = .transformToWorld(affine(x),.starts[xdim(x)],.starts[ydim(x)])
-
-    #create temporary matrix to calculate the new origin
-    help.matrix = cbind(origin.rw,-(scaled_matrix[,2:3]))
-    new.origin = help.matrix %*% c(1,.starts[xdim(x)],.starts[ydim(x)])
-
-    #bind new origin and the scaling parameter
-    out.affine = cbind(new.origin,scaled_matrix[,2:3])
-
-    x@affine = out.affine
+    # rescale the affine transformation by the block size
+    x = .rescaleAffine(x,xresfac=grid[xdim(x)],yresfac=grid[ydim(x)])
   }
   # x@ncols = as.integer(ncol(x))
   # x@nrows = as.integer(nrow(x))

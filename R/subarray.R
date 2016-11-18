@@ -52,7 +52,7 @@ subarray.scidbst = function (x, limits, between = FALSE) {
   x@proxy = scidb.obj
 
 
-  if (!between) {
+  if (!between) { # if between is false, then we need to change the origin of the image
     if (x@isSpatial) {
       #limits are the new coordinates in the old image reference
       # 1) adapt new extent
@@ -70,7 +70,7 @@ subarray.scidbst = function (x, limits, between = FALSE) {
       x@tExtent@min = t0
       x@tExtent@max = tEnd
     }
-  } else {#else leave as is since we do not change dimension values <- wrong we dont mess with TRS or SRS but still with the extent
+  } else {#else we dont mess with TRS or SRS but still with the extents
     if (x@isSpatial) {
       x@extent = newExtent
     }
