@@ -1,3 +1,41 @@
+
+# x: scidb array, A: source scidbst array, B: target scidbst array
+.filterOutOfBounds = function(x,A,B) {
+  startsB = scidb_coordinate_start(as(B,"scidb"))
+  endsB = scidb_coordinate_end(as(B,"scidb"))
+  boundsB = NULL
+  if (A@isSpatial) {
+    dimsB = c("over_y","over_x")
+    ypos = which(dimensions(B) == ydim(B))
+    xpos = which(dimensions(B) == xdim(B))
+    boundsB = cbind(c(startsB[ypos],startsB[xpos]),c(endsB[ypos],endsB[xpos]))
+  }
+
+  if (A@isTemporal) {
+    dimsB = c(dimsB,"over_t")
+    tpos = which(dimensions(B) == tdim(B))
+    boundsB = rbind(boundsB,c(startsB[tpos],endsB[tpos]))
+  }
+
+  statements = NULL
+  for (row in 1:nrow(boundsB)) {
+    currentDim = dimsB[row]
+    min = boundsB[row,1]
+    max = boundsB[row,2]
+    if (min != "*") {
+      statements = c(statements,paste(currentDim, ">=", min))
+    }
+    if (max != "*") {
+      statements = c(statements,paste(currentDim, ">=", max))
+    }
+  }
+  filter_expr = paste(statements,sep="",collapse=" and ")
+  #filter_expr = paste(dimsB," >= ",boundsB[,1]," and ",dimsB," <= ",boundsB[,2], collapse=" and ",sep="")
+  join.ref = scidb:::filter_scidb(x,filter_expr)
+
+  return(join.ref)
+}
+
 .renameAfterEO_OVER = function(over,target,redimAttr) {
   A = over
   B = target
@@ -22,29 +60,7 @@
   }
 
   #make sure the calculated over values are within the dimensional bounds of B, otherwise redimension will fail
-  startsB = scidb_coordinate_start(as(B,"scidb"))
-  endsB = scidb_coordinate_end(as(B,"scidb"))
-  boundsB = NULL
-  if (A@isSpatial) {
-    dimsB = c("over_y","over_x")
-    ypos = which(dimensions(B) == ydim(B))
-    xpos = which(dimensions(B) == xdim(B))
-    boundsB = cbind(c(startsB[ypos],startsB[xpos]),c(endsB[ypos],endsB[xpos]))
-  }
-
-  if (A@isTemporal) {
-    dimsB = c(dimsB,"over_t")
-    tpos = which(dimensions(B) == tdim(B))
-    if (is.null(boundsB)) {
-      boundsB = cbind(c(startsB[tpos]),c(endsB[tpos]))
-    } else {
-      boundsB[,1] = c(boundsB[,1],startsB[tpos])
-      boundsB[,2] = c(boundsB[,2],endsB[tpos])
-    }
-  }
-
-  filter_expr = paste(dimsB," >= ",boundsB[,1]," and ",dimsB," <= ",boundsB[,2], collapse=" and ",sep="")
-  join.ref = scidb:::filter_scidb(join.ref,filter_expr)
+  join.ref = .filterOutOfBounds(join.ref,A,B)
 
   ### rename attributes into dimension (over_x, over_y, over_t -> x,y,t)
   attrrename = NULL

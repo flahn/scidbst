@@ -31,22 +31,21 @@ NULL
 
       xindex = which(.dims==xdim(x)) #get position of "x" values
       limits[xindex] = xmin(out)
-      # limits[xindex+ndim] = xmax(out) - 1
-      limits[xindex+ndim] = xmax(out)
+      limits[xindex+ndim] = xmax(out) - 1
+      # limits[xindex+ndim] = xmax(out)
 
       yindex = which(.dims==ydim(x)) #position of "y" values
       limits[yindex] = ymin(out)
-      # limits[yindex+ndim] = ymax(out) - 1
-      limits[yindex+ndim] = ymax(out)
+      limits[yindex+ndim] = ymax(out) -1
+      #hmm y dimension is inverted. image y coordinate.
+      # limits[yindex+ndim] = ymax(out)
+
+      # thoughts on using -1 or not: the extent describes the outer boundary. this means the maximum value is the beginning of
+      # the next value and hence not included in the subset, but zero is also included. limits describe the first and last included
+      # dimension coordinate and also,
 
       # limits in this case is no longer the Extent, it is a numeric vector
       res = subarray(x=x,limits=limits,between=between) #use modified subarray version
-
-      # note: this should be taken care in subarray
-      # if (between) {
-      #   res@extent = e
-      # }
-
 
       return(res)
 }
