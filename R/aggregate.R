@@ -12,7 +12,7 @@ setGeneric("aggregate.t", function(x, ...) standardGeneric("aggregate.t"))
     agg = aggregate(sobj, by=selection,...) #delegate operation to scidb package
     x@proxy = agg
     # x@data@names = scidb_attributes(x)
-    x@trs@tResolution = as.numeric(difftime(tmax(x),tmin(x),tunit(x)))+1
+    x@trs@tResolution = as.numeric(difftime(tmax(x),tmin(x),units=tunit(x)))+1
     return(x)
   } else {
     stop("Cannot aggregate over time with no temporal reference on the object")
@@ -158,7 +158,7 @@ setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
     # x@data@names = scidb_attributes(x)
 
     # set tResolution to complete temporal extent
-    x@trs@tResolution = as.numeric(difftime(tmax(x),tmin(x),tunit(x)))+1
+    x@trs@tResolution = as.numeric(difftime(tmax(x),tmin(x),units=tunit(x)))+1
 
     # set space Resolution in affine transformation to total spatial extent
     x@affine = affine(x) %*% matrix(c(1,0,0,0,old_ncol,0,0,0,old_nrow),ncol=3,nrow=3)

@@ -14,7 +14,7 @@
     t0 = t0(x)
     dt = tres(x)
     unit = tunit(x)
-    index  = floor(as.numeric(difftime(time,t0,unit))/dt)
+    index  = floor(as.numeric(difftime(time,t0,units=unit))/dt)
 
     return(index)
   } else {
@@ -159,21 +159,38 @@
   return(val)
 }
 
-#' Lists all scidb arrays with a dimension reference
+#' List all spacetime SciDB arrays
 #'
-#' This function will list all the SciDB arrays that have a special reference on one or more dimensions. It will also list the type of
-#' array: 's' for spatial, 't' for temporal, st for the combination of both
-#'
-#' @return data.frame with columns "name" and "setting"
+#' This function will list all SciDB arrays that have a spatial or temporal reference. It will also list the type of
+#' array: 's' for spatial, 't' for temporal, 'st' for the combination of both. Depending on provided arguments, extent 
+#' and spatial / temporal reference information is returned in additional columns.
+#' @param  extent boolean, whether or not the spacetime extent is returned as additional columns
+#' @param srs boolean, whether or not spatial reference metadata is returned as additional columns
+#' @param trs boolean, whether or not temporal reference metadata is returned as additional columns
+#' @return data.frame with columns "name" and "setting" and 
 #'
 #' @seealso \code{\link{scidb::scidbls}}
 #' @export
-scidbst.ls = function() {
-  result=iquery("eo_arrays()",return=TRUE)
-  result = result[,-which("i"==names(result))]
-  names(result) = c("name","type")
+
+scidbst.ls <- function(extent=FALSE, srs=FALSE, trs=FALSE)
+{
+  result = iquery("eo_arrays()", return = TRUE)[,c("name","setting")]
+  if (extent) {
+    result.eoextent = iquery("eo_extent()", return = TRUE)[,c("arrayname","xmin","xmax","ymin","ymax","tmin","tmax")]
+    result = merge(x = result, y = result.eoextent, by.x = "name", by.y = "arrayname", all.x = TRUE)
+  }
+  if (srs) {
+    result.eogetsrs = iquery("eo_getsrs()", return = TRUE)[,c("name","xdim","ydim","auth_name","auth_srid","A")]
+    result = merge(x = result, y = result.eogetsrs, by = "name", all.x = TRUE)
+  }
+  if (trs) {
+    result.eogettrs = iquery("eo_gettrs()", return = TRUE)[,c("name","tdim","t0","dt")]
+    result = merge(x = result, y = result.eogettrs, by = "name", all.x = TRUE)
+  }
   return(result)
 }
+
+
 
 #' Transform all spatial indices to spatial coordinates
 #'
