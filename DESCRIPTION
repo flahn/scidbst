@@ -41,6 +41,7 @@ Collate:
     'pkg.R'
     'project.R'
     'regrid.R'
+    'repart.R'
     'scidb-basic.R'
     'scidbsteval.R'
     'slice.R'

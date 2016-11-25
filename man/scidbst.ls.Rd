@@ -2,16 +2,24 @@
 % Please edit documentation in R/utils.R
 \name{scidbst.ls}
 \alias{scidbst.ls}
-\title{Lists all scidb arrays with a dimension reference}
+\title{List all spacetime SciDB arrays}
 \usage{
-scidbst.ls()
+scidbst.ls(extent = FALSE, srs = FALSE, trs = FALSE)
+}
+\arguments{
+\item{extent}{boolean, whether or not the spacetime extent is returned as additional columns}
+
+\item{srs}{boolean, whether or not spatial reference metadata is returned as additional columns}
+
+\item{trs}{boolean, whether or not temporal reference metadata is returned as additional columns}
 }
 \value{
-data.frame with columns "name" and "setting"
+data.frame with columns "name" and "setting" and
 }
 \description{
-This function will list all the SciDB arrays that have a special reference on one or more dimensions. It will also list the type of
-array: 's' for spatial, 't' for temporal, st for the combination of both
+This function will list all SciDB arrays that have a spatial or temporal reference. It will also list the type of
+array: 's' for spatial, 't' for temporal, 'st' for the combination of both. Depending on provided arguments, extent 
+and spatial / temporal reference information is returned in additional columns.
 }
 \seealso{
 \code{\link{scidb::scidbls}}
