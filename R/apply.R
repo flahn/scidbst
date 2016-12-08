@@ -4,10 +4,17 @@ if(!isGeneric("apply.fun")) {
   })
 }
 
-.appendUserDefinedRequiredPackages = function(commands,packages) {
+.appendUserDefinedRequiredPackages = function(commands,packages,logfile) {
   package.list = as.list(packages)
-  package.require.statement = paste("require(",package.list,")",sep="")
-  commands = append(commands,package.require.statement)
+  # package.require.statement = paste("require(",package.list,")",sep="")
+  # commands = append(commands,package.require.statement)
+
+  if (!missing(logfile)){
+    commands = append(commands, paste(lapply(package.list,.requireInstallPackage,logfile=logfile),sep=""))
+  } else {
+    commands = append(commands, paste(lapply(package.list,.requireInstallPackage),sep=""))
+  }
+
   return(commands)
 }
 
@@ -45,7 +52,27 @@ if(!isGeneric("apply.fun")) {
   }
 }
 
-.apply.scidbst.fun = function(x,array,packages,parallel=FALSE,cores=1,aggregates,output,f,...) {
+.log = function(s, logfile,quote=TRUE) {
+  if (quote) {
+    return(sprintf("cat(\"%s\n\", file=\"%s\",append=TRUE)",s,logfile))
+  } else {
+    return(sprintf("cat(%s, file=\"%s\",append=TRUE)",s,logfile))
+  }
+
+}
+
+.requireInstallPackage = function(lib,logfile) {
+  statement = gsub("%s", lib, "if (!require(%s)) {\n %o install.packages(\"%s\",repos=\"https://cloud.r-project.org/\")\n library(%s)\n}")
+  if (!missing(logfile)) {
+    statement = gsub("%o", paste(.log(sprintf("installing package %s on instance",lib),logfile),"\n",sep=""),statement)
+  } else {
+    statement = gsub("%o ", "", statement)
+  }
+
+  return (statement)
+}
+
+.apply.scidbst.fun = function(x,f,array,packages,parallel=FALSE,cores=1,aggregates,output,logfile,...) {
   commands=c()
   attr = scidb_attributes(x)
 
@@ -61,8 +88,12 @@ if(!isGeneric("apply.fun")) {
 
   if (parallel && cores > 1) {
       # append parallel setting
-      if (!all("doParallel" %in% packages)) {
-        commands = append(commands,"require(doParallel)")
+      if (!missing(packages)) {
+        if (!all("doParallel" %in% packages)) {
+          commands = append(commands,.requireInstallPackage("doParallel"))
+        }
+      } else {
+        commands = append(commands,.requireInstallPackage("doParallel"))
       }
 
       commands = append(commands,paste("registerDoParallel(cores=",cores,")",sep=""))
@@ -81,19 +112,46 @@ if(!isGeneric("apply.fun")) {
 
   # create the data.frame
   commands = .appendChunkDataFrameDefinition(commands,attr)
-  # TODO option to calculate coordinates or timestamps
+  # TODO option to calculate coordinates or timestamps to create or work with spatial or spatio-temporal objects
 
   if (!missing(aggregates)) {
-    if (!all("plyr" %in% packages)) {
-      commands = append(commands,"require(plyr)")
+    if (!missing(packages)) {
+      if (!all("plyr" %in% packages)) {
+        commands = append(commands,.requireInstallPackage("plyr",logfile = logfile))
+      }
+      if (!all("foreach" %in% packages)) {
+        commands = append(commands,.requireInstallPackage("foreach",logfile = logfile))
+      }
+    } else {
+      commands = append(commands,.requireInstallPackage("plyr",logfile = logfile))
+      commands = append(commands,.requireInstallPackage("foreach",logfile = logfile))
     }
+
     #ndvi.change = ddply(ndvi.df, c(\"dimy\",\"dimx\"), f, .parallel=TRUE)
-    aggregates.string = paste("c(",paste("\"",aggregates,"\"",collapse=","),")",sep="")
+    aggregates.string = paste("c(",paste("\"",aggregates,"\"",collapse=",",sep=""),")",sep="")
     #TODO you can pass additional arguments to f after .fun
     # dot.params = list(...)
+    commands = append(commands, .log("processing a chunk",logfile))
+    # commands = append(commands, .log("colnames(df)",logfile,quote=FALSE))
 
+    ddply_cmd = paste("func.result = ddply(.data=df, .variables=",aggregates.string,", .fun=f ,.parallel=",parallel,")",sep="")
 
-    commands = append(commands,paste("func.result = ddply(.data=df, .variables=",aggregates.string,", .fun=f ,.parallel=",parallel,")",sep=""))
+    tc_exec = sprintf("tryCatch({
+                     %s
+    },error = function(err) {
+        %s
+        df = df[,which(names(df) %%in%% names(output))]
+        var = names(output)[!names(output) %%in%% names(df)]
+        default_values = as.list(rep(0,length(var)))
+        names(default_values) = var
+
+        .GlobalEnv$func.result = cbind(df,default_values)
+    })",ddply_cmd,.log("error in a chunk",logfile))
+
+    # commands = append(commands,ddply_cmd)
+    commands = append(commands,tc_exec)
+  } else {
+    #TODO handle missing aggregates statement
   }
 
   commands = .appendOutputTypeConversion(commands,output) #R_EXEC probably allows in scidb just double values
@@ -103,13 +161,25 @@ if(!isGeneric("apply.fun")) {
 
   output.attr.count = length(output)
 
-  query.R = sprintf("store(unpack(r_exec(%s,'output_attrs=%i','expr=%s'),i),%s)",x@title,output.attr.count,paste(commands,collapse="\n",sep=""),array)
-  # query.R = paste("store(unpack(r_exec(", "L7_SW_ETHOPIA_TCHUNK_SMALL",
-  #                 ",'output_attrs=5','expr=",
-  #                         "'),i),
-  #                         L7_SW_CHANGES_TEST_SMALL)", sep="")
-  return(query.R)
-  # return(iquery(query.R))
+  query.R = sprintf("store(unpack(r_exec(%s,'output_attrs=%i','expr=%s'),i),%s)",
+                    x@proxy@name,
+                    output.attr.count,
+                    paste(commands,collapse="\n",sep=""),
+                    array)
+
+  iquery(query.R)
+  out = scidb(array)
+
+  #rename
+  # expr_attr = append(list("_data"=out),as.list(paste("expr_value_",0:(output.attr.count-1),sep="")))
+  # new_attr = c("_data",names(output))
+  #
+  # names(expr_attr) = new_attr
+  # renamed = do.call(transform, expr_attr)
+  expr_attr = paste("expr_value_",0:(output.attr.count-1),sep="")
+  renamed = scidb::attribute_rename(out,expr_attr,names(output))
+
+  return(renamed)
 
   #output values are set to "expr_value_X" with X the poisition in the array
   # https://github.com/Paradigm4/r_exec/blob/master/LogicalRExec.cpp
@@ -130,4 +200,5 @@ if(!isGeneric("apply.fun")) {
 #' @param x scidbst array
 #' @param f function
 #' @return scidbst array
+#' @export
 setMethod("apply.fun",signature(x="scidbst",f="function"), .apply.scidbst.fun)

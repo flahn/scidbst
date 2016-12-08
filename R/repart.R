@@ -14,7 +14,7 @@ if (!isGeneric("repart")) {
   if(missing(upper)) upper = scidb_coordinate_end(.scidb)
   if(missing(chunk)) chunk = scidb_coordinate_chunksize(.scidb)
   if(missing(overlap)) overlap = scidb_coordinate_overlap(.scidb)
-  a = scidb:::build_attr_schema(.scidb)
+  # a = scidb:::build_attr_schema(.scidb)
 
   .scidb = scidb::repart(x=.scidb, upper=upper,chunk=chunk,overlap=overlap)
 
@@ -35,4 +35,5 @@ if (!isGeneric("repart")) {
 #' @param chunk A vector of chunksizes for each dimension
 #' @param overlap A vector of chunk overlaps for the repartitioned array
 #' @return scidbst array with modified chunks
+#' @export
 setMethod("repart",signature(x="scidbst"), .repart.scidbst)
