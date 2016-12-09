@@ -18,7 +18,7 @@ data.frame with columns "name" and "setting" and
 }
 \description{
 This function will list all SciDB arrays that have a spatial or temporal reference. It will also list the type of
-array: 's' for spatial, 't' for temporal, 'st' for the combination of both. Depending on provided arguments, extent 
+array: 's' for spatial, 't' for temporal, 'st' for the combination of both. Depending on provided arguments, extent
 and spatial / temporal reference information is returned in additional columns.
 }
 \seealso{

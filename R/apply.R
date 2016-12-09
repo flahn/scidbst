@@ -39,12 +39,14 @@ if(!isGeneric("apply.fun")) {
   return(commands)
 }
 
-.appendOutputTypeConversion = function(commands,output) {
+.appendOutputTypeConversionForR = function(commands,output) {
   if (is.list(output)) {
     attr.names = names(output)
     attr.types = unlist(output)
     names(attr.types) = c()
-    commands = append(commands,paste("list(",paste(attr.names,"=as(func.result$",attr.names,",\"",attr.types,"\")",sep="",collapse=","),")",sep=""))
+    # commands = append(commands,paste("list(",paste(attr.names,"=as(func.result$",attr.names,",\"",attr.types,"\")",sep="",collapse=","),")",sep=""))
+    # r_exec handles all output attributes as double
+    commands = append(commands,paste("list(",paste(attr.names,"=as(func.result$",attr.names,",\"double\")",sep="",collapse=","),")",sep=""))
     return(commands)
     #list(as.double(ndvi.change$dimy), dimx =    as.double(ndvi.change$dimx),    as.double(ndvi.change$nt),as.double(ndvi.change$breakpoint),    as.double(ndvi.change$magnitude) )
   } else {
@@ -72,7 +74,42 @@ if(!isGeneric("apply.fun")) {
   return (statement)
 }
 
-.apply.scidbst.fun = function(x,f,array,packages,parallel=FALSE,cores=1,aggregates,output,logfile,...) {
+# x: scidbst array
+# f: user defined function
+# array: the array name to store the output of the function under
+# parallel: optional parameter whether or not to use one or more cores of an instance
+# cores: the amount of cores to use for processing at a single instance
+# aggregate: vector of string with the names of the dimensions
+# output: a named list of output types, the name of an element corresponds to the attributes used
+# dim: a named list with the dimension names of the output, the values are are used if the dimensions are renamed during "redimension",
+#      dimension values need to be int64 values user should be aware!
+# dim.spec: named list of the specification from dimensions
+.apply.scidbst.fun = function(x,f,array,packages,parallel=FALSE,cores=1,aggregates,output,logfile,dim,dim.spec, ...) {
+  dimMissing = missing(dim)
+
+  # checking the parameter for correctness
+  if (!is.list(dim)) {
+    if (is.character(dim)) {
+    l = length(dim)
+    n = dim
+    dim = vector("list",l)
+    names(dim) = n
+    } else {
+      stop("Parameter 'dim' is no character vector or named list.")
+    }
+  }
+  if (is.null(names(dim))) {
+    stop("Cannot infer dimension names, please state the names by assigning 'names(dim)'")
+  }
+  # if dim is unlisted later, then null values disappear
+  dim = .nullToNA(dim)
+
+  # compare if all dimensions are in the output
+  if (!all(names(dim) %in% names(output))) {
+    stop("Cannot find dimensions in the output.")
+  }
+  ###
+
   commands=c()
   attr = scidb_attributes(x)
 
@@ -114,7 +151,7 @@ if(!isGeneric("apply.fun")) {
   commands = .appendChunkDataFrameDefinition(commands,attr)
   # TODO option to calculate coordinates or timestamps to create or work with spatial or spatio-temporal objects
 
-  if (!missing(aggregates)) {
+
     if (!missing(packages)) {
       if (!all("plyr" %in% packages)) {
         commands = append(commands,.requireInstallPackage("plyr",logfile = logfile))
@@ -126,10 +163,13 @@ if(!isGeneric("apply.fun")) {
       commands = append(commands,.requireInstallPackage("plyr",logfile = logfile))
       commands = append(commands,.requireInstallPackage("foreach",logfile = logfile))
     }
-
-    #ndvi.change = ddply(ndvi.df, c(\"dimy\",\"dimx\"), f, .parallel=TRUE)
+    if (missing(aggregates)) {
+      #ndvi.change = ddply(ndvi.df, c(\"dimy\",\"dimx\"), f, .parallel=TRUE)
+      aggregates = c()
+      #TODO you can pass additional arguments to f after .fun
+    }
     aggregates.string = paste("c(",paste("\"",aggregates,"\"",collapse=",",sep=""),")",sep="")
-    #TODO you can pass additional arguments to f after .fun
+
     # dot.params = list(...)
     commands = append(commands, .log("processing a chunk",logfile))
     # commands = append(commands, .log("colnames(df)",logfile,quote=FALSE))
@@ -150,43 +190,153 @@ if(!isGeneric("apply.fun")) {
 
     # commands = append(commands,ddply_cmd)
     commands = append(commands,tc_exec)
-  } else {
-    #TODO handle missing aggregates statement
   }
 
-  commands = .appendOutputTypeConversion(commands,output) #R_EXEC probably allows in scidb just double values
+  commands = .appendOutputTypeConversionForR(commands,output) #R_EXEC probably allows in scidb just double values
   #https://github.com/Paradigm4/r_exec/blob/master/LogicalRExec.cpp
   #line 54
 
 
   output.attr.count = length(output)
 
+  # create the afl command
+  temp_name = .getTempNames(x,1)
+
   query.R = sprintf("store(unpack(r_exec(%s,'output_attrs=%i','expr=%s'),i),%s)",
                     x@proxy@name,
                     output.attr.count,
                     paste(commands,collapse="\n",sep=""),
-                    array)
+                    temp_name)
 
   iquery(query.R)
-  out = scidb(array)
+  x@temps = append(x@temps,temp_name)
+  out = scidb(temp_name)
 
-  #rename
-  # expr_attr = append(list("_data"=out),as.list(paste("expr_value_",0:(output.attr.count-1),sep="")))
-  # new_attr = c("_data",names(output))
-  #
-  # names(expr_attr) = new_attr
-  # renamed = do.call(transform, expr_attr)
-  expr_attr = paste("expr_value_",0:(output.attr.count-1),sep="")
-  renamed = scidb::attribute_rename(out,expr_attr,names(output))
+  #execute the transform statement
+  outlist = .renameAndConvertArray(out,dim,output)
+  renamed = outlist$arr
+  output = outlist$output
 
-  return(renamed)
+  if (!missing(dim.spec)) {
+    redim = .redimensionArray(renamed,dim, dim.spec,output)
+  } else {
+    # check if dimension names are already in the source array, if yes then pick schema of them
+
+    # create a complete vector of dimension names ( how they are called in the end)
+    newDims = unlist(dim)
+    newDims[is.na(newDims)] = names(dim)[is.na(newDims)]
+    names(newDims) = c()
+
+    if (all(newDims %in% dimensions(x))) {
+      # if all potentially renamed dimensions are already used in scidbst array "x", then take the schema from there
+      dim.spec = vector("list",length(newDims))
+      names(dim.spec) = newDims
+
+      oldDimsSpec = cbind(min=scidb_coordinate_start(x),
+                          max=scidb_coordinate_end(x),
+                          chunk = scidb_coordinate_chunksize(x),
+                          overlap = scidb_coordinate_overlap(x))
+      rownames(oldDimsSpec) = dimensions(x)
+      for (dimname in newDims) {
+        dim.spec[[dimname]] = oldDimsSpec[dimname,]
+      }
+      redim = .redimensionArray(renamed,dim, dim.spec,output)
+    } else {
+      #don't redimension, because we don't know what the new dimensions are...
+      warning("Cannot redimension the array processed by r_exec. Returned the renamed and projected array.")
+
+      return(project(renamed),names(output))
+    }
+  }
+
+  #Now we should patch up the spatial and temporal references
+  # if the dimensions are named after the original dimension from the source array, then we assume they are the same
+  if (x@isSpatial) {
+    sdims = srs(x)@dimnames
+    if (all(sdims %in% scidb::dimensions(redim))) {
+
+    } else {
+      x@isSpatial = FALSE
+    }
+  }
+
+  if (x@isTemporal) {
+    tdim = tdim(x)
+    if (all(tdim %in% scidb::dimensions(redim))) {
+
+    } else {
+      x@isTemporal = FALSE
+      # handle like completely aggregated and leave the extent -> meaning this is the theoretical temporal extent of the array
+    }
+  }
+  x@proxy = redim
+
+  out = scidbsteval(x,array)
+
+
+
+  return(out)
 
   #output values are set to "expr_value_X" with X the poisition in the array
   # https://github.com/Paradigm4/r_exec/blob/master/LogicalRExec.cpp
   # line 76
 }
 
+# transform call
+.renameAndConvertArray = function(arr, dim, output) {
+  # requires dim to be contained completely in output
+  # find dimensions in output
+  dim.pos = which(names(dim) %in% names(output))
+  new.dim.names = unlist(dim[dim.pos])
+  renamingDims = new.dim.names[!is.na(new.dim.names)]
+  n = names(output)
+  n[which(n %in% names(renamingDims))] = renamingDims
 
+  names(output) = n
+  #make sure dimension are forced to be int64 values
+  output[dim.pos] = "int64"
+
+  expr.attr.name = paste("expr_value_",0:(length(output)-1),sep="")
+  transforms = paste(output[],"(",expr.attr.name,")",sep="")
+  names(transforms) = names(output)
+
+  # create an argument list for the do.call
+  calls = unlist(list(`_data`=arr,transforms))
+
+  renamed = do.call(transform,args=calls)
+
+
+  return(list(arr=renamed,output=output))
+}
+
+.redimensionArray = function(arr,dim,dim.spec,output) {
+  dim.pos = which(dim[] %in% names(output) | names(dim) %in% names(output))
+  dimensions = output[dim.pos]
+  attributes = output[-dim.pos]
+  attr.schema = sprintf("<%s>",paste(names(attributes),": ",attributes,sep="",collapse=", "))
+  #TODO check if the dimension specification is sufficient
+  if (all(names(dim.spec) %in% names(dimensions))) {
+    n = names(dim.spec)
+    df = sapply(dim.spec,cbind)
+    #TODO requires dim.spec list entries to follow the same structure and order
+    rownames(df) = names(dim.spec[[1]])
+    dim.schema = sprintf("[%s]",paste(colnames(df),"=",df["min",],":",df["max",],",",df["chunk",],",",df["overlap",],sep="",collapse=", "))
+  } else {
+    stop("Specified dimension do not match the dimension specification")
+  }
+  schema = sprintf("%s%s",attr.schema,dim.schema)
+  redimensioned = redimension(arr, schema = schema)
+
+  return(redimensioned)
+}
+
+# finding the dimension after rename:
+# dim[] %in% names(output) | names(dim) %in% names(output)
+
+.nullToNA <- function(x) {
+  x[sapply(x, is.null)] <- NA
+  return(x)
+}
 
 #' Applys a custom function on chunks of an array
 #'
