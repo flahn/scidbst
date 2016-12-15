@@ -30,10 +30,10 @@ if(!isGeneric("apply.fun")) {
   return(commands)
 }
 
-# commands: vector of string, attributes: vector of string with attribute names
+# commands: vector of string
+# attributes: vector of string with attribute names
 .appendChunkDataFrameDefinition = function(commands,attributes) {
   #use attribute names to create a statement for creating a dataframe
-  # ndvi.df = data.frame(ndvi=ndvi,dimy=dimy,dimx=dimx,dimt=dimt)
   df.attributes = paste(attributes,"=",attributes,collapse=",",sep="")
   commands = append(commands,paste("df = data.frame(",df.attributes,")",sep=""))
   return(commands)
@@ -44,11 +44,9 @@ if(!isGeneric("apply.fun")) {
     attr.names = names(output)
     attr.types = unlist(output)
     names(attr.types) = c()
-    # commands = append(commands,paste("list(",paste(attr.names,"=as(func.result$",attr.names,",\"",attr.types,"\")",sep="",collapse=","),")",sep=""))
-    # r_exec handles all output attributes as double
     commands = append(commands,paste("list(",paste(attr.names,"=as(func.result$",attr.names,",\"double\")",sep="",collapse=","),")",sep=""))
     return(commands)
-    #list(as.double(ndvi.change$dimy), dimx =    as.double(ndvi.change$dimx),    as.double(ndvi.change$nt),as.double(ndvi.change$breakpoint),    as.double(ndvi.change$magnitude) )
+
   } else {
     stop("Output of the processed chunk was not defined.")
   }
@@ -74,70 +72,38 @@ if(!isGeneric("apply.fun")) {
   return (statement)
 }
 
-# x: scidbst array
-# f: user defined function
-# array: the array name to store the output of the function under
-# parallel: optional parameter whether or not to use one or more cores of an instance
-# cores: the amount of cores to use for processing at a single instance
-# aggregate: vector of string with the names of the dimensions
-# output: a named list of output types, the name of an element corresponds to the attributes used
-# dim: a named list with the dimension names of the output, the values are are used if the dimensions are renamed during "redimension",
-#      dimension values need to be int64 values user should be aware!
-# dim.spec: named list of the specification from dimensions
-.apply.scidbst.fun = function(x,f,array,packages,parallel=FALSE,cores=1,aggregates,output,logfile,dim,dim.spec, ...) {
-  dimMissing = missing(dim)
-
-  # checking the parameter for correctness
-  if (!is.list(dim)) {
-    if (is.character(dim)) {
-    l = length(dim)
-    n = dim
-    dim = vector("list",l)
-    names(dim) = n
-    } else {
-      stop("Parameter 'dim' is no character vector or named list.")
-    }
-  }
-  if (is.null(names(dim))) {
-    stop("Cannot infer dimension names, please state the names by assigning 'names(dim)'")
-  }
-  # if dim is unlisted later, then null values disappear
-  dim = .nullToNA(dim)
-
-  # compare if all dimensions are in the output
-  if (!all(names(dim) %in% names(output))) {
-    stop("Cannot find dimensions in the output.")
-  }
-  ###
+.rexec.script = function(x,f,array,packages,parallel=FALSE,cores=1,aggregates,output, logfile, ...) {
+  logging = !missing(logfile)
+  noPackages = missing(packages) || is.null(packages) || length(packages) == 0
 
   commands=c()
-  attr = scidb_attributes(x)
+  attr = scidb::scidb_attributes(x)
 
   if (!all(aggregates %in% attr)) {
     stop("Cannot find the attributes to aggregate over in the functions data input.")
   }
 
-  if (!missing(packages)) {
+  # load required packages
+  if (!noPackages) {
     commands = .appendUserDefinedRequiredPackages(commands,packages)
   }
 
+  # correct negative amount of cores
   if (cores < 1) cores = 1
 
+  # register package doParallel if parallel == TRUE
   if (parallel && cores > 1) {
-      # append parallel setting
-      if (!missing(packages)) {
-        if (!all("doParallel" %in% packages)) {
-          commands = append(commands,.requireInstallPackage("doParallel"))
-        }
-      } else {
+    # append parallel setting
+    if (!missing(packages)) {
+      if (!all("doParallel" %in% packages)) {
         commands = append(commands,.requireInstallPackage("doParallel"))
       }
+    } else {
+      commands = append(commands,.requireInstallPackage("doParallel"))
+    }
 
-      commands = append(commands,paste("registerDoParallel(cores=",cores,")",sep=""))
+    commands = append(commands,paste("registerDoParallel(cores=",cores,")",sep=""))
   }
-
-  # load required packages
-
 
   # get the code of the function as text
   if (!missing(f) && is.function(f)) {
@@ -152,64 +118,152 @@ if(!isGeneric("apply.fun")) {
   # TODO option to calculate coordinates or timestamps to create or work with spatial or spatio-temporal objects
 
 
-    if (!missing(packages)) {
-      if (!all("plyr" %in% packages)) {
+  # use packages plyr and foreach as mandatory packages
+  if (!noPackages) {
+    if (!all("plyr" %in% packages)) {
+      if (logging) {
         commands = append(commands,.requireInstallPackage("plyr",logfile = logfile))
+      } else {
+        commands = append(commands,.requireInstallPackage("plyr"))
       }
-      if (!all("foreach" %in% packages)) {
+    }
+    if (!all("foreach" %in% packages)) {
+      if(logging) {
         commands = append(commands,.requireInstallPackage("foreach",logfile = logfile))
+      } else {
+        commands = append(commands,.requireInstallPackage("foreach"))
       }
-    } else {
+
+    }
+  } else {
+    if (logging) {
       commands = append(commands,.requireInstallPackage("plyr",logfile = logfile))
       commands = append(commands,.requireInstallPackage("foreach",logfile = logfile))
     }
-    if (missing(aggregates)) {
-      #ndvi.change = ddply(ndvi.df, c(\"dimy\",\"dimx\"), f, .parallel=TRUE)
-      aggregates = c()
-      #TODO you can pass additional arguments to f after .fun
+    else {
+      commands = append(commands,.requireInstallPackage("plyr"))
+      commands = append(commands,.requireInstallPackage("foreach"))
     }
-    aggregates.string = paste("c(",paste("\"",aggregates,"\"",collapse=",",sep=""),")",sep="")
 
-    # dot.params = list(...)
-    commands = append(commands, .log("processing a chunk",logfile))
-    # commands = append(commands, .log("colnames(df)",logfile,quote=FALSE))
-
-    ddply_cmd = paste("func.result = ddply(.data=df, .variables=",aggregates.string,", .fun=f ,.parallel=",parallel,")",sep="")
-
-    tc_exec = sprintf("tryCatch({
-                     %s
-    },error = function(err) {
-        %s
-        df = df[,which(names(df) %%in%% names(output))]
-        var = names(output)[!names(output) %%in%% names(df)]
-        default_values = as.list(rep(0,length(var)))
-        names(default_values) = var
-
-        .GlobalEnv$func.result = cbind(df,default_values)
-    })",ddply_cmd,.log("error in a chunk",logfile))
-
-    # commands = append(commands,ddply_cmd)
-    commands = append(commands,tc_exec)
   }
 
-  commands = .appendOutputTypeConversionForR(commands,output) #R_EXEC probably allows in scidb just double values
-  #https://github.com/Paradigm4/r_exec/blob/master/LogicalRExec.cpp
-  #line 54
+  # set aggregates statement
+  if (missing(aggregates)) {
+    aggregates = c()
+  }
+
+  # write aggregate expression for the rexec_script
+  aggregates.string = paste("c(",paste("\"",aggregates,"\"",collapse=",",sep=""),")",sep="")
+
+  # dot.params = list(...)
+  if (logging) {
+    commands = append(commands, .log("processing a chunk",logfile))
+  }
+
+  #TODO you can pass additional arguments to f after .fun
+  ddply_cmd = paste("func.result = ddply(.data=df, .variables=",aggregates.string,", .fun=f ,.parallel=",parallel,")",sep="")
+
+  tc_exec = sprintf("tryCatch({
+                            %s
+        },error = function(err) {
+                            %s
+                            df = df[,which(names(df) %%in%% names(output))]
+                            var = names(output)[!names(output) %%in%% names(df)]
+                            default_values = as.list(rep(0,length(var)))
+                            names(default_values) = var
+
+                            .GlobalEnv$func.result = cbind(df,default_values)
+        })",
+                    ddply_cmd,
+                    if (logging) {
+                      .log("error in a chunk",logfile)
+                    } else { "" })
+
+    commands = append(commands,tc_exec)
+
+    #R_EXEC probably allows in scidb just double values
+    #https://github.com/Paradigm4/r_exec/blob/master/LogicalRExec.cpp
+    #line 54
+    commands = .appendOutputTypeConversionForR(commands,output)
 
 
-  output.attr.count = length(output)
+
+    output.attr.count = length(output)
+
+    # create the afl command
+    query.R = sprintf("store(unpack(r_exec(%s,'output_attrs=%i','expr=%s'),i),%s)",
+                      x@name,
+                      output.attr.count,
+                      paste(commands,collapse="\n",sep=""),
+                      array)
+
+    return(query.R)
+}
+
+# x: scidbst array
+# f: user defined function
+# array: the array name to store the output of the function under
+# parallel: optional parameter whether or not to use one or more cores of an instance
+# cores: the amount of cores to use for processing at a single instance
+# aggregate: vector of string with the names of the dimensions
+# output: a named list of output types, the name of an element corresponds to the attributes used
+# dim: a named list with the dimension names of the output, the values are are used if the dimensions are renamed during "redimension",
+#      dimension values need to be int64 values user should be aware!
+# dim.spec: named list of the specification from dimensions
+# method: a string defining the processing mechanism used. possible = "rexec" or "stream"
+
+# TODO ... theoretically this can be passed on to .fun in ddply, but not implemented yet
+.apply.scidbst.fun = function(x,f,array,packages,parallel=FALSE,cores=1,aggregates,output,logfile,dim,dim.spec, method="rexec",...) {
+    dimMissing = missing(dim)
+
+    # checking the parameter for correctness
+    if (!is.list(dim)) {
+      if (is.character(dim)) {
+      l = length(dim)
+      n = dim
+      dim = vector("list",l)
+      names(dim) = n
+      } else {
+        stop("Parameter 'dim' is no character vector or named list.")
+      }
+    }
+    if (is.null(names(dim))) {
+      stop("Cannot infer dimension names, please state the names by assigning 'names(dim)'")
+    }
+    # if dim is unlisted later, then null values disappear
+    dim = .nullToNA(dim)
+
+    # compare if all dimensions are in the output
+    if (!all(names(dim) %in% names(output))) {
+      stop("Cannot find dimensions in the output.")
+    }
+    ###
+
+    attr = scidb_attributes(x)
+
+    if (!all(aggregates %in% attr)) {
+      stop("Cannot find the attributes to aggregate over in the functions data input.")
+    }
 
   # create the afl command
   temp_name = .getTempNames(x,1)
 
-  query.R = sprintf("store(unpack(r_exec(%s,'output_attrs=%i','expr=%s'),i),%s)",
-                    x@proxy@name,
-                    output.attr.count,
-                    paste(commands,collapse="\n",sep=""),
-                    temp_name)
+  # call this function for scidb array and simply execute the r_exec command
+  if (missing(packages)) packages = NULL
 
-  iquery(query.R)
+  .rexec.script = .rexec.script(x=x@proxy,
+                     f=f,
+                     array=temp_name,
+                     packages=packages,
+                     parallel=FALSE,
+                     cores=cores,
+                     aggregates=aggregates,
+                     output=output,
+                     logfile=logfile,...)
+
   x@temps = append(x@temps,temp_name)
+  iquery(.r.script)
+
   out = scidb(temp_name)
 
   #execute the transform statement
@@ -249,37 +303,35 @@ if(!isGeneric("apply.fun")) {
     }
   }
 
-  #Now we should patch up the spatial and temporal references
-  # if the dimensions are named after the original dimension from the source array, then we assume they are the same
-  if (x@isSpatial) {
-    sdims = srs(x)@dimnames
-    if (all(sdims %in% scidb::dimensions(redim))) {
 
-    } else {
-      x@isSpatial = FALSE
+    #Now we should patch up the spatial and temporal references
+    # if the dimensions are named after the original dimension from the source array, then we assume they are the same
+    if (x@isSpatial) {
+      sdims = srs(x)@dimnames
+      if (all(sdims %in% scidb::dimensions(redim))) {
+
+      } else {
+        x@isSpatial = FALSE
+      }
     }
-  }
 
-  if (x@isTemporal) {
-    tdim = tdim(x)
-    if (all(tdim %in% scidb::dimensions(redim))) {
+    if (x@isTemporal) {
+      tdim = tdim(x)
+      if (all(tdim %in% scidb::dimensions(redim))) {
 
-    } else {
-      x@isTemporal = FALSE
-      # handle like completely aggregated and leave the extent -> meaning this is the theoretical temporal extent of the array
+      } else {
+        x@isTemporal = FALSE
+        # handle like completely aggregated and leave the extent -> meaning this is the theoretical temporal extent of the array
+      }
     }
-  }
-  x@proxy = redim
+    x@proxy = redim
 
-  out = scidbsteval(x,array)
+    out = scidbsteval(x,array)
 
-
-
-  return(out)
-
-  #output values are set to "expr_value_X" with X the poisition in the array
-  # https://github.com/Paradigm4/r_exec/blob/master/LogicalRExec.cpp
-  # line 76
+    return(out)
+    #output values are set to "expr_value_X" with X the poisition in the array
+    # https://github.com/Paradigm4/r_exec/blob/master/LogicalRExec.cpp
+    # line 76
 }
 
 # transform call
@@ -352,3 +404,44 @@ if(!isGeneric("apply.fun")) {
 #' @return scidbst array
 #' @export
 setMethod("apply.fun",signature(x="scidbst",f="function"), .apply.scidbst.fun)
+
+
+if(!isGeneric("rexec.scidb")) {
+  setGeneric("rexec.scidb",function(x,f,...){
+    standardGeneric("rexec.scidb")
+  })
+}
+setMethod("rexec.scidb",signature(x="scidb",f="function"), function(x,f,array,packages,parallel=FALSE,cores=1,aggregates=c(),output, logfile, ...) {
+  logging = !missing(logfile)
+  noPackages = missing(packages) || is.null(packages) || length(packages) == 0
+
+  if (noPackages) packages = NULL
+  if (missing(output)) output = NULL
+
+  if(logging) {
+    .rexec.script = .rexec.script(x=x@proxy,
+                                  f=f,
+                                  array=array,
+                                  packages=packages,
+                                  parallel=FALSE,
+                                  cores=cores,
+                                  aggregates=aggregates,
+                                  output=output,
+                                  logfile=logfile,...)
+  } else {
+    .rexec.script = .rexec.script(x=x@proxy,
+                                  f=f,
+                                  array=array,
+                                  packages=packages,
+                                  parallel=FALSE,
+                                  cores=cores,
+                                  aggregates=aggregates,
+                                  output=output,...)
+  }
+
+  x@temps = append(x@temps,array)
+  iquery(.r.script)
+
+  out = scidb(array)
+  return(out)
+})
