@@ -8,13 +8,10 @@ if(!isGeneric("stream")) {
 # packages: vector of strings with the package names
 # logging: boolean, whether or not to log information
 # logfile: string, the path to the log file, necessary if logging enabled
-.stream.install.r.pkg = function(x,packages,logging=FALSE,logfile) {
-  if (logging && (missing(logfile) || is.null(logfile) || !is.character(logfile)))
-  .install.scidbstrm = "if (!require(\"scidbstrm\") {
-        install.packages(\"jsonlite\")
-        devtools::install_github('paradigm4/stream', subdir='r_pkg')
-        require(\"scidbstrm\")
-      }"
+# returns a string command stack
+.stream.install.r.pkg = function(packages,logging=FALSE,logfile) {
+  # if (logging && (missing(logfile) || is.null(logfile) || !is.character(logfile)))
+  .install.scidbstrm = "if (! require(\"scidbstrm\")) { if (! require(\"jsonlite\")) { install.packages(\"jsonlite\",repos=\"https://cloud.r-project.org/\") }; devtools::install_github('paradigm4/stream', subdir='r_pkg'); require(\"scidbstrm\") };"
 
   if (!missing(packages) || !is.null(packages)) {
     if (logging) {
@@ -25,57 +22,130 @@ if(!isGeneric("stream")) {
   } else {
     .install.packages = .install.scidbstrm
   }
-  .identity.function = function (x) {
-    data.frame(x=x)
-  }
-  .install.script = .appendUserDefinedFunctionCode(.install.packages, .identity.function)
-  .install.script = append("map(f)")
+  return(.install.packages)
 
-  .install.query = sprintf("stream(%s, R --slave -e %s, 'format=df','names=%s')",
-                           x@proxy@name,
-                           .install.script,
-                           paste(scidb_attributes(x),collapse=","))
-  return(.install.query)
+  # .identity.function = function (x) {
+  #   data.frame(x=x)
+  # }
+  # .install.script = .appendUserDefinedFunctionCode(.install.packages, .identity.function)
+  # .install.script = append("map(f)")
+  #
+  # .install.query = sprintf("stream(%s, R --slave -e %s, 'format=df','names=%s')",
+  #                          x@proxy@name,
+  #                          .install.script,
+  #                          paste(scidb_attributes(x),collapse=","))
+  # return(.install.query)
 }
 
-.stream.script = function(x,f,array,packages,parallel=FALSE,cores=1,aggregates,output, logfile, ...) {
+.stream.script = function(x,f,packages,parallel=FALSE,cores=1,aggregates,output, logfile, ...) {
+  commands = c()
+  logging = !missing(logfile) && !is.null(logfile)
+  ### 1. require/install packages ###
+  if (!logging) {
+    logfile = NULL
+  }
   if (missing(packages)) packages = c()
 
-  .required.pkgs = c("plyr","foreach","doParallel")
   logging = !missing(logfile) || !is.null(logfile)
-  #"stream(ARRAY, 'COMMAND', 'format=df', 'types=int32,int32,string', ADDITIONAL_ARRAY)"
+
+
+  if (!("plyr" %in% packages)) {
+    packages = append(packages,"plyr")
+  }
+  if (!("foreach" %in% packages)) {
+    packages = append(packages,"foreach")
+  }
 
   parallel = parallel && cores > 1 # don't use parallel if the cores are set to 1
   if (parallel) {
-    if (!("plyr" %in% packages)) {
-      packages = append(packages,"plyr")
-    }
-    if (!("foreach" %in% packages)) {
-      packages = append(packages,"foreach")
-    }
     if (!("doParallel" %in% packages)) {
       packages = append(packages,"doParallel")
     }
   }
 
-
-
   # make sure the packages are installed at each instance by passing the data thorugh without change
   if(logging) {
-    .stream.installer = .stream.install.r.pkg(x,packages,logging,logfile)
+    .stream.installer = .stream.install.r.pkg(packages,logging,logfile)
   } else {
-    .stream.installer = .stream.install.r.pkg(x,packages)
+    .stream.installer = .stream.install.r.pkg(packages)
   }
-  # .stream.installer contains now the iquery string to perform an installation of the required
+  # .stream.installer contains now the R code to require/install the listed packages. We need this as the first building
+  # block of our script template
+  commands = append(commands,.stream.installer)
 
-  .arr = NULL
+  ### 2. additional declarations (functions, constants, etc.) ###
+  # version 1: store the definition of parameter 'f'
+  commands = .appendUserDefinedFunctionCode(commands,f)
+  # version 2: generic
+  #TODO
+
+  ### 3. instance function declaration ###
+  # function that is applied on each chunk
+  # version 1: f now is the function that is passed on to ddply
+  ddply = paste(.createDDPLYCommand(aggregates=aggregates,
+                      parallel=parallel,
+                      df.name="x",
+                      logging=logging,
+                      logfile = logfile,
+                      output=output),collapse="; ",sep="")
+  commands = append(commands,sprintf("scidb.instance.function <- function(x) { %s }",ddply))
+  #version 2: generic
+  #TODO
+
+  ### 4. optional final function ###
+  # that is executed at the end, when all chunks are gathered. (Probably requires the use of _sg operator)
+  #TODO
+
+  ### 5. run the map command of scidbstrm ###
+  commands = append(commands,"map(scidb.instance.function)")
+
 
 
   #create r script according to the
   #TODO use also function for final
+  stream.script = paste(commands,sep="",collapse=";")
+
+  # clean accidential ; and ;;
+  stream.script = gsub(pattern="\\)\\s*(;)\\s*\\{",replacement=") {",x=stream.script)
+  stream.script = gsub(pattern="(;;)",replacement=";",x=stream.script)
+  stream.script = gsub(pattern="(\\{\\s*;)",replacement="{",x=stream.script)
+
+  return(stream.script)
+}
+
+.iquery.stream.script = function(x,f,array,packages=c(),parallel=FALSE,cores=1,aggregates=c(),output, logfile=NULL, ...) {
+
+  if (class(x) == "scidbst") {
+    nrep = length(scidb_attributes(x))
+  } else if (class(x)=="scidb"){
+    nrep = length(scidb::scidb_attributes(x))
+  } else {
+    stop("Parameter 'x' in of the query call is no scidb or scidbst array.")
+  }
+
+  if (missing(output)) {
+
+    output = as.list(rep("double",nrep))
+  }
+
+  # create the r script that is passed as an expression to the command line call of each scidb instance
+  .rscript = .stream.script(x=x@proxy,
+                            f=f,
+                            packages=packages,
+                            parallel=parallel,
+                            cores=cores,
+                            aggregates=aggregates,
+                            output=output,
+                            logfile=logfile, ...)
+
+  #create scidb output data.frame types from output
+  types = paste(output[],collapse=";")
+
+  #prepare the iquery command like this:   stream(ARRAY, 'COMMAND', 'format=df', 'types=int32,int32,string', ADDITIONAL_ARRAY)
+  iquery.cmd = sprintf("store(stream(%s, 'R --slave -e \"%s\"', 'format=df', 'types=%s'),%s)",x@proxy@name, .rscript,types,array)
 
 
 }
 
 #' @export
-setMethod("stream",signature(x="scidbst",f="function"), .stream.script)
+setMethod("stream",signature(x="scidbst",f="function"), .iquery.stream.script)

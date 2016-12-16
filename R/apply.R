@@ -24,11 +24,12 @@ if(!isGeneric("apply.fun")) {
   # in principle we should allow just those functions that are defined in the script and are not part of a package
 
   f.character = paste(capture.output(f))
-  commands = append(commands,paste("f <- ",f.character[1],sep=""))
+  func.def = append(c(),paste("f <- ",f.character[1],sep=""))
   f.end = length(f.character)
   if (f.end > 1) {
-    commands = append(commands,f.character[2:f.end])
+    func.def = append(func.def,f.character[2:f.end])
   }
+  commands = append(commands,paste(func.def,sep="",collapse="; "))
   return(commands)
 }
 
@@ -63,10 +64,32 @@ if(!isGeneric("apply.fun")) {
 
 }
 
+.createDDPLYCommand = function(aggregates,parallel,df.name,logging,logfile,output) {
+  # write aggregate expression for the rexec_script
+  aggregates.string = paste("c(",paste("\"",aggregates,"\"",collapse=",",sep=""),")",sep="")
+  #TODO you can pass additional arguments to f after .fun
+  ddply_cmd = paste("func.result = ddply(.data=",df.name,", .variables=",aggregates.string,", .fun=f ,.parallel=",parallel,")",sep="")
+
+  #.GlobalEnv$func.result = cbind(df,default_values)
+  tc_exec = sprintf("tryCatch({ %s },error = function(err) { %s$df$ = $df$[,which(names($df$) %%in%% names(output))]; var = names(output)[!names(output) %%in%% names($df$)]; default_values = as.list(rep(0,length(var))); names(default_values) = var; func.result <<- cbind($df$,default_values); })",
+                    ddply_cmd,
+                    if (logging) {
+                      paste(.log("error in a chunk",logfile),"; ",sep="")
+                    } else { "" })
+  tc_exec = gsub(pattern="\\$df\\$",replacement = df.name, tc_exec)
+
+  out.list.def = paste("output = list(",
+                       paste(names(output),"=\"",output[],"\"",sep="",collapse=","),
+                 "); ",sep="")
+  out = append(out.list.def,tc_exec)
+  out = append("func.result <- NULL; ",out)
+  return (out)
+}
+
 .requireInstallPackage = function(lib,logfile) {
-  statement = gsub("%s", lib, "if (!require(%s)) {\n %o install.packages(\"%s\",repos=\"https://cloud.r-project.org/\")\n library(%s)\n}")
+  statement = gsub("%s", lib, "if (! require(%s)) { %o install.packages(\"%s\",repos=\"https://cloud.r-project.org/\"); library(%s)};")
   if (!missing(logfile)) {
-    statement = gsub("%o", paste(.log(sprintf("installing package %s on instance",lib),logfile),"\n",sep=""),statement)
+    statement = gsub("%o", paste(.log(sprintf("installing package %s on instance",lib),logfile),";",sep=""),statement)
   } else {
     statement = gsub("%o ", "", statement)
   }
@@ -79,6 +102,11 @@ if(!isGeneric("apply.fun")) {
   noPackages = missing(packages) || is.null(packages) || length(packages) == 0
 
   commands=c()
+
+  if (class(x)=="scidbst") {
+    x = x@proxy
+  }
+
   attr = scidb::scidb_attributes(x)
 
   if (!all(aggregates %in% attr)) {
@@ -154,32 +182,19 @@ if(!isGeneric("apply.fun")) {
     aggregates = c()
   }
 
-  # write aggregate expression for the rexec_script
-  aggregates.string = paste("c(",paste("\"",aggregates,"\"",collapse=",",sep=""),")",sep="")
+
 
   # dot.params = list(...)
   if (logging) {
     commands = append(commands, .log("processing a chunk",logfile))
   }
 
-  #TODO you can pass additional arguments to f after .fun
-  ddply_cmd = paste("func.result = ddply(.data=df, .variables=",aggregates.string,", .fun=f ,.parallel=",parallel,")",sep="")
-
-  tc_exec = sprintf("tryCatch({
-                            %s
-        },error = function(err) {
-                            %s
-                            df = df[,which(names(df) %%in%% names(output))]
-                            var = names(output)[!names(output) %%in%% names(df)]
-                            default_values = as.list(rep(0,length(var)))
-                            names(default_values) = var
-
-                            .GlobalEnv$func.result = cbind(df,default_values)
-        })",
-                    ddply_cmd,
-                    if (logging) {
-                      .log("error in a chunk",logfile)
-                    } else { "" })
+  tc_exec = .createDDPLYCommand(aggregates = aggregates,
+                                parallel = parallel,
+                                df.name = "df",
+                                logging=logging,
+                                logfile = logfile,
+                                output = output)
 
     commands = append(commands,tc_exec)
 
@@ -196,9 +211,13 @@ if(!isGeneric("apply.fun")) {
     query.R = sprintf("store(unpack(r_exec(%s,'output_attrs=%i','expr=%s'),i),%s)",
                       x@name,
                       output.attr.count,
-                      paste(commands,collapse="\n",sep=""),
+                      paste(commands,collapse="; ",sep=""),
                       array)
 
+    # clean up! there might be accidentially a semicolon between ) and {
+    query.R = gsub(pattern="\\)\\s*(;)\\s*\\{",replacement=") {",x=query.R)
+    query.R = gsub(pattern="(;;)",replacement=";",x=query.R)
+    query.R = gsub(pattern="(\\{\\s*;)",replacement="{",x=query.R)
     return(query.R)
 }
 

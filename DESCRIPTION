@@ -47,6 +47,7 @@ Collate:
     'scidbsteval.R'
     'slice.R'
     'spplot.R'
+    'stream.R'
     'subarray.R'
     'subset.R'
     'textent.R'
