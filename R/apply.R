@@ -26,7 +26,9 @@ if(!isGeneric("apply.fun")) {
   f.character = paste(capture.output(f))
   commands = append(commands,paste("f <- ",f.character[1],sep=""))
   f.end = length(f.character)
-  commands = append(commands,f.character[2:f.end])
+  if (f.end > 1) {
+    commands = append(commands,f.character[2:f.end])
+  }
   return(commands)
 }
 
@@ -72,7 +74,7 @@ if(!isGeneric("apply.fun")) {
   return (statement)
 }
 
-.rexec.script = function(x,f,array,packages,parallel=FALSE,cores=1,aggregates,output, logfile, ...) {
+.rexec.query = function(x,f,array,packages,parallel=FALSE,cores=1,aggregates,output, logfile, ...) {
   logging = !missing(logfile)
   noPackages = missing(packages) || is.null(packages) || length(packages) == 0
 
@@ -251,7 +253,7 @@ if(!isGeneric("apply.fun")) {
   # call this function for scidb array and simply execute the r_exec command
   if (missing(packages)) packages = NULL
 
-  .rexec.script = .rexec.script(x=x@proxy,
+  .query = .rexec.query(x=x@proxy,
                      f=f,
                      array=temp_name,
                      packages=packages,
@@ -262,7 +264,7 @@ if(!isGeneric("apply.fun")) {
                      logfile=logfile,...)
 
   x@temps = append(x@temps,temp_name)
-  iquery(.r.script)
+  iquery(.query)
 
   out = scidb(temp_name)
 
@@ -419,7 +421,7 @@ setMethod("rexec.scidb",signature(x="scidb",f="function"), function(x,f,array,pa
   if (missing(output)) output = NULL
 
   if(logging) {
-    .rexec.script = .rexec.script(x=x@proxy,
+    .script = .rexec.query(x=x@proxy,
                                   f=f,
                                   array=array,
                                   packages=packages,
@@ -429,7 +431,7 @@ setMethod("rexec.scidb",signature(x="scidb",f="function"), function(x,f,array,pa
                                   output=output,
                                   logfile=logfile,...)
   } else {
-    .rexec.script = .rexec.script(x=x@proxy,
+    .query = .rexec.query(x=x@proxy,
                                   f=f,
                                   array=array,
                                   packages=packages,
@@ -440,7 +442,7 @@ setMethod("rexec.scidb",signature(x="scidb",f="function"), function(x,f,array,pa
   }
 
   x@temps = append(x@temps,array)
-  iquery(.r.script)
+  iquery(.query)
 
   out = scidb(array)
   return(out)
