@@ -22,51 +22,57 @@ NULL
 #' }
 #' @export
 scidbst = function(...){
-  .scidbst = new("scidbst")
-  .scidb = scidb(...)
-  .scidbst@proxy = .scidb
-  .scidbst@title = .scidb@name
+  args = list(...)
+  if ("name" %in% names(args) || length(args) == 1) {
+    .scidbst = new("scidbst")
+    .scidb = scidb(...)
+    .scidbst@proxy = .scidb
+    .scidbst@title = .scidb@name
 
-  .extent = iquery(paste("eo_extent(",.scidb@name,")",sep=""),return=TRUE)
 
-  if (nrow(.extent) == 0) {
-    stop("There is no spatial or temporal extent for this array.")
+    .extent = iquery(paste("eo_extent(",.scidb@name,")",sep=""),return=TRUE)
+
+    if (nrow(.extent) == 0) {
+      stop("There is no spatial or temporal extent for this array.")
+    }
+
+    .srs = iquery(paste("eo_getsrs(",.scidb@name,")",sep=""),return=TRUE)
+    .scidbst@isSpatial = (nrow(.srs) > 0)
+
+    if (.scidbst@isSpatial) {
+      .scidbst@affine <- .createAffineTransformation(.srs)
+      .scidbst@srs = SRS(.srs$proj4text,dimnames=c(.srs[,"ydim"],.srs[,"xdim"]))
+      .scidbst@srs@authority = .srs$auth_name
+      .scidbst@srs@srid =.srs$auth_srid
+      .scidbst@srs@srtext = .srs$srtext
+
+      .scidbst@extent = extent(.extent[,"xmin"],.extent[,"xmax"],.extent[,"ymin"],.extent[,"ymax"])
+    }
+
+
+    .trs = iquery(paste("eo_gettrs(",.scidb@name,")",sep=""),return=TRUE)
+    .scidbst@isTemporal = (nrow(.trs) > 0)
+
+    if (.scidbst@isTemporal) {
+
+      # TRS variables
+      temporal_dim = .trs[,"tdim"]
+      tResolution = as.numeric(unlist(regmatches(.trs[,"dt"],gregexpr("(\\d)+",.trs[,"dt"]))))
+      tUnit = .findTUnit(.trs[,"dt"])
+      startTime = .getDateTime(.trs[,"t0"],tUnit)
+
+      # temporal extent variables
+      tmin = .getDateTime(.extent[,"tmin"],tUnit)
+      tmax = .getDateTime(.extent[,"tmax"],tUnit)
+
+      .scidbst@trs = TRS(temporal_dim,startTime,tResolution,tUnit)
+      .scidbst@tExtent = textent(tmin,tmax)
+    }
+
+    return(.scidbst)
+  } else {
+    return(new("scidbst"))
   }
-
-  .srs = iquery(paste("eo_getsrs(",.scidb@name,")",sep=""),return=TRUE)
-  .scidbst@isSpatial = (nrow(.srs) > 0)
-
-  if (.scidbst@isSpatial) {
-    .scidbst@affine <- .createAffineTransformation(.srs)
-    .scidbst@srs = SRS(.srs$proj4text,dimnames=c(.srs[,"ydim"],.srs[,"xdim"]))
-    .scidbst@srs@authority = .srs$auth_name
-    .scidbst@srs@srid =.srs$auth_srid
-    .scidbst@srs@srtext = .srs$srtext
-
-    .scidbst@extent = extent(.extent[,"xmin"],.extent[,"xmax"],.extent[,"ymin"],.extent[,"ymax"])
-  }
-
-
-  .trs = iquery(paste("eo_gettrs(",.scidb@name,")",sep=""),return=TRUE)
-  .scidbst@isTemporal = (nrow(.trs) > 0)
-
-  if (.scidbst@isTemporal) {
-
-    # TRS variables
-    temporal_dim = .trs[,"tdim"]
-    tResolution = as.numeric(unlist(regmatches(.trs[,"dt"],gregexpr("(\\d)+",.trs[,"dt"]))))
-    tUnit = .findTUnit(.trs[,"dt"])
-    startTime = .getDateTime(.trs[,"t0"],tUnit)
-
-    # temporal extent variables
-    tmin = .getDateTime(.extent[,"tmin"],tUnit)
-    tmax = .getDateTime(.extent[,"tmax"],tUnit)
-
-    .scidbst@trs = TRS(temporal_dim,startTime,tResolution,tUnit)
-    .scidbst@tExtent = textent(tmin,tmax)
-  }
-
-  return(.scidbst)
 }
 
 if (!isGeneric("trs")) {

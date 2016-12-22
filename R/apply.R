@@ -1,6 +1,6 @@
-if(!isGeneric("apply.fun")) {
-  setGeneric("apply.fun",function(x,f,...){
-    standardGeneric("apply.fun")
+if(!isGeneric("r.apply")) {
+  setGeneric("r.apply",function(x,f,...){
+    standardGeneric("r.apply")
   })
 }
 
@@ -207,6 +207,7 @@ if(!isGeneric("apply.fun")) {
 
     output.attr.count = length(output)
 
+
     # create the afl command
     query.R = sprintf("store(unpack(r_exec(%s,'output_attrs=%i','expr=%s'),i),%s)",
                       x@name,
@@ -218,6 +219,7 @@ if(!isGeneric("apply.fun")) {
     query.R = gsub(pattern="\\)\\s*(;)\\s*\\{",replacement=") {",x=query.R)
     query.R = gsub(pattern="(;;)",replacement=";",x=query.R)
     query.R = gsub(pattern="(\\{\\s*;)",replacement="{",x=query.R)
+    query.R = gsub(pattern="(;\\s*;)",replacement="; ",x=query.R)
     return(query.R)
 }
 
@@ -281,6 +283,9 @@ if(!isGeneric("apply.fun")) {
                      aggregates=aggregates,
                      output=output,
                      logfile=logfile,...)
+
+  #now the .query has ; to delimit lines. Due to problems of R_EXEC handling this, we need to replace ; with \n
+  .query = gsub(";","\n",.query)
 
   x@temps = append(x@temps,temp_name)
   iquery(.query)
@@ -411,28 +416,76 @@ if(!isGeneric("apply.fun")) {
   return(x)
 }
 
-#' Applys a custom function on chunks of an array
+#' Applys a custom R function on chunks of an array
 #'
-#' This function applies a custom function on a scidbst array chunk using r_exec.
+#' This function applies a custom r function on each individual scidbst array chunk using r_exec.
 #'
-#' @details The function that can be stated has the following description "function(x,...) {}". The x parameter is a
+#' @aliases r.apply
+#' @details The script that is created during this function will handle the installation of required R-packages on
+#' each of the instances. Then it combines the incoming attribute vectors to a data.frame object, which is passed
+#' on to the '\code{\link[plyr]{ddply}}' function of the package 'plyr'. Depending on the stated aggregates parameter
+#' the function 'f' is applied on that grouped sub data.frame object (parameter x of function f). Using the output
+#' list the array will be projected on to the selected attributes. When specifying 'dim' and 'dim.spec' the stated
+#' columns of the data.frame will be used as dimension in a perceeding redimension call.
+#'
+#' @note The function that can be stated has the following description "function(x,...) {}". The x parameter is a
 #' data.frame of the attributes stored in one chunk. In most cases you are advised to transform the array to have the
 #' dimension values as attributes if you need those to perform calculations. The function will be passed on to the \link[plyr]{ddply}
 #' function.
 #'
-#' @param x scidbst array
-#' @param f function
-#' @return scidbst array
+#' @note parameter option "stream" for 'method' currently not supported, use \link[scidbst]{stream} instead
+#'
+#' @param x scidbst array or scidb array
+#' @param f r function of form \code{function(x) { ... }} expecting parameter x, which is a subset of the incoming data based on the aggregate statement
+#' @param array string with the name of the output array
+#' @param packages a vector of string of the packages required for the function f
+#' @param parallel (optional) boolean whether or not the chunk is processed in parallel at an instance
+#' @param cores (optional) if using parallel this specifies the number of cores to use at an instance
+#' @param aggregates (optional) a vector of attribute names to group by
+#' @param output a named list of output attributes and its scidb type (if using rexec method it will be 'double' regardless)
+#' @param logfile (optional) the file path used to log during the processing if required
+#' @param dim (optional) a named list with attribute name = output attribute name e.g. \code{list(dimy="y",dimx="x")}
+#' @param dim.spec (optional) a named list with the dimension specification using the output dimension name as a identifier and a named numeric vector with min, max, overlap and chunk to specify the dimensionality
+#' @param method The method to use, either "rexec" or "stream"; not utilized currently
+#' @return scidbst array or scidb array depending on the input
+#'
+#' @examples
+#' \dontrun{
+#'  input.arr = scidbst("some_scidbst_array")
+#'  input.arr = transform(input.arr, dimx="double(x)",dimy="double(y)", dimt="double(t)")
+#'  f <- function(x) {
+#'      if (is.null(x)) {
+#'        return(c(nt=0,var=0,median=0,mean=0))
+#'      }
+#'      t = x$dimt
+#'      n = x$val
+#'      return(c(nt=length(t),var=var(n),median=median(n),mean=mean(n)))
+#'    }
+#'  rexec.arr = r.apply(x=input.arr,
+#'      f=f,
+#'      array="output_array",
+#'      parallel=FALSE,
+#'      cores=1,
+#'      aggregates=c("dimy","dimx"),
+#'      output=list(dimy="double",dimx="double",nt="double",var="double",median="double",mean="double"),
+#'      dim=list(dimy="y",dimx="x"),
+#'      dim.spec=list(y=c(min=0,max=99,chunk=20,overlap=0),x=c(min=0,max=99,chunk=20,overlap=0)),
+#'      logfile="/tmp/logfile.log")
+#' }
+#' @rdname r-apply-scidbst-method
 #' @export
-setMethod("apply.fun",signature(x="scidbst",f="function"), .apply.scidbst.fun)
+setMethod("r.apply",signature(x="scidbst",f="function"), .apply.scidbst.fun)
 
 
-if(!isGeneric("rexec.scidb")) {
-  setGeneric("rexec.scidb",function(x,f,...){
-    standardGeneric("rexec.scidb")
-  })
-}
-setMethod("rexec.scidb",signature(x="scidb",f="function"), function(x,f,array,packages,parallel=FALSE,cores=1,aggregates=c(),output, logfile, ...) {
+# if(!isGeneric("rexec.scidb")) {
+#   setGeneric("rexec.scidb",function(x,f,...){
+#     standardGeneric("rexec.scidb")
+#   })
+# }
+
+#' @rdname r-apply-scidbst-method
+#' @export
+setMethod("r.apply",signature(x="scidb",f="function"), function(x,f,array,packages,parallel=FALSE,cores=1,aggregates=c(),output, logfile, ...) {
   logging = !missing(logfile)
   noPackages = missing(packages) || is.null(packages) || length(packages) == 0
 
@@ -459,7 +512,7 @@ setMethod("rexec.scidb",signature(x="scidb",f="function"), function(x,f,array,pa
                                   aggregates=aggregates,
                                   output=output,...)
   }
-
+  .query = gsub(";","\n",.query)
   x@temps = append(x@temps,array)
   iquery(.query)
 

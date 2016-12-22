@@ -4,6 +4,7 @@
 #' TRS constructor
 #'
 #' This function creates a new temporal reference object
+#'
 #' @rdname TRS-class
 #' @param dimension character - the dimension name
 #' @param t0 POSIXt - the datum

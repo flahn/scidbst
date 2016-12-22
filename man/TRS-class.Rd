@@ -22,7 +22,7 @@ This object holds information regarding a temporal reference system. In particul
 resolution (tres), a dimension name (dimname) and a measurement unit (tUnit) which is connected to the resolution.
 }
 \details{
-The tUnit is mostly used in cases where the function \link{\code{difftime}} is called. Therefore tUnit can either be "secs", "mins",
+The tUnit is mostly used in cases where the function \code{\link{difftime}} is called. Therefore tUnit can either be "secs", "mins",
 "hours", "days" or "weeks".
 }
 \section{Slots}{
@@ -30,7 +30,7 @@ The tUnit is mostly used in cases where the function \link{\code{difftime}} is c
 \describe{
 \item{\code{t0}}{POSIXt derivative as the datum for this TRS}
 
-\item{\code{tUnit}}{character - The unit definition as used in \link{\code{difftime}}}
+\item{\code{tUnit}}{character - The unit definition as used in \code{\link{difftime}}}
 
 \item{\code{tResolution}}{numeric - The amount of tUnits that make up the resolution}
 
