@@ -11,7 +11,7 @@ if(!isGeneric("stream")) {
 # returns a string command stack
 .stream.install.r.pkg = function(packages,logging=FALSE,logfile) {
   # if (logging && (missing(logfile) || is.null(logfile) || !is.character(logfile)))
-  .install.scidbstrm = "if (! require(\"scidbstrm\")) { if (! require(\"jsonlite\")) { install.packages(\"jsonlite\",repos=\"https://cloud.r-project.org/\") }; devtools::install_github('paradigm4/stream', subdir='r_pkg'); require(\"scidbstrm\") };"
+  .install.scidbstrm = "if (! require(\"scidbstrm\")) { if (! require(\"jsonlite\")) { install.packages(\"jsonlite\",repos=\"https://cloud.r-project.org/\") }; devtools::install_github(\"paradigm4/stream\", subdir=\"r_pkg\"); require(\"scidbstrm\") };"
 
   if (!missing(packages) || !is.null(packages)) {
     if (logging) {
@@ -109,10 +109,24 @@ if(!isGeneric("stream")) {
   stream.script = gsub(pattern="\\)\\s*(;)\\s*\\{",replacement=") {",x=stream.script)
   stream.script = gsub(pattern="(;;)",replacement=";",x=stream.script)
   stream.script = gsub(pattern="(\\{\\s*;)",replacement="{",x=stream.script)
+  stream.script = gsub(pattern="\\;\\s*\\;",replacement="; ",x=stream.script)
+
+  #prepare for URL encoding
+  # stream.script = URLencode(stream.script,reserved=TRUE)
+
 
   return(stream.script)
 }
 
+# x: scidbst array
+# f: user defined function
+# array: the array name to store the results under
+# packages: the names of the R packages that are used during the function call
+# parallel: property in ddply to perform parallel processing
+# cores: number of cores used for parallel processing on a single instance
+# aggregates: the attribute names which are used to group by
+# output: a list with the name and the data type in SciDB as key-value pairs
+# logfile: the file path used to log during the processing
 .iquery.stream.script = function(x,f,array,packages=c(),parallel=FALSE,cores=1,aggregates=c(),output, logfile=NULL, ...) {
 
   if (class(x) == "scidbst") {
@@ -139,12 +153,15 @@ if(!isGeneric("stream")) {
                             logfile=logfile, ...)
 
   #create scidb output data.frame types from output
-  types = paste(output[],collapse=";")
+  types = paste(output[],collapse=",")
 
   #prepare the iquery command like this:   stream(ARRAY, 'COMMAND', 'format=df', 'types=int32,int32,string', ADDITIONAL_ARRAY)
-  iquery.cmd = sprintf("store(stream(%s, 'R --slave -e \"%s\"', 'format=df', 'types=%s'),%s)",x@proxy@name, .rscript,types,array)
+  .rscript = gsub(pattern="\\\"",replacement="\\\\\"",x=.rscript)
+  encodedScript = URLencode(sprintf("R --slave -e \"%s\"",.rscript),reserved=T)
+  # encodedScript = sprintf("R --slave -e \"%s\"",.rscript)
+  iquery.cmd = sprintf("store(stream(%s, '%s', 'format=df', 'types=%s'),%s)",x@proxy@name, encodedScript,types,array)
 
-
+  return(iquery.cmd)
 }
 
 #' @export
