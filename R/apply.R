@@ -239,27 +239,30 @@ if(!isGeneric("r.apply")) {
 .apply.scidbst.fun = function(x,f,array,packages,parallel=FALSE,cores=1,aggregates,output,logfile,dim,dim.spec, method="rexec",...) {
     dimMissing = missing(dim)
 
-    # checking the parameter for correctness
-    if (!is.list(dim)) {
-      if (is.character(dim)) {
-      l = length(dim)
-      n = dim
-      dim = vector("list",l)
-      names(dim) = n
-      } else {
-        stop("Parameter 'dim' is no character vector or named list.")
-      }
-    }
-    if (is.null(names(dim))) {
-      stop("Cannot infer dimension names, please state the names by assigning 'names(dim)'")
-    }
-    # if dim is unlisted later, then null values disappear
-    dim = .nullToNA(dim)
+    if (!dimMissing) {
+        # checking the parameter for correctness
+        if (!is.list(dim)) {
+          if (is.character(dim)) {
+          l = length(dim)
+          n = dim
+          dim = vector("list",l)
+          names(dim) = n
+          } else {
+            stop("Parameter 'dim' is no character vector or named list.")
+          }
+        }
+        if (is.null(names(dim))) {
+          stop("Cannot infer dimension names, please state the names by assigning 'names(dim)'")
+        }
+        # if dim is unlisted later, then null values disappear
+        dim = .nullToNA(dim)
 
-    # compare if all dimensions are in the output
-    if (!all(names(dim) %in% names(output))) {
-      stop("Cannot find dimensions in the output.")
+        # compare if all dimensions are in the output
+        if (!all(names(dim) %in% names(output))) {
+          stop("Cannot find dimensions in the output.")
+        }
     }
+
     ###
 
     attr = scidb_attributes(x)
@@ -293,40 +296,50 @@ if(!isGeneric("r.apply")) {
   out = scidb(temp_name)
 
   #execute the transform statement
-  outlist = .renameAndConvertArray(out,dim,output)
+  if (dimMissing) {
+    outlist = .renameAndConvertArray(out,dim=NULL,output)
+  } else {
+    outlist = .renameAndConvertArray(out,dim,output)
+  }
+
   renamed = outlist$arr
   output = outlist$output
 
-  if (!missing(dim.spec)) {
+  if (!dimMissing && !missing(dim.spec)) {
     redim = .redimensionArray(renamed,dim, dim.spec,output)
   } else {
-    # check if dimension names are already in the source array, if yes then pick schema of them
-
-    # create a complete vector of dimension names ( how they are called in the end)
-    newDims = unlist(dim)
-    newDims[is.na(newDims)] = names(dim)[is.na(newDims)]
-    names(newDims) = c()
-
-    if (all(newDims %in% dimensions(x))) {
-      # if all potentially renamed dimensions are already used in scidbst array "x", then take the schema from there
-      dim.spec = vector("list",length(newDims))
-      names(dim.spec) = newDims
-
-      oldDimsSpec = cbind(min=scidb_coordinate_start(x),
-                          max=scidb_coordinate_end(x),
-                          chunk = scidb_coordinate_chunksize(x),
-                          overlap = scidb_coordinate_overlap(x))
-      rownames(oldDimsSpec) = dimensions(x)
-      for (dimname in newDims) {
-        dim.spec[[dimname]] = oldDimsSpec[dimname,]
-      }
-      redim = .redimensionArray(renamed,dim, dim.spec,output)
+    if (missing(dim)) {
+      return(scidb::project(renamed,names(output)))
     } else {
-      #don't redimension, because we don't know what the new dimensions are...
-      warning("Cannot redimension the array processed by r_exec. Returned the renamed and projected array.")
+      # check if dimension names are already in the source array, if yes then pick schema of them
 
-      return(project(renamed),names(output))
+      # create a complete vector of dimension names ( how they are called in the end)
+      newDims = unlist(dim)
+      newDims[is.na(newDims)] = names(dim)[is.na(newDims)]
+      names(newDims) = c()
+
+      if (all(newDims %in% dimensions(x))) {
+        # if all potentially renamed dimensions are already used in scidbst array "x", then take the schema from there
+        dim.spec = vector("list",length(newDims))
+        names(dim.spec) = newDims
+
+        oldDimsSpec = cbind(min=scidb_coordinate_start(x),
+                            max=scidb_coordinate_end(x),
+                            chunk = scidb_coordinate_chunksize(x),
+                            overlap = scidb_coordinate_overlap(x))
+        rownames(oldDimsSpec) = dimensions(x)
+        for (dimname in newDims) {
+          dim.spec[[dimname]] = oldDimsSpec[dimname,]
+        }
+        redim = .redimensionArray(renamed,dim, dim.spec,output)
+      } else {
+        #don't redimension, because we don't know what the new dimensions are...
+        warning("Cannot redimension the array processed by r_exec. Returned the renamed and projected array.")
+
+        return(scidb::project(renamed,names(output)))
+      }
     }
+
   }
 
 
@@ -362,29 +375,32 @@ if(!isGeneric("r.apply")) {
 
 # transform call
 .renameAndConvertArray = function(arr, dim, output) {
-  # requires dim to be contained completely in output
-  # find dimensions in output
-  dim.pos = which(names(dim) %in% names(output))
-  new.dim.names = unlist(dim[dim.pos])
-  renamingDims = new.dim.names[!is.na(new.dim.names)]
-  n = names(output)
-  n[which(n %in% names(renamingDims))] = renamingDims
+    if (!is.null(dim)) {
+      # requires dim to be contained completely in output
+      # find dimensions in output
+      dim.pos = which(names(dim) %in% names(output))
+      new.dim.names = unlist(dim[dim.pos])
+      renamingDims = new.dim.names[!is.na(new.dim.names)]
+      n = names(output)
+      n[which(n %in% names(renamingDims))] = renamingDims
 
-  names(output) = n
-  #make sure dimension are forced to be int64 values
-  output[dim.pos] = "int64"
+      names(output) = n
+      #make sure dimension are forced to be int64 values
+      output[dim.pos] = "int64"
+    }
+    expr.attr.name = paste("expr_value_",0:(length(output)-1),sep="")
+    transforms = paste(output[],"(",expr.attr.name,")",sep="")
+    names(transforms) = names(output)
 
-  expr.attr.name = paste("expr_value_",0:(length(output)-1),sep="")
-  transforms = paste(output[],"(",expr.attr.name,")",sep="")
-  names(transforms) = names(output)
+    # create an argument list for the do.call
+    calls = unlist(list(`_data`=arr,transforms))
 
-  # create an argument list for the do.call
-  calls = unlist(list(`_data`=arr,transforms))
-
-  renamed = do.call(transform,args=calls)
+    renamed = do.call(transform,args=calls)
 
 
-  return(list(arr=renamed,output=output))
+    return(list(arr=renamed,output=output))
+
+
 }
 
 .redimensionArray = function(arr,dim,dim.spec,output) {
