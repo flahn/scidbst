@@ -113,11 +113,16 @@ setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
 
 .aggregate.scidbst = function(x, by, ...) {
 
-  if (!is.list=(by)) {
-    if (is.character(by) && length(by) > 0) {
-      by = as.list(by)
+  if (!missing(by)) {
+    if (!is.list(by)) {
+      if (is.character(by) && length(by) > 0) {
+        by = as.list(by)
+      }
+    } else {
+      stop("Cannot use the stated parameter 'by'. Type incompatible. Please use 'list' instead.")
     }
   }
+
 
   dots = list(...)
   usesWindow = any("window" %in% names(dots))

@@ -192,5 +192,59 @@ setMethod("srs",signature(x="scidbst"), function(x) {
   } else {
     stop("The scidbst array has no spatial reference to return.")
   }
+})
 
+if (!isGeneric("copySRS")) {
+  setGeneric("copySRS", function(x,y) {
+    standardGeneric("copySRS")
+  })
+}
+
+
+#' Copy spatial reference
+#'
+#' Copies the spatial reference systems from scidbst object y to x.
+#'
+#' @param x scidbst object
+#' @param y scidbst object
+#'
+#' @return modified x
+#' @export
+setMethod("copySRS",signature(x="scidbst",y="scidbst"), function(x,y) {
+  xValidName = length(grep(c("[,\\(\\)]"),x@proxy@name)) == 0
+  if (!xValidName) {
+    stop("Function statements in name of object 'x' detected. Please execute the calculation and store the results before running this method again.")
+  }
+
+  cmd = sprintf("eo_setsrs(%s,%s)",x@proxy@name,y@title)
+  iquery(cmd)
+  out = scidbst(x@proxy@name)
+  return(out)
+})
+
+#' Copy spatial reference
+#'
+#' Copies the spatial reference systems from scidbst object y to x.
+#'
+#' @param x scidb object
+#' @param y scidbst object
+#'
+#' @return modified x
+#' @export
+setMethod("copySRS",signature(x="ANY",y="scidbst"), function(x,y) {
+  if (class(x)!= "scidb") {
+    stop("The provided object for 'x' is no 'scidb' object.")
+  }
+
+
+  xValidName = length(grep(c("[,\\(\\)]"),x@name)) == 0
+  if (!xValidName) {
+    stop("Function statements in name of object 'x' detected. Please execute the calculation and store the results before running this method again.")
+  }
+
+  cmd = sprintf("eo_setsrs(%s,%s)",x@name,y@title)
+  iquery(cmd)
+
+  out = scidbst(x@name)
+  return(out)
 })
