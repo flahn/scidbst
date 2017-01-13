@@ -5,7 +5,7 @@
 \alias{r.apply}
 \alias{r.apply,scidb,function-method}
 \alias{r.apply,scidbst,function-method}
-\title{Applys a custom R function on chunks of an array}
+\title{Apply custom R functions on scidbst array chunks}
 \usage{
 \S4method{r.apply}{scidbst,`function`}(x, f, array, packages,
   parallel = FALSE, cores = 1, aggregates, output, logfile, dim, dim.spec,
@@ -43,7 +43,8 @@
 scidbst array or scidb array depending on the input
 }
 \description{
-This function applies a custom r function on each individual scidbst array chunk using r_exec.
+This function applies a custom r function on each individual scidbst array chunk using the r_exec interface with
+SciDB.
 }
 \details{
 The script that is created during this function will handle the installation of required R-packages on

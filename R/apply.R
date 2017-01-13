@@ -56,6 +56,9 @@ if(!isGeneric("r.apply")) {
 }
 
 .log = function(s, logfile,quote=TRUE) {
+  if (missing(logfile)) {
+    return(sprintf("cat(\"%s\n\")",s))
+  }
   if (quote) {
     return(sprintf("cat(\"%s\n\", file=\"%s\",append=TRUE)",s,logfile))
   } else {
@@ -64,17 +67,38 @@ if(!isGeneric("r.apply")) {
 
 }
 
+# aggregates: the names of the columns in the data.frame to aggregate by
+# parallel: ddply option to use parallel processing when aggregating
+# df.name: the name of the data.frame used to create the data chunk data.frame
+# logging: boolean, whether or not to log
+# logfile: character string, where to write the log information into
+# output: the key-value list with the output attributes and their type
 .createDDPLYCommand = function(aggregates,parallel,df.name,logging,logfile,output) {
   # write aggregate expression for the rexec_script
-  aggregates.string = paste("c(",paste("\"",aggregates,"\"",collapse=",",sep=""),")",sep="")
+  if (length(aggregates > 0)) {
+    aggregates.string = paste("c(",paste("\"",aggregates,"\"",collapse=",",sep=""),")",sep="")
+  } else {
+    aggregates.string = "c()"
+  }
+
+
   #TODO you can pass additional arguments to f after .fun
   ddply_cmd = paste("func.result = ddply(.data=",df.name,", .variables=",aggregates.string,", .fun=f ,.parallel=",parallel,")",sep="")
 
   #.GlobalEnv$func.result = cbind(df,default_values)
   tc_exec = sprintf("tryCatch({ %s },error = function(err) { %s$df$ = $df$[,which(names($df$) %%in%% names(output))]; var = names(output)[!names(output) %%in%% names($df$)]; default_values = as.list(rep(0,length(var))); names(default_values) = var; func.result <<- cbind($df$,default_values); })",
-                    ddply_cmd,
+                    sprintf("%s%s%s",
+                            if (logging) {
+                              paste(.log("executing function on chunk",logfile),"; ",sep="")
+                            }else {""},
+                            ddply_cmd,
+                            if (logging) {
+                              paste(.log("function executed successfully",logfile=logfile),";",sep="; ")
+                            }else {""}),
                     if (logging) {
-                      paste(.log("error in a chunk",logfile),"; ",sep="")
+                      p1 = paste(.log("error in a chunk",logfile),"; ",sep="")
+                      p2= paste(p1,.log("err$message",logfile=logfile,quote=FALSE),"; ",sep="")
+                      p2
                     } else { "" })
   tc_exec = gsub(pattern="\\$df\\$",replacement = df.name, tc_exec)
 
@@ -135,6 +159,9 @@ if(!isGeneric("r.apply")) {
     commands = append(commands,paste("registerDoParallel(cores=",cores,")",sep=""))
   }
 
+  # create the data.frame
+  commands = .appendChunkDataFrameDefinition(commands,attr)
+
   # get the code of the function as text
   if (!missing(f) && is.function(f)) {
     commands = .appendUserDefinedFunctionCode(commands,f)
@@ -143,8 +170,7 @@ if(!isGeneric("r.apply")) {
   }
 
 
-  # create the data.frame
-  commands = .appendChunkDataFrameDefinition(commands,attr)
+
   # TODO option to calculate coordinates or timestamps to create or work with spatial or spatio-temporal objects
 
 
@@ -182,9 +208,6 @@ if(!isGeneric("r.apply")) {
     aggregates = c()
   }
 
-
-
-  # dot.params = list(...)
   if (logging) {
     commands = append(commands, .log("processing a chunk",logfile))
   }
@@ -198,7 +221,7 @@ if(!isGeneric("r.apply")) {
 
     commands = append(commands,tc_exec)
 
-    #R_EXEC probably allows in scidb just double values
+    #R_EXEC probably allows in scidb only double values
     #https://github.com/Paradigm4/r_exec/blob/master/LogicalRExec.cpp
     #line 54
     commands = .appendOutputTypeConversionForR(commands,output)
@@ -215,11 +238,15 @@ if(!isGeneric("r.apply")) {
                       paste(commands,collapse="; ",sep=""),
                       array)
 
+
+
     # clean up! there might be accidentially a semicolon between ) and {
     query.R = gsub(pattern="\\)\\s*(;)\\s*\\{",replacement=") {",x=query.R)
     query.R = gsub(pattern="(;;)",replacement=";",x=query.R)
     query.R = gsub(pattern="(\\{\\s*;)",replacement="{",x=query.R)
     query.R = gsub(pattern="(;\\s*;)",replacement="; ",x=query.R)
+
+    cat(paste(commands,collapse="\n",sep=""))
     return(query.R)
 }
 
@@ -432,9 +459,10 @@ if(!isGeneric("r.apply")) {
   return(x)
 }
 
-#' Applys a custom R function on chunks of an array
+#' Apply custom R functions on scidbst array chunks
 #'
-#' This function applies a custom r function on each individual scidbst array chunk using r_exec.
+#' This function applies a custom r function on each individual scidbst array chunk using the r_exec interface with
+#' SciDB.
 #'
 #' @aliases r.apply
 #' @details The script that is created during this function will handle the installation of required R-packages on
@@ -491,13 +519,6 @@ if(!isGeneric("r.apply")) {
 #' @rdname r-apply-scidbst-method
 #' @export
 setMethod("r.apply",signature(x="scidbst",f="function"), .apply.scidbst.fun)
-
-
-# if(!isGeneric("rexec.scidb")) {
-#   setGeneric("rexec.scidb",function(x,f,...){
-#     standardGeneric("rexec.scidb")
-#   })
-# }
 
 #' @rdname r-apply-scidbst-method
 #' @export
