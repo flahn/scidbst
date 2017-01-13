@@ -7,7 +7,7 @@
 scidb_op(x)
 }
 \arguments{
-\item{x}{scidbst object}
+\item{x}{scidb or scidbst object}
 }
 \value{
 character - AFL query

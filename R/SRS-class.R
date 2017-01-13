@@ -142,6 +142,9 @@ setMethod("res", signature(x="scidbst"), function(x) {
   }
 })
 
+########################
+# setSRS
+########################
 
 if (!isGeneric("setSRS")) {
   setGeneric("setSRS", function(x, srs, affine, ...) {
@@ -172,6 +175,9 @@ setMethod("setSRS", signature(x="ANY",srs="SRS",affine="matrix"), function (x, s
   }
 })
 
+###################
+# srs
+###################
 if (!isGeneric("srs")) {
   setGeneric("srs", function(x) {
     standardGeneric("srs")
@@ -194,57 +200,68 @@ setMethod("srs",signature(x="scidbst"), function(x) {
   }
 })
 
+#################
+# copySRS
+#################
+
 if (!isGeneric("copySRS")) {
   setGeneric("copySRS", function(x,y) {
     standardGeneric("copySRS")
   })
 }
 
+.cpsrs = function(x,y) {
+  if (!y@isSpatial) {
+    stop("Cannot copy the spatial reference of 'y', because y is not spatial.")
+  }
+  xname = if (class(x)=="scidbst") x@proxy@name else x@name
+  yname = y@title
+
+  xValidName = length(grep(c("[,\\(\\)]"),xname)) == 0
+  if (!xValidName) {
+    stop("Function statements in name of object 'x' detected. Please execute the calculation and store the results before running this method again.")
+  }
+
+  cmd = sprintf("eo_setsrs(%s,%s)",xname,yname)
+  iquery(cmd)
+
+  out = scidbst(xname)
+  return(out)
+}
 
 #' Copy spatial reference
 #'
-#' Copies the spatial reference systems from scidbst object y to x.
+#' Copies the spatial reference systems from scidbst object y to scidb(st) object x.
+#'
+#' @rdname copySRS-methods
+#' @param x scidbst or scidb object
+#' @param y scidbst object
+#'
+#' @return modified x
+#' @export
+setMethod("copySRS",signature(x="scidbst",y="scidbst"), .cpsrs)
+
+#' @rdname copySRS-methods
+#' @export
+setMethod("copySRS",signature(x="scidb",y="scidbst"), .cpsrs)
+
+##############
+# is.spatial
+##############
+if (!isGeneric("is.spatial")) {
+  setGeneric("is.spatial", function(x) {
+    standardGeneric("is.spatial")
+  })
+}
+
+#' Check for a scidbst object having a spatial reference
+#'
+#' The function checks for certain parameter considered to describe the spatial reference.
 #'
 #' @param x scidbst object
-#' @param y scidbst object
+#' @return logical whether or not the object has a spatial reference
 #'
-#' @return modified x
 #' @export
-setMethod("copySRS",signature(x="scidbst",y="scidbst"), function(x,y) {
-  xValidName = length(grep(c("[,\\(\\)]"),x@proxy@name)) == 0
-  if (!xValidName) {
-    stop("Function statements in name of object 'x' detected. Please execute the calculation and store the results before running this method again.")
-  }
-
-  cmd = sprintf("eo_setsrs(%s,%s)",x@proxy@name,y@title)
-  iquery(cmd)
-  out = scidbst(x@proxy@name)
-  return(out)
-})
-
-#' Copy spatial reference
-#'
-#' Copies the spatial reference systems from scidbst object y to x.
-#'
-#' @param x scidb object
-#' @param y scidbst object
-#'
-#' @return modified x
-#' @export
-setMethod("copySRS",signature(x="ANY",y="scidbst"), function(x,y) {
-  if (class(x)!= "scidb") {
-    stop("The provided object for 'x' is no 'scidb' object.")
-  }
-
-
-  xValidName = length(grep(c("[,\\(\\)]"),x@name)) == 0
-  if (!xValidName) {
-    stop("Function statements in name of object 'x' detected. Please execute the calculation and store the results before running this method again.")
-  }
-
-  cmd = sprintf("eo_setsrs(%s,%s)",x@name,y@title)
-  iquery(cmd)
-
-  out = scidbst(x@name)
-  return(out)
+setMethod("is.spatial",signature(x="scidbst"), function(x) {
+  return(x@isSpatial && !is.null(x@srs) && !is.null(x@extent))
 })
