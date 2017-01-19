@@ -55,6 +55,55 @@ if(!isGeneric("r.apply")) {
   }
 }
 
+# this helper function transfers the spatial reference as constants to the r-script
+.appendSpatialReferenceDeclaration = function(commands, obj) {
+  if (class(obj) != "scidbst" && !is.spatial(obj)) {
+    warning("Stated array has no or incomplete spatial reference. Skipping reference transfer.",call. = FALSE,immediate. = TRUE)
+    return(commands)
+  }
+  # affine transformation
+  m = affine(obj)
+  affine = sprintf("affine <- matrix(%f,%f,%f,%f,%f,%f,nc=3,nr=2)",m[1,1],m[2,1],m[1,2],m[2,2],m[1,3],m[2,3])
+  commands = append(commands,affine)
+
+  #crs
+  crs.str= crs(obj)@projargs
+  crs = sprintf("crs <- CRS(%s)",crs.str)
+  commands = append(commands,crs)
+
+  #extent
+  ex = extent(obj)
+  extent = sprintf("extent <- extent(%f,%f,%f,%f)",ex@xmin,ex@xmax,ex@ymin,ex@ymax)
+  commands = append(commands,extent)
+
+  return(commands)
+}
+
+.appendTemporalReferenceDeclaration = function(commands, obj) {
+  if (class(obj) != "scidbst" && !is.temporal(obj)) {
+    warning("Stated array has no or incomplete temporal reference. Skipping reference transfer.",call. = FALSE,immediate. = TRUE)
+    return(commands)
+  }
+
+  #temporal Extent
+  tmin = sprintf("tmin <- as.POSIXlt(%s)",as.character(tmin(obj)))
+  tmax = sprintf("tmax <- as.POSIXlt(%s)",as.character(tmax(obj)))
+  commands = append(commands,tmin)
+  commands = append(commands,tmax)
+
+  #trs
+  t0 = sprintf("t0 <- as.POSIXlt(%s)",as.character(t0(obj)))
+  tunit = sprintf("tunit <- %s",tunit(obj))
+  tres = sprintf("tres <- %f",tres(obj))
+  commands = append(commands,t0)
+  commands = append(commands,tunit)
+  commands = append(commands,tres)
+
+  return(commands)
+
+
+}
+
 .log = function(s, logfile,quote=TRUE) {
   if (missing(logfile)) {
     return(sprintf("cat(\"%s\n\")",s))
@@ -73,7 +122,8 @@ if(!isGeneric("r.apply")) {
 # logging: boolean, whether or not to log
 # logfile: character string, where to write the log information into
 # output: the key-value list with the output attributes and their type
-.createDDPLYCommand = function(aggregates,parallel,df.name,logging,logfile,output) {
+# f.params: a vector of strings stating the names of the variables defined in the RScript
+.createDDPLYCommand = function(aggregates,parallel,df.name,logging,logfile,output,f.params) {
   # write aggregate expression for the rexec_script
   if (length(aggregates > 0)) {
     aggregates.string = paste("c(",paste("\"",aggregates,"\"",collapse=",",sep=""),")",sep="")
@@ -81,9 +131,19 @@ if(!isGeneric("r.apply")) {
     aggregates.string = "c()"
   }
 
+  if (missing(f.params) || !is.character(f.params)) {
+    f.params = c()
+  }
+
+  if (length(f.params) == 0) {
+    f.insert = ""
+  } else {
+    f.insert = paste(paste(f.params,collapse=", ",sep=""),",",sep="")
+  }
+
 
   #TODO you can pass additional arguments to f after .fun
-  ddply_cmd = paste("func.result = ddply(.data=",df.name,", .variables=",aggregates.string,", .fun=f ,.parallel=",parallel,")",sep="")
+  ddply_cmd = paste("func.result = ddply(.data=",df.name,", .variables=",aggregates.string,", .fun=f,",f.insert,".parallel=",parallel,")",sep="")
 
   #.GlobalEnv$func.result = cbind(df,default_values)
   tc_exec = sprintf("tryCatch({ %s },error = function(err) { %s$df$ = $df$[,which(names($df$) %%in%% names(output))]; var = names(output)[!names(output) %%in%% names($df$)]; default_values = as.list(rep(0,length(var))); names(default_values) = var; func.result <<- cbind($df$,default_values); })",
@@ -110,33 +170,12 @@ if(!isGeneric("r.apply")) {
   return (out)
 }
 
-.requireInstallPackage = function(lib,logfile) {
-  statement = gsub("%s", lib, "if (! require(%s)) { %o install.packages(\"%s\",repos=\"https://cloud.r-project.org/\"); library(%s)};")
-  if (!missing(logfile)) {
-    statement = gsub("%o", paste(.log(sprintf("installing package %s on instance",lib),logfile),";",sep=""),statement)
-  } else {
-    statement = gsub("%o ", "", statement)
-  }
-
-  return (statement)
-}
-
-.rexec.query = function(x,f,array,packages,parallel=FALSE,cores=1,aggregates,output, logfile, ...) {
+# creates the command stack for the RScript
+.createRScript = function(x,f,array,packages,parallel=FALSE,cores=1,aggregates,output, logfile, ...) {
   logging = !missing(logfile)
   noPackages = missing(packages) || is.null(packages) || length(packages) == 0
 
   commands=c()
-
-  if (class(x)=="scidbst") {
-    x = x@proxy
-  }
-
-  attr = scidb::scidb_attributes(x)
-
-  if (!all(aggregates %in% attr)) {
-    stop("Cannot find the attributes to aggregate over in the functions data input.")
-  }
-
   # load required packages
   if (!noPackages) {
     commands = .appendUserDefinedRequiredPackages(commands,packages)
@@ -159,6 +198,38 @@ if(!isGeneric("r.apply")) {
     commands = append(commands,paste("registerDoParallel(cores=",cores,")",sep=""))
   }
 
+  # transfer spatial and temporal references before using the scidb array
+  f.params = c()
+  if (class(x) == "scidbst") {
+    # using raster functions to describe the spatial reference -> need to include that
+    if (!missing(packages)) {
+      if (!all("raster" %in% packages)) {
+        commands = append(commands,.requireInstallPackage("raster"))
+      }
+    } else {
+      commands = append(commands,.requireInstallPackage("raster"))
+    }
+
+    if (is.spatial(x)) {
+      commands = .appendSpatialReferenceDeclaration(commands, x)
+      f.params = append(f.params,c("affine","crs","extent"))
+    }
+
+    if (is.temporal(x)) {
+      commands = .appendTemporalReferenceDeclaration(commands, x)
+      f.params = append(f.params, c("tmin","tmax","t0","tunit","tres"))
+    }
+
+    x = x@proxy
+  }
+
+
+  attr = scidb::scidb_attributes(x)
+
+  if (!all(aggregates %in% attr)) {
+    stop("Cannot find the attributes to aggregate over in the functions data input.")
+  }
+
   # create the data.frame
   commands = .appendChunkDataFrameDefinition(commands,attr)
 
@@ -168,11 +239,6 @@ if(!isGeneric("r.apply")) {
   } else {
     stop("No function was defined to operate on a chunk.")
   }
-
-
-
-  # TODO option to calculate coordinates or timestamps to create or work with spatial or spatio-temporal objects
-
 
   # use packages plyr and foreach as mandatory packages
   if (!noPackages) {
@@ -217,36 +283,71 @@ if(!isGeneric("r.apply")) {
                                 df.name = "df",
                                 logging=logging,
                                 logfile = logfile,
-                                output = output)
+                                output = output,
+                                f.params = f.params)
 
-    commands = append(commands,tc_exec)
+  commands = append(commands,tc_exec)
 
-    #R_EXEC probably allows in scidb only double values
-    #https://github.com/Paradigm4/r_exec/blob/master/LogicalRExec.cpp
-    #line 54
-    commands = .appendOutputTypeConversionForR(commands,output)
+  #R_EXEC probably allows in scidb only double values
+  #https://github.com/Paradigm4/r_exec/blob/master/LogicalRExec.cpp
+  #line 54
+  commands = .appendOutputTypeConversionForR(commands,output)
 
+  return(commands)
+}
 
-
-    output.attr.count = length(output)
-
-
-    # create the afl command
-    query.R = sprintf("store(unpack(r_exec(%s,'output_attrs=%i','expr=%s'),i),%s)",
-                      x@name,
-                      output.attr.count,
-                      paste(commands,collapse="; ",sep=""),
-                      array)
+.createAFLCommand = function(x,output,commands,array) {
+  output.attr.count = length(output)
 
 
+  # create the afl command
+  query.R = sprintf("store(unpack(r_exec(%s,'output_attrs=%i','expr=%s'),i),%s)",
+                    x@name,
+                    output.attr.count,
+                    paste(commands,collapse="; ",sep=""),
+                    array)
 
-    # clean up! there might be accidentially a semicolon between ) and {
-    query.R = gsub(pattern="\\)\\s*(;)\\s*\\{",replacement=") {",x=query.R)
-    query.R = gsub(pattern="(;;)",replacement=";",x=query.R)
-    query.R = gsub(pattern="(\\{\\s*;)",replacement="{",x=query.R)
-    query.R = gsub(pattern="(;\\s*;)",replacement="; ",x=query.R)
 
-    cat(paste(commands,collapse="\n",sep=""))
+
+  # clean up! there might be accidentially a semicolon between ) and {
+  query.R = gsub(pattern="\\)\\s*(;)\\s*\\{",replacement=") {",x=query.R)
+  query.R = gsub(pattern="(;;)",replacement=";",x=query.R)
+  query.R = gsub(pattern="(\\{\\s*;)",replacement="{",x=query.R)
+  query.R = gsub(pattern="(;\\s*;)",replacement="; ",x=query.R)
+
+  return(query.R)
+}
+
+.requireInstallPackage = function(lib,logfile) {
+  statement = gsub("%s", lib, "if (! require(%s)) { %o install.packages(\"%s\",repos=\"https://cloud.r-project.org/\"); library(%s)};")
+  if (!missing(logfile)) {
+    statement = gsub("%o", paste(.log(sprintf("installing package %s on instance",lib),logfile),";",sep=""),statement)
+  } else {
+    statement = gsub("%o ", "", statement)
+  }
+
+  return (statement)
+}
+
+.rexec.query = function(x,f,array,packages,parallel=FALSE,cores=1,aggregates,output, logfile, ...) {
+
+    commands = .createRScript(x=x,
+                              f=f,
+                              array=array,
+                              packages=packages,
+                              parallel=parallel,
+                              cores=cores,
+                              aggregates=aggregates,
+                              output=output,
+                              logfile=logfile, ...)
+
+
+    query.R = .createAFLCommand(x=x,
+                                output=output,
+                                commands=commands,
+                                array=array)
+
+
     return(query.R)
 }
 
@@ -264,7 +365,25 @@ if(!isGeneric("r.apply")) {
 
 # TODO ... theoretically this can be passed on to .fun in ddply, but not implemented yet
 .apply.scidbst.fun = function(x,f,array,packages,parallel=FALSE,cores=1,aggregates,output,logfile,dim,dim.spec, method="rexec",...) {
+
     dimMissing = missing(dim)
+    dots = list(...)
+    if (any("eval" %in% names(dots))) {
+      eval = dots$eval
+      if (!is.logical(eval)) {
+        warning("Eval is not of type logical. Setting eval to FALSE", immediate. = TRUE)
+        eval = FALSE
+      }
+    } else {
+      eval = TRUE
+    }
+
+    stopAtRScript = FALSE
+    stopAtAFLCommand = FALSE
+    if (any("result" %in% names(dots))) {
+      stopAtRScript = if (toupper(dots$result) == "RSCRIPT") TRUE else FALSE
+      stopAtAFLCommand = if (toupper(dots$result) == "AFL") TRUE else FALSE
+    }
 
     if (!dimMissing) {
         # checking the parameter for correctness
@@ -304,23 +423,53 @@ if(!isGeneric("r.apply")) {
   # call this function for scidb array and simply execute the r_exec command
   if (missing(packages)) packages = NULL
 
-  .query = .rexec.query(x=x@proxy,
-                     f=f,
-                     array=temp_name,
-                     packages=packages,
-                     parallel=FALSE,
-                     cores=cores,
-                     aggregates=aggregates,
-                     output=output,
-                     logfile=logfile,...)
+
+  commands = .createRScript(x=x,
+                            f=f,
+                            array=array,
+                            packages=packages,
+                            parallel=parallel,
+                            cores=cores,
+                            aggregates=aggregates,
+                            output=output,
+                            logfile=logfile, ...)
+  if (stopAtRScript) {
+    return(paste(commands,collapse="\n",sep=""))
+  }
+
+  # .query = .rexec.query(x=x@proxy,
+  #                    f=f,
+  #                    array=temp_name,
+  #                    packages=packages,
+  #                    parallel=FALSE,
+  #                    cores=cores,
+  #                    aggregates=aggregates,
+  #                    output=output,
+  #                    logfile=logfile,...)
+  .query = .createAFLCommand(x=as(x,"scidb"),
+                              output=output,
+                              commands=commands,
+                              array=array)
+
 
   #now the .query has ; to delimit lines. Due to problems of R_EXEC handling this, we need to replace ; with \n
   .query = gsub(";","\n",.query)
 
+  if (stopAtAFLCommand) {
+    return(.query)
+  }
+
   x@temps = append(x@temps,temp_name)
-  iquery(.query)
+
+  #run the r_exec script
+  if (eval) {
+    iquery(.query)
+  } else {
+    return(.query)
+  }
 
   out = scidb(temp_name)
+
 
   #execute the transform statement
   if (dimMissing) {
@@ -491,7 +640,23 @@ if(!isGeneric("r.apply")) {
 #' @param dim (optional) a named list with attribute name = output attribute name e.g. \code{list(dimy="y",dimx="x")}
 #' @param dim.spec (optional) a named list with the dimension specification using the output dimension name as a identifier and a named numeric vector with min, max, overlap and chunk to specify the dimensionality
 #' @param method The method to use, either "rexec" or "stream"; not utilized currently
+#' @param ... see Details
 #' @return scidbst array or scidb array depending on the input
+#'
+#' @details The \code{...} operator can contain the parameter 'eval', which is set to TRUE as default. If changed to FALSE
+#' the AFL query for the r_exec part will be returned. Even if the new dimensions are stated, the execution will hold at
+#' the mentioned point.
+#' The following variable names are reserved if the spatial and temporal references exists and are transferred to ddply
+#' function:
+#' - affine: a 2x3 matrix for spatial coordinate transformation
+#' - crs: a CRS object stating the used coordinate reference system
+#' - extent: a extent object stating the spatial extent
+#' - tmin / tmax: POSIXlt objects stating the minimum and maximum temporal boundary
+#' - t0: POSIXlt object marking the datum (time at value 0)
+#' - tunit: character describing the temporal measurement unit
+#' - tres: a number describing the temporal resolution
+#' Also ... can contain a developer parameter called "result" with the allowed values "afl" and "rscript". To
+#' prevent the function from being executed.
 #'
 #' @examples
 #' \dontrun{
@@ -526,6 +691,17 @@ setMethod("r.apply",signature(x="scidb",f="function"), function(x,f,array,packag
   logging = !missing(logfile)
   noPackages = missing(packages) || is.null(packages) || length(packages) == 0
 
+  dots = list(...)
+  if (any("eval" %in% names(dots))) {
+    eval = dots$eval
+    if (!is.logical(eval)) {
+      warning("Eval is not of type logical. Setting eval to FALSE", immediate. = TRUE)
+      eval = FALSE
+    }
+  } else {
+    eval = TRUE
+  }
+
   if (noPackages) packages = NULL
   if (missing(output)) output = NULL
 
@@ -550,9 +726,17 @@ setMethod("r.apply",signature(x="scidb",f="function"), function(x,f,array,packag
                                   output=output,...)
   }
   .query = gsub(";","\n",.query)
-  x@temps = append(x@temps,array)
-  iquery(.query)
+  # x@temps = append(x@temps,array)
 
-  out = scidb(array)
-  return(out)
+  if (eval) {
+    iquery(.query)
+    # in .query we will have the store command which makes the array
+    # available under the name from parameter 'array'
+    out = scidb(array)
+    return(out)
+  } else {
+    return(.query)
+  }
+
+
 })

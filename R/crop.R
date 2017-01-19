@@ -75,6 +75,6 @@ NULL
 #' cropped = crop(scidbst.obj,e)
 #' }
 #' @export
-setMethod('crop', signature(x="scidbst", y="ANY"),
+setMethod("crop", signature(x="scidbst", y="ANY"),
           .crop.scidbst
 )

@@ -363,4 +363,3 @@ setMethod("estimateFileSize",signature(x="scidbst"), function(x, unit="MB") {
   names = paste("__temp_",x@title,"_",ids,sep="")
   return(names)
 }
-

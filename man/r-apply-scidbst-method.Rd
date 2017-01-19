@@ -38,6 +38,8 @@
 \item{dim.spec}{(optional) a named list with the dimension specification using the output dimension name as a identifier and a named numeric vector with min, max, overlap and chunk to specify the dimensionality}
 
 \item{method}{The method to use, either "rexec" or "stream"; not utilized currently}
+
+\item{...}{see Details}
 }
 \value{
 scidbst array or scidb array depending on the input
@@ -53,6 +55,21 @@ on to the '\code{\link[plyr]{ddply}}' function of the package 'plyr'. Depending 
 the function 'f' is applied on that grouped sub data.frame object (parameter x of function f). Using the output
 list the array will be projected on to the selected attributes. When specifying 'dim' and 'dim.spec' the stated
 columns of the data.frame will be used as dimension in a perceeding redimension call.
+
+The \code{...} operator can contain the parameter 'eval', which is set to TRUE as default. If changed to FALSE
+the AFL query for the r_exec part will be returned. Even if the new dimensions are stated, the execution will hold at
+the mentioned point.
+The following variable names are reserved if the spatial and temporal references exists and are transferred to ddply
+function:
+- affine: a 2x3 matrix for spatial coordinate transformation
+- crs: a CRS object stating the used coordinate reference system
+- extent: a extent object stating the spatial extent
+- tmin / tmax: POSIXlt objects stating the minimum and maximum temporal boundary
+- t0: POSIXlt object marking the datum (time at value 0)
+- tunit: character describing the temporal measurement unit
+- tres: a number describing the temporal resolution
+Also ... can contain a developer parameter called "result" with the allowed values "afl" and "rscript". To
+prevent the function from being executed.
 }
 \note{
 The function that can be stated has the following description "function(x,...) {}". The x parameter is a
