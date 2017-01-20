@@ -1,0 +1,255 @@
+---
+title: "TRMM year wise linear regression calculations calculation"
+author: "Florian Lahn"
+date: "19 Januar 2017"
+output: html_document
+---
+
+```{r connecting}
+library(scidbst)
+library(rgdal)
+library(plyr)
+source("/home/lahn/GitHub/scidbst/vignettes/assets/credentials.R")
+scidbconnect(host=host,port=port,user=user,password=password,protocol="https",auth_type = "digest")
+```
+
+#Aim
+In this Use Case, we are going to estimate model parameter for a linear regression using the 8 neighboring pixel for temporal chunks of one year. 
+
+First we are going to create a smaller subset of the TRMM data set to develop a function that is able to perform the mentioned task above. Then we will run the analysis on a spatial subset, before we apply the analysis to the whole dataset.
+
+#Development
+```{r datapreparation}
+trmm = scidbst("TRMM3B42_DAILY_PREC")
+
+# textent: 1998-01-01 until 2015-01-02
+test_extent = extent(6,15,48,54) # germany
+test_textent = textent(as.POSIXct("1998-01-01"),as.POSIXct("2000-12-31")) 
+
+trmm.sub = subarray(subarray(trmm,test_extent,between=TRUE),test_textent,between=TRUE)
+data = as(trmm.sub,"data.frame")
+data.bak = data
+```
+
+```{r local_function_creation, eval=FALSE, include=FALSE}
+# this will come with ... in the ddply outer function
+t0 = t0(trmm.sub)
+tres = tres(trmm.sub)
+tunit = tunit(trmm.sub)
+tmin = tmin(trmm.sub)
+
+addTime = function(x, i, what) {
+  byText = paste(i,what)
+  seq(x,by=byText,length=2)[2]
+}
+
+first = addTime(t0,min(data$t),tunit)
+indexNextYear = as.numeric(difftime(addTime(first,1,"year"),first,units=tunit))
+addTime(t0,indexNextYear,tunit)
+summary(data[data$t >= min(),])
+
+ts = c(725:1100)
+
+
+# function to find indices for year interval
+index = min(data$t)
+lastindex = 0
+while (! any(index %in% ts) ) {
+  indexDate = addTime(t0,index,tunit)
+  index <- as.numeric(difftime(addTime(indexDate,1,"year"),t0))
+  lastindex <- as.numeric(difftime(addTime(addTime(indexDate,2,"year"),-1,"day"),t0))
+}
+
+data = data[index:lastindex,]
+
+
+# add the neighbor values to each pixel
+f.dlply = function(x) {
+  t = unique(x$t)
+  x= x[,-which("t" == names(x))]
+  coordinates(x) = ~x+y
+  gridded(x) = TRUE
+  layer = as(x,"RasterLayer")
+
+  p1 = focal(layer, w=matrix(c(1,0,0, 0, 0, 0, 0, 0, 0),nr = 3, nc=3,byrow=TRUE))
+  p2 = focal(layer, w=matrix(c(0,1,0, 0, 0, 0, 0, 0, 0),nr = 3, nc=3,byrow=TRUE))
+  p3 = focal(layer, w=matrix(c(0,0,1, 0, 0, 0, 0, 0, 0),nr = 3, nc=3,byrow=TRUE))
+  p4 = focal(layer, w=matrix(c(0,0,0, 1, 0, 0, 0, 0, 0),nr = 3, nc=3,byrow=TRUE))
+  
+  p6 = focal(layer, w=matrix(c(0,0,0, 0, 0, 1, 0, 0, 0),nr = 3, nc=3,byrow=TRUE))
+  p7 = focal(layer, w=matrix(c(0,0,0, 0, 0, 0, 1, 0, 0),nr = 3, nc=3,byrow=TRUE))
+  p8 = focal(layer, w=matrix(c(0,0,0, 0, 0, 0, 0, 1, 0),nr = 3, nc=3,byrow=TRUE))
+  p9 = focal(layer, w=matrix(c(0,0,0, 0, 0, 0, 0, 0, 1),nr = 3, nc=3,byrow=TRUE))
+  
+  stack = stack(list(orig.values=layer,p1=p1,p2=p2,p3=p3,p4=p4,p6=p6,p7=p7,p8=p8,p9=p9))
+  list(t=t,data=stack)
+}
+layer.timeline = dlply(data,.variables=c("t"),.fun = f.dlply)
+
+# create a data.frame from the RasterStacks
+f.ldply = function(x) {
+  b = cbind(y=coordinates(x$data)[,"y"],x=coordinates(x$data)[,"x"],t=x$t,getValues(x$data))
+  as.data.frame(b)
+}
+test = ldply(layer.timeline[],.fun = f.ldply)
+test2 = na.omit(test)
+
+# fit linear regression models on each pixel
+f.ddply = function(x) {
+  model = lm(orig.values~p1+p2+p3+p4+p6+p7+p8+p9, x,na.action=na.omit)
+  c = coefficients(model)
+  s = summary(model)
+  data.frame(y=unique(x$y),
+             x=unique(x$x),
+             intercept = c[1],
+             c_p1= c[2],
+             c_p2= c[3],
+             c_p3= c[4],
+             c_p4= c[5],
+             c_p6= c[6],
+             c_p7= c[7],
+             c_p8= c[8],
+             c_p9= c[9],
+             r_sq = s$r.squared,
+             sum_res_sq = sum(s$residuals^2))
+}
+test3 = ddply(test2,.variables=c("y","x"),.fun = f.ddply)
+
+
+```
+
+##Assumptions
+The data is reparted under the following conditions:
+- the overlap in space is 1 pixel
+- the overlap in time is (number of years/4)+(1 or 2)
+- the time dimension is chunked into 365 days
+- the dimensions are added as attributes with a prefixed "dim", e.g. "dimx","dimy" and "dimt"
+
+This structure allows us to guarantee that combined with the overlap the data will accomodate the leap years and it will contain one year of data per chunk.
+
+Now I state a first version of the function that will be applied to the data chunk using the previous lines of code. The procedures are the following:
+- find the data with a one year time span based on the minimum boundary of the whole array
+- add the neighboring cells to the original observed data in preparation for adapting the linear regression model
+-- use focal to create RasterLayers with the correct neighboring cells
+-- retransform the layer stacks into a data.frame
+- calculate the linear models per pixel and store relevant information in a data.frame for output
+
+Funcion details: x is the data.frame of the chunk and with ... we will pass the spatial and temporal reference parameter.
+
+```{r}
+linearRegressionNeighborhood = function(x, ...) {
+    # helper function to add a certain time to a date
+    addTime = function(x, i, what) {
+        byText = paste(i,what)
+        seq(x,by=byText,length=2)[2]
+    }
+  
+    # determine the first and last index of the yearly subset in the chunk
+    first = 0
+    last = 0
+    
+    while (! any(first %in% x$dimt) ) {
+        indexDate = addTime(t0,first,tunit) # current date of first
+        first <- as.numeric(difftime(addTime(indexDate,1,"year"),t0)) # 1 year later of indexDate
+        last <- as.numeric(difftime(addTime(addTime(indexDate,2,"year"),-1,"day"),t0)) # 2 years later - 1 day from indexDate
+    }
+    
+    numberOfYear = as.POSIXlt(addTime(t0,first,tunit))$year - as.POSIXlt(t0)$year
+    
+    # create a subset
+    x = na.omit(x[first:last,])
+    
+    # add the neighboring values to each of the pixel values using raster operations
+    addNeighboringValues = function(x) {
+        t = unique(x$dimt)
+        x= x[,-which("dimt" == names(x))]
+        coordinates(x) = ~dimx+dimy
+        gridded(x) = TRUE
+        layer = as(x,"RasterLayer")
+      
+        p1 = focal(layer, w=matrix(c(1,0,0, 0, 0, 0, 0, 0, 0),nr = 3, nc=3,byrow=TRUE))
+        p2 = focal(layer, w=matrix(c(0,1,0, 0, 0, 0, 0, 0, 0),nr = 3, nc=3,byrow=TRUE))
+        p3 = focal(layer, w=matrix(c(0,0,1, 0, 0, 0, 0, 0, 0),nr = 3, nc=3,byrow=TRUE))
+        p4 = focal(layer, w=matrix(c(0,0,0, 1, 0, 0, 0, 0, 0),nr = 3, nc=3,byrow=TRUE))
+        
+        p6 = focal(layer, w=matrix(c(0,0,0, 0, 0, 1, 0, 0, 0),nr = 3, nc=3,byrow=TRUE))
+        p7 = focal(layer, w=matrix(c(0,0,0, 0, 0, 0, 1, 0, 0),nr = 3, nc=3,byrow=TRUE))
+        p8 = focal(layer, w=matrix(c(0,0,0, 0, 0, 0, 0, 1, 0),nr = 3, nc=3,byrow=TRUE))
+        p9 = focal(layer, w=matrix(c(0,0,0, 0, 0, 0, 0, 0, 1),nr = 3, nc=3,byrow=TRUE))
+        
+        stack = stack(list(orig.values=layer,p1=p1,p2=p2,p3=p3,p4=p4,p6=p6,p7=p7,p8=p8,p9=p9))
+        list(t=t,data=stack)
+    }
+    layer.timeline = dlply(x, .variables=c("dimt"), .fun = addNeighboringValues)
+    
+    # create a data.frame from the RasterStacks and omit the NA values in the overlap border
+    rebuildDataFrame = function(x) {
+        b = cbind(y=coordinates(x$data)[,"dimy"],x=coordinates(x$data)[,"dimx"],t=x$t,getValues(x$data))
+        as.data.frame(b)
+    }
+    neighbor.df = ldply(layer.timeline[], .fun = rebuildDataFrame)
+    neighbor.df = na.omit(neighbor.df)
+    
+    # fit linear regression models on each pixel
+    lmCalculation = function(x,year,...) {
+        model = lm(orig.values~p1+p2+p3+p4+p6+p7+p8+p9, x,na.action=na.omit)
+        c = coefficients(model)
+        s = summary(model)
+        data.frame(dimy=unique(x$dimy),
+                   dimx=unique(x$dimx),
+                   dimt=year,
+                   intercept = c[1],
+                   c_p1= c[2],
+                   c_p2= c[3],
+                   c_p3= c[4],
+                   c_p4= c[5],
+                   c_p6= c[6],
+                   c_p7= c[7],
+                   c_p8= c[8],
+                   c_p9= c[9],
+                   r_sq = s$r.squared,
+                   sum_res_sq = sum(s$residuals^2))
+    }
+    calculated.df = ddply(neighbor.df, .variables=c("dimy","dimx"), .fun = lmCalculation, year=numberOfYear)
+    
+    return(calculated.df)
+}
+```
+
+Prepare a TRMM spatial subset to run the query.
+
+```{r}
+trmm = scidbst("TRMM3B42_DAILY_PREC")
+ex = extent(32,46,1,15)
+trmm.sub = subarray(trmm,ex,between=TRUE)
+trmm.sub = scidbsteval(trmm.sub,"trmm_ethiopia_sub")
+trmm.sub = transform(trmm.sub,dimy="double(y)",dimx="double(x)",dimt="double(t)")
+trmm.reparted = repart(trmm.sub,schema="<band1:double,dimy:double,dimx:double,dimt:double> [y=0:399,30,1,x=0:1439,30,1,t=0:*,365,6]")
+trmm.reparted = scidbsteval(trmm.reparted,"trmm_ethiopia_sub_reparted")
+```
+
+Run the function
+```{r}
+trmm.reparted = scidbst("trmm_ethiopia_sub_reparted")
+
+sa.array <- r.apply(x=trmm.reparted,
+                   f = linearRegressionNeighborhood,
+                   array = "trmm_yearly_linear_model",
+                   packages = c("raster","sp","rgdal","plyr"),
+                   aggregates=c(),
+                   output = list(dimy="double",
+                                 dimx="double",
+                                 dimt="double",
+                                 intercept="double",
+                                 c_p1= "double",
+                                 c_p2= "double",
+                                 c_p3= "double",
+                                 c_p4= "double",
+                                 c_p6= "double",
+                                 c_p7= "double",
+                                 c_p8= "double",
+                                 c_p9= "double",
+                                 r_sq = "double",
+                                 sum_res_sq = "double")
+                   )
+```

@@ -45,7 +45,7 @@ srtm.ethiopia.prep = scidbsteval(srtm.ethiopia.prep,"srtm_sub_reparted_prep")
 ```
 
 ```{r}
-slopeAspect = function(x) {
+slopeAspect = function(x, ...) {
   data = x
   xdim = "dimx"
   ydim = "dimy"
@@ -101,7 +101,7 @@ After the intial test, we will now apply the function to the whole African SRTM 
 
 Prepare the original SRTM data set to incorporate overlap.
 
-```{r}
+```{r, eval=FALSE}
 srtm = scidbst("SRTM_AFRICA")
 # estimateFileSize(srtm) ~ 72GB
 
@@ -131,32 +131,32 @@ The function 'slopeAspect' will work in the following way:
 Note: Due to the lack of values in the outer boundary there will be a 1 pixel border around the array. With na.omit we will remove it from being stored as a NA value.
 
 ```{r}
-slopeAspect = function(x) {
-  data = x
-  xdim = "dimx"
-  ydim = "dimy"
-  heightAttr = "band1"
-  
-  coordinates(data) <- c(xdim,ydim)
-  gridded(data) <- TRUE
-  data = as(data, "RasterStack")
-  x_cellsize = 90
-  y_cellsize = 90
-
-  dx = focal(subset(x=data,subset=heightAttr,drop=TRUE), w=matrix(c(-1,-2,-1, 0, 0, 0, 1, 2, 1)/(8*x_cellsize),nr = 3, nc=3))
-  dy = focal(subset(x=data,subset=heightAttr,drop=TRUE), w=matrix(c(-1,-2,-1, 0, 0, 0, 1, 2, 1)/(8*y_cellsize),nr = 3, nc=3,byrow = TRUE))
-  slope = atan(sqrt(dx^2+dy^2)) *180/pi
-  names(slope) = c("slope")
-  aspect = atan2(dy,-1 * dx)* 180/pi
-  names(aspect) = c("aspect")
-  data = stack(list(data,slope,aspect))
-  out = cbind(dimy=coordinates(data)[,"y"],dimx=coordinates(data)[,"x"],as.data.frame(data))
-  out =na.omit(out)
-  out = as.data.frame(out)
-
-  
-  return(out)
-}
+# slopeAspect = function(x) {
+#   data = x
+#   xdim = "dimx"
+#   ydim = "dimy"
+#   heightAttr = "band1"
+#   
+#   coordinates(data) <- c(xdim,ydim)
+#   gridded(data) <- TRUE
+#   data = as(data, "RasterStack")
+#   x_cellsize = 90
+#   y_cellsize = 90
+# 
+#   dx = focal(subset(x=data,subset=heightAttr,drop=TRUE), w=matrix(c(-1,-2,-1, 0, 0, 0, 1, 2, 1)/(8*x_cellsize),nr = 3, nc=3))
+#   dy = focal(subset(x=data,subset=heightAttr,drop=TRUE), w=matrix(c(-1,-2,-1, 0, 0, 0, 1, 2, 1)/(8*y_cellsize),nr = 3, nc=3,byrow = TRUE))
+#   slope = atan(sqrt(dx^2+dy^2)) *180/pi
+#   names(slope) = c("slope")
+#   aspect = atan2(dy,-1 * dx)* 180/pi
+#   names(aspect) = c("aspect")
+#   data = stack(list(data,slope,aspect))
+#   out = cbind(dimy=coordinates(data)[,"y"],dimx=coordinates(data)[,"x"],as.data.frame(data))
+#   out =na.omit(out)
+#   out = as.data.frame(out)
+# 
+#   
+#   return(out)
+# }
 ```
 
 The *aggregate* parameter will be empty. In this case the whole chunk is passed to ddply and the function will be applied. In this example we will be performing the redimensioning after the calculation was performed. This means that the dimension names and schema need to be stated. Since there is almost no change in the array structure, except the 1 pixel border, we will reuse the array schema of the source SRTM array.
@@ -175,4 +175,51 @@ sa.array <- r.apply(x=srtm.prep,
                    )
 })
 ```
+
+Current problem: The r.apply call including the redimensioning can run a long time. It might also occur that the query will not finish. In this case you can look up the temporary arrays that might have been created during the process. In one case the temporary array was created like the following: "__temp_srtm_africa_prep_120395534".
+
+As a secondary approach we will perform the internal processes for the renaming and redimensioning manually, and run the AFL commands on via iquery directly on the server, to prevent connection losses.
+```{r}
+temp = scidb("__temp_srtm_africa_prep_120395534")
+rename = transform(temp,y="int64(expr_value_0)",x="int64(expr_value_1)",height="expr_value_2",slope="expr_value_3",aspect="expr_value_4")
+selection = scidb::project(rename,c("y","x","height","slope","aspect"))
+schema = "<height:double,slope:double,aspect:double> [y=-6001:84001,2048,0,x=-1:90002,2048,0]"
+redim = scidb::redimension(selection,schema=schema)
+redim@name
+
+# srtm.africa.sa = scidbeval(redim,name="srtm_africa_slope_aspect")
+
+copySRS(srtm.africa.sa,srtm.ethiopia)
+```
+
+Currently, there is a problem with longterm queries and unintended connection losses that cannot be fixed in this package. If you encounter those problems, we recommend that you try to extract the appropriate AFL queries and run them with 'iquery' on the server (if you have access). Otherwise make sure to not loose the connection to the SHIM client, e.g.:
+- use network cable instead of WIFI
+- prevent your computer from shutdown (energy saving options)
+
+
+
+DEV-CODE
+```{r}
+# dev
+script <- r.apply(x=srtm.ethiopia.prep,
+                   f = slopeAspect,
+                   array = "srtm_eth_slo_asp_test",
+                   packages = c("raster","sp","rgdal"),
+                   aggregates=c(),
+                   output = list(dimy="double",dimx="double",band1="double",slope="double",aspect="double"),
+                   eval=FALSE,
+                   result="rscript"
+                   )
+afl <- r.apply(x=srtm.ethiopia.prep,
+                   f = slopeAspect,
+                   array = "srtm_eth_slo_asp_test",
+                   packages = c("raster","sp","rgdal"),
+                   aggregates=c(),
+                   output = list(dimy="double",dimx="double",band1="double",slope="double",aspect="double"),
+                   eval=FALSE,
+                   result="afl"
+                   )
+```
+
+
 
