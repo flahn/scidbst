@@ -63,12 +63,12 @@ if(!isGeneric("r.apply")) {
   }
   # affine transformation
   m = affine(obj)
-  affine = sprintf("affine <- matrix(%f,%f,%f,%f,%f,%f,nc=3,nr=2)",m[1,1],m[2,1],m[1,2],m[2,2],m[1,3],m[2,3])
+  affine = sprintf("affine <- matrix(c(%f,%f,%f,%f,%f,%f),nc=3,nr=2)",m[1,1],m[2,1],m[1,2],m[2,2],m[1,3],m[2,3])
   commands = append(commands,affine)
 
   #crs
   crs.str= crs(obj)@projargs
-  crs = sprintf("crs <- CRS(%s)",crs.str)
+  crs = sprintf("crs <- CRS(\"%s\")",crs.str)
   commands = append(commands,crs)
 
   #extent
@@ -86,14 +86,14 @@ if(!isGeneric("r.apply")) {
   }
 
   #temporal Extent
-  tmin = sprintf("tmin <- as.POSIXlt(%s)",as.character(tmin(obj)))
-  tmax = sprintf("tmax <- as.POSIXlt(%s)",as.character(tmax(obj)))
+  tmin = sprintf("tmin <- as.POSIXlt(\"%s\")",as.character(tmin(obj)))
+  tmax = sprintf("tmax <- as.POSIXlt(\"%s\")",as.character(tmax(obj)))
   commands = append(commands,tmin)
   commands = append(commands,tmax)
 
   #trs
-  t0 = sprintf("t0 <- as.POSIXlt(%s)",as.character(t0(obj)))
-  tunit = sprintf("tunit <- %s",tunit(obj))
+  t0 = sprintf("t0 <- as.POSIXlt(\"%s\")",as.character(t0(obj)))
+  tunit = sprintf("tunit <- \"%s\"",tunit(obj))
   tres = sprintf("tres <- %f",tres(obj))
   commands = append(commands,t0)
   commands = append(commands,tunit)
@@ -135,6 +135,7 @@ if(!isGeneric("r.apply")) {
     f.params = c()
   }
 
+  #add additional parameter to the ddply command
   if (length(f.params) == 0) {
     f.insert = ""
   } else {
@@ -142,7 +143,7 @@ if(!isGeneric("r.apply")) {
   }
 
 
-  #TODO you can pass additional arguments to f after .fun
+  #you can pass additional arguments to f after .fun -> f.insert
   ddply_cmd = paste("func.result = ddply(.data=",df.name,", .variables=",aggregates.string,", .fun=f,",f.insert,".parallel=",parallel,")",sep="")
 
   #.GlobalEnv$func.result = cbind(df,default_values)
@@ -212,12 +213,12 @@ if(!isGeneric("r.apply")) {
 
     if (is.spatial(x)) {
       commands = .appendSpatialReferenceDeclaration(commands, x)
-      f.params = append(f.params,c("affine","crs","extent"))
+      f.params = append(f.params,c("affine=affine","crs=crs","extent=extent"))
     }
 
     if (is.temporal(x)) {
       commands = .appendTemporalReferenceDeclaration(commands, x)
-      f.params = append(f.params, c("tmin","tmax","t0","tunit","tres"))
+      f.params = append(f.params, c("tmin=tmin","tmax=tmax","t0=t0","tunit=tunit","tres=tres"))
     }
 
     x = x@proxy
@@ -329,6 +330,7 @@ if(!isGeneric("r.apply")) {
   return (statement)
 }
 
+# simply creates the RScript and the AFL query
 .rexec.query = function(x,f,array,packages,parallel=FALSE,cores=1,aggregates,output, logfile, ...) {
 
     commands = .createRScript(x=x,
@@ -424,9 +426,10 @@ if(!isGeneric("r.apply")) {
   if (missing(packages)) packages = NULL
 
 
+
   commands = .createRScript(x=x,
                             f=f,
-                            array=array,
+                            array=temp_name,
                             packages=packages,
                             parallel=parallel,
                             cores=cores,
@@ -437,19 +440,11 @@ if(!isGeneric("r.apply")) {
     return(paste(commands,collapse="\n",sep=""))
   }
 
-  # .query = .rexec.query(x=x@proxy,
-  #                    f=f,
-  #                    array=temp_name,
-  #                    packages=packages,
-  #                    parallel=FALSE,
-  #                    cores=cores,
-  #                    aggregates=aggregates,
-  #                    output=output,
-  #                    logfile=logfile,...)
+  #store the calculation under the temporary array name
   .query = .createAFLCommand(x=as(x,"scidb"),
                               output=output,
                               commands=commands,
-                              array=array)
+                              array=temp_name)
 
 
   #now the .query has ; to delimit lines. Due to problems of R_EXEC handling this, we need to replace ; with \n
@@ -485,7 +480,10 @@ if(!isGeneric("r.apply")) {
     redim = .redimensionArray(renamed,dim, dim.spec,output)
   } else {
     if (missing(dim)) {
-      return(scidb::project(renamed,names(output)))
+
+      projected = scidbeval(scidb::project(renamed,names(output)),name=array)
+      scidbrm(temp_name,force=T)
+      return(projected)
     } else {
       # check if dimension names are already in the source array, if yes then pick schema of them
 
