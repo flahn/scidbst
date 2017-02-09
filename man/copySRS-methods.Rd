@@ -19,6 +19,15 @@
 modified x
 }
 \description{
-Copies the spatial reference systems from scidbst object y to scidb(st) object x.
+Copies the spatial reference systems from scidbst object y to scidb(st) object x. This applies for the R object
+as well as the array in SciDB. All necessary information will be copied from the source to the target array
+in R and afterwards an iquery command is executed to persist the changes in SciDB.
+}
+\examples{
+\dontrun{
+ target = scidb("no_srs_array")
+ source = scidbst("srs_array")
+ target = copySRS(target,source)
+}
 }
 

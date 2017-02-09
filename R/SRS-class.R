@@ -21,15 +21,49 @@ SRS = function(projargs, dimnames) {
 
 #' Returns the Coordinate Reference System
 #'
-#' Returns the coordinate reference system of a scidbst object
+#' Returns the coordinate reference system of a scidbst object in form of a CRS object.
 #'
+#' @note The changes only apply in R. To persist the changes make the object truly spatial by setting also the
+#' affine transformation as well as the spatial extent and then run scidbsteval.
 #' @param x scidbst object
+#' @rdname crs-scidbst-methods
 #' @return \link[rgdal]{CRS}
-#'
 #' @export
 setMethod("crs",signature(x="scidbst"),function(x, ...) {
   return(CRS(x@srs@projargs))
 })
+
+.setCRS = function(x,value) {
+  if (class(x) == "scidb") {
+    .scidbst = new("scidbst")
+    .scidbst@proxy = x
+    .scidbst@srs = new("SRS")
+    .scidbst@srs@projargs <- value@projargs
+    return(.scidbst)
+  }
+
+  if (class(x) == "scidbst") {
+    x@srs@projargs <- value@projargs
+
+    if (length(x@affine) == 6 && !is.null(x@extent)) {
+      x@isSpatial = TRUE
+    }
+  }
+  return(x)
+}
+
+if (!isGeneric("crs<-")) {
+  setGeneric("crs<-", function(x,value) standardGeneric("crs<-"))
+}
+
+#' @rdname crs-scidbst-methods
+#' @export
+setReplaceMethod("crs", signature(x="scidbst", value="CRS"), .setCRS)
+#' @rdname crs-scidbst-methods
+#' @export
+setReplaceMethod("crs", signature(x="ANY", value="CRS"), .setCRS)
+
+
 
 if (!isGeneric("xdim")) {
   setGeneric("xdim",function(x) standardGeneric("xdim"))
@@ -145,6 +179,16 @@ setMethod("res", signature(x="scidbst"), function(x) {
 ########################
 # setSRS
 ########################
+.setSRS = function (x, srs, affine, return=FALSE) {
+  #eo_setsrs:  {name,xdim,ydim,authname,authsrid,affine_str}
+  # if (!inherits(x,"scidb")) stop("Parameter x is no scidb array")
+  cmd = paste("eo_setsrs(",x@name,",'",xdim(srs),"','",ydim(srs),"','",srs@authority,"',",srs@srid,",'","x0=",affine[1,1]," y0=",affine[2,1]," a11=",affine[1,2]," a22=",affine[2,3]," a12=",affine[1,3]," a21=",affine[2,2],"'",")",sep="")
+  iquery(cmd)
+
+  if (return) {
+    return(scidbst(x@name))
+  }
+}
 
 if (!isGeneric("setSRS")) {
   setGeneric("setSRS", function(x, srs, affine, ...) {
@@ -164,20 +208,19 @@ if (!isGeneric("setSRS")) {
 #' @return a scidbst object if return=TRUE
 #'
 #' @export
-setMethod("setSRS", signature(x="ANY",srs="SRS",affine="matrix"), function (x, srs, affine, return=FALSE) {
-  #eo_setsrs:  {name,xdim,ydim,authname,authsrid,affine_str}
-  # if (!inherits(x,"scidb")) stop("Parameter x is no scidb array")
-  cmd = paste("eo_setsrs(",x@name,",'",xdim(srs),"','",ydim(srs),"','",srs@authority,"',",srs@srid,",'","x0=",affine[1,1]," y0=",affine[2,1]," a11=",affine[1,2]," a22=",affine[2,3]," a12=",affine[1,3]," a21=",affine[2,2],"'",")",sep="")
-  iquery(cmd)
-
-  if (return) {
-    return(scidbst(x@name))
-  }
-})
+setMethod("setSRS", signature(x="ANY",srs="SRS",affine="matrix"), .setSRS)
 
 ###################
 # srs
 ###################
+.getSRS = function(x) {
+  if (x@isSpatial || !is.null(x@srs)) {
+    return(x@srs)
+  } else {
+    stop("The scidbst array has no spatial reference to return.")
+  }
+}
+
 if (!isGeneric("srs")) {
   setGeneric("srs", function(x) {
     standardGeneric("srs")
@@ -192,13 +235,7 @@ if (!isGeneric("srs")) {
 #' @return \code{\link{SRS}} class
 #'
 #' @export
-setMethod("srs",signature(x="scidbst"), function(x) {
-  if (x@isSpatial || !is.null(x@srs)) {
-    return(x@srs)
-  } else {
-    stop("The scidbst array has no spatial reference to return.")
-  }
-})
+setMethod("srs",signature(x="scidbst"), .getSRS)
 
 #################
 # copySRS
@@ -231,13 +268,21 @@ if (!isGeneric("copySRS")) {
 
 #' Copy spatial reference
 #'
-#' Copies the spatial reference systems from scidbst object y to scidb(st) object x.
+#' Copies the spatial reference systems from scidbst object y to scidb(st) object x. This applies for the R object
+#' as well as the array in SciDB. All necessary information will be copied from the source to the target array
+#' in R and afterwards an iquery command is executed to persist the changes in SciDB.
 #'
 #' @rdname copySRS-methods
 #' @param x scidbst or scidb object
 #' @param y scidbst object
 #'
 #' @return modified x
+#' @examples
+#' \dontrun{
+#'  target = scidb("no_srs_array")
+#'  source = scidbst("srs_array")
+#'  target = copySRS(target,source)
+#' }
 #' @export
 setMethod("copySRS",signature(x="scidbst",y="scidbst"), .cpsrs)
 
