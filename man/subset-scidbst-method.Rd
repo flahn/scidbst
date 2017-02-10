@@ -2,13 +2,16 @@
 % Please edit documentation in R/subset.R
 \docType{methods}
 \name{subset.scidbst}
-\alias{subset,scidbst-method}
+\alias{filter,scidbst}
+\alias{subset,scidbst}
 \alias{subset.scidbst}
-\title{Subset method for scidbst objects}
+\title{Subset / Filter method for scidbst objects}
 \usage{
 \method{subset}{scidbst}(x, ...)
 
 \S4method{subset}{scidbst}(x, ...)
+
+\S4method{filter}{scidbst}(x, ...)
 }
 \arguments{
 \item{x}{scidbst object}
@@ -22,6 +25,7 @@ a scidbst object
 This function wraps scidbs subset function for scidbst objects. Internally, scidb uses its \code{filter} function to create the
 subset. To formulate the filter expression, please have a look at the scidb documentation (\code{\link{subset.scidb}}).
 Since scidbs filter function is used, the resulting array will probably be sparse.
+Out of convenience the subset operation can also be used with filter instead of \code{subset}.
 }
 \note{
 It is recommended to use the string based SciDB filter syntax.
@@ -30,7 +34,12 @@ It is recommended to use the string based SciDB filter syntax.
 \dontrun{
 scidbconnect()
 ls7_ndvi = scidbst("LS7_BRAZIL_NDVI")
+
+#using subset
 ls7_ndvi_gr05 = subset(ls7_ndvi, "NDVI > 0.5")
+
+# using filter
+ls7_ndvi_sm05 = filter(ls7_ndvi, "NDVI < 0.5 and height > 1500")
 }
 }
 \seealso{

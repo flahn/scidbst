@@ -14,6 +14,8 @@
 \S4method{subarray}{scidbst,TemporalExtent}(x, limits, between = FALSE)
 
 \S4method{subarray}{scidbst,scidbst}(x, limits, between = FALSE)
+
+\S4method{subarray}{scidb,numeric}(x, limits, between = FALSE)
 }
 \arguments{
 \item{x}{scidbst array object}

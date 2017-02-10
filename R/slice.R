@@ -49,7 +49,7 @@ if (!isGeneric("slice")) {
 #' Takes a dimension name and a value to create a slice of an array. This usually means reducing the dimensions
 #' of an array by one. The dimension name and value choosen fixed and the other dimensions and attributes are returned.
 #'
-#' @aliases slice-scidbst
+#' @name slice,scidbst
 #' @rdname slice-scidbst-method
 #' @param x scidbst array object
 #' @param d name of a dimension
@@ -65,8 +65,9 @@ if (!isGeneric("slice")) {
 #' slice1 = slice(scidbst.obj,"t","0") # @ temporal index 0
 #' slice2 = slice(scidbst.obj,"t",1) # @ temporal index 1
 #' slice3 = slice(scidbst.obj,"t","2016-05-05") # @ the temporal index for a date
-#' # other are also dimensions also applicable
+#' # other existing dimensions are also applicable
 #' }
+#' @seealso \link[scidb]{slice}
 #' @export
 setMethod('slice', signature(x="scidbst",d="character",n="ANY") , function(x,d,n) {
   if (d %in% tdim(x)) {

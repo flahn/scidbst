@@ -22,12 +22,14 @@ NULL
 #'
 #' Like the raster version for spplot, this function plots a spatially referenced scidb array. To make this work on a
 #' multidimensional array, the number of dimensions must be reduced to two spatial dimensions. This can
-#' be done by using the 'slice' operation of scidb.
+#' be done by using the 'slice' operation of scidb. To plot the array, the data is first downloaded to your machine and then
+#' transformed to a RasterBrick object to be plotted.
 #'
+#' @name spplot,scidbst
 #' @param obj scidbst object
 #' @param ... Any argument that can be passed to spplot and levelplot
 #' @param maxpixels Integer. Number of pixels to sample from each layer of large Raster objects
 #'
-#' @seealso \code{\link[raster]{spplot,Raster-method}}
+#' @seealso \code{\link[raster]{spplot}}
 #' @export
 setMethod("spplot", signature(obj="scidbst"),.spplot.brick.coerce)

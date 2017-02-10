@@ -65,8 +65,7 @@ setAs("scidbst","STSDF",function(from,to) {
     .data = transformAllSpatialIndices(from,.data)
     #uniqueLocations = unique(cbind(y=spdata["y"],x=spdata[,"x"]))
 
-    # coordinates(.data) = ~x+y
-    # crs(.data) = crs(from)
+
     # in principle it would be great to use unique locations, but it is hard to assign the indices of the tuples (with 'which')
     # so we are going to try out if it works with redundant points
 

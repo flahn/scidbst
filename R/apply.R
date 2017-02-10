@@ -364,8 +364,6 @@ if(!isGeneric("r.apply")) {
 #      dimension values need to be int64 values user should be aware!
 # dim.spec: named list of the specification from dimensions
 # method: a string defining the processing mechanism used. possible = "rexec" or "stream"
-
-# TODO ... theoretically this can be passed on to .fun in ddply, but not implemented yet
 .apply.scidbst.fun = function(x,f,array,packages,parallel=FALSE,cores=1,aggregates,output,logfile,dim,dim.spec, method="rexec",...) {
 
     dimMissing = missing(dim)
@@ -611,7 +609,7 @@ if(!isGeneric("r.apply")) {
 #' This function applies a custom r function on each individual scidbst array chunk using the r_exec interface with
 #' SciDB.
 #'
-#' @aliases r.apply
+#' @aliases r.apply r_exec
 #' @details The script that is created during this function will handle the installation of required R-packages on
 #' each of the instances. Then it combines the incoming attribute vectors to a data.frame object, which is passed
 #' on to the '\code{\link[plyr]{ddply}}' function of the package 'plyr'. Depending on the stated aggregates parameter
@@ -646,21 +644,38 @@ if(!isGeneric("r.apply")) {
 #' the mentioned point.
 #' The following variable names are reserved if the spatial and temporal references exists and are transferred to ddply
 #' function:
-#' - affine: a 2x3 matrix for spatial coordinate transformation
-#' - crs: a CRS object stating the used coordinate reference system
-#' - extent: a extent object stating the spatial extent
-#' - tmin / tmax: POSIXlt objects stating the minimum and maximum temporal boundary
-#' - t0: POSIXlt object marking the datum (time at value 0)
-#' - tunit: character describing the temporal measurement unit
-#' - tres: a number describing the temporal resolution
+#' \describe{
+#'  \item{\code{affine}}{a 2x3 matrix for spatial coordinate transformation}
+#'  \item{\code{crs}}{a CRS object stating the used coordinate reference system}
+#'  \item{\code{extent}}{a extent object stating the spatial extent}
+#'  \item{\code{tmin} / \code{tmax}}{POSIXlt objects stating the minimum and maximum temporal boundary}
+#'  \item{\code{t0}}{POSIXlt object marking the datum (time at value 0)}
+#'  \item{\code{tunit}}{character describing the temporal measurement unit}
+#'  \item{\code{tres}}{a number describing the temporal resolution}
+#' }
 #' Also ... can contain a developer parameter called "result" with the allowed values "afl" and "rscript". To
 #' prevent the function from being executed.
 #'
 #' @examples
 #' \dontrun{
 #'  input.arr = scidbst("some_scidbst_array")
+#'
+#'  # make sure to have the dimensions as attributes if you plan to use them in calculations
 #'  input.arr = transform(input.arr, dimx="double(x)",dimy="double(y)", dimt="double(t)")
-#'  f <- function(x) {
+#'  f <- function(x,...) {
+#'      # parse the parameter passed as ... into the function and assign them to the functions
+#'      # environment
+#'      dot.input = list(...)
+#'      i <- 1
+#'      lapply(dot.input, function(x,y) {
+#'          assign(x=y[i],value=x,envir=parent.env(environment()))
+#'          i <<- i+1
+#'          x
+#'        },
+#'        names(dot.input)
+#'      )
+#'      rm(i)
+#'
 #'      if (is.null(x)) {
 #'        return(c(nt=0,var=0,median=0,mean=0))
 #'      }
@@ -679,10 +694,12 @@ if(!isGeneric("r.apply")) {
 #'      dim.spec=list(y=c(min=0,max=99,chunk=20,overlap=0),x=c(min=0,max=99,chunk=20,overlap=0)),
 #'      logfile="/tmp/logfile.log")
 #' }
+#' @name r.apply,scidbst
 #' @rdname r-apply-scidbst-method
 #' @export
 setMethod("r.apply",signature(x="scidbst",f="function"), .apply.scidbst.fun)
 
+#' @name r.apply,scidb
 #' @rdname r-apply-scidbst-method
 #' @export
 setMethod("r.apply",signature(x="scidb",f="function"), function(x,f,array,packages,parallel=FALSE,cores=1,aggregates=c(),output, logfile, ...) {

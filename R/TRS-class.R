@@ -123,28 +123,22 @@ setMethod("t0",signature(x="scidbst"),function(x) {
   return(t0(x@trs))
 })
 
-#' Get temporal dimension name
-#'
-#' Returns the name of the temporal dimension of a scidbst array. If the object is not temporal it will
-#' return the first dimension name.
-#' @name tdim
-#' @rdname tdim-method
-#' @param x TRS object
-#' @return The temporal dimension name or the first dimension name
-#' @export
-setMethod("tdim",signature(x="TRS"),function(x) {
-  return(x@dimname)
-})
+if (!isGeneric("trs")) {
+  setGeneric("trs", function(x) {
+    standardGeneric("trs")
+  })
+}
 
-#' @rdname tdim-method
-#' @param x TRS object
+#' Returns the Temporal reference object
+#'
+#' @param x scidbst object
+#' @return \code{\link{TRS} object}
 #' @export
-setMethod("tdim",signature(x="scidbst"),function(x) {
-  if (x@isTemporal) {
-    return(tdim(x@trs))
+setMethod("trs",signature(x="scidbst"), function(x){
+  if (x@isTemporal || !is.null(x@trs)) {
+    return(x@trs)
   } else {
-    warning("scidbst object has no temporal reference. Returning first dimension.")
-    return(dimensions(x)[1])
+    stop("Object has no temporal reference")
   }
 })
 

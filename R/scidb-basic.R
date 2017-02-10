@@ -2,29 +2,6 @@
 NULL
 
 ##############################
-# dimensions
-##############################
-
-if (!isGeneric("dimensions")) {
-  setGeneric("dimensions",function(obj){
-    standardGeneric("dimensions")
-  })
-}
-
-#' @importFrom sp dimensions
-#' @export
-setMethod("dimensions",signature(obj="scidbst"), function(obj) {
-  .scidb = as(obj,"scidb")
-  dims = scidb::dimensions(.scidb)
-  return(dims)
-})
-
-#' @export
-setMethod("dimensions",signature(obj="scidb"), function(obj) {
-  return(scidb::dimensions(x=obj))
-})
-
-##############################
 # scidb_op
 ##############################
 

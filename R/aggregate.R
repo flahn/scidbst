@@ -29,7 +29,7 @@ setGeneric("aggregate.t", function(x, ...) standardGeneric("aggregate.t"))
 #'
 #' @aliases aggregate.t
 #' @usage
-#' aggregate(x, by, FUN, window, variable_window)
+#' aggregate.t(x, by, FUN, window, variable_window)
 #'
 #' @param x A \code{scidbst} object.
 #' @param by optional single character string or a list of array dimension and/or attribute names to group by additionally to

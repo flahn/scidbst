@@ -147,6 +147,7 @@ if (!isGeneric("scidbsteval")) {
 #' SciDB cluster. The result will be stored under the given 'name' parameter. In addition to the original function, the
 #' evaluation of a scidbst object will also set the current spatial and/or temporal reference.
 #'
+#' @name scidbsteval
 #' @rdname scidbsteval
 #' @aliases scidbsteval
 #' @param expr The scidbst object

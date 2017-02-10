@@ -6,7 +6,7 @@
 \alias{aggregate.t,scidbst-method}
 \title{Aggregate over time}
 \usage{
-aggregate(x, by, FUN, window, variable_window)
+aggregate.t(x, by, FUN, window, variable_window)
 }
 \arguments{
 \item{x}{A \code{scidbst} object.}

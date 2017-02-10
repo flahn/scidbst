@@ -20,5 +20,6 @@ NULL
 #' @param x scibst
 #' @return number of columns for a scidbst object
 #'
+#' @name ncol,scidbst
 #' @export
 setMethod("ncol",signature(x="scidbst"),.ncol)

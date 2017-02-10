@@ -18,5 +18,6 @@ NULL
 #'
 #' @param x scibst
 #' @return number of rows for a scidbst object
+#' @name nrow,scidbst
 #' @export
 setMethod("nrow",signature(x="scidbst"),.nrow)

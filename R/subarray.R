@@ -227,3 +227,11 @@ setMethod("subarray",signature(x="scidbst",limits="TemporalExtent"), .subarray.T
 #' @rdname subarray-scidbst-method
 #' @export
 setMethod("subarray",signature(x="scidbst",limits="scidbst"), .subarray.with.scidbst)
+
+
+#' @name subarray,scidb
+#' @rdname subarray-scidbst-method
+#' @export
+setMethod("subarray",signature(x="scidb",limits="numeric"), function(x,limits,between=FALSE) {
+  scidb::subarray(x=x,limits=limits,between=between)
+})

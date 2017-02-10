@@ -29,11 +29,22 @@ if (!isGeneric("repart")) {
 #' @note This function might take a while, because all data values need to be moved (restored) accordingly. You might either state
 #' a valid schema parameter or build a schema from the parameters "upper", "chunk" and "overlap".
 #'
+#' @name repart,scidbst
 #' @param x the scidbst array
 #' @param schema The new schema as a string
 #' @param upper A vector of upper boundaries for the array
 #' @param chunk A vector of chunksizes for each dimension
 #' @param overlap A vector of chunk overlaps for the repartitioned array
 #' @return scidbst array with modified chunks
+#'
+#' @examples
+#' \dontrun{
+#'    scidbconnect()
+#'    trmm.sub = scidbst("trmm_sub")
+#'
+#'    # repartition the array by stating a new schema with the same attributes and dimensions
+#'    trmm.reparted = repart(trmm.sub,schema="<band1:double,dimy:double,dimx:double,dimt:double>[y=0:399,30,1,x=0:1439,30,1,t=0:*,365,6]")
+#' }
+#' @seealso \code{\link[scidb]{repart}}
 #' @export
 setMethod("repart",signature(x="scidbst"), .repart.scidbst)

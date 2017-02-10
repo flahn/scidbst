@@ -60,8 +60,7 @@ NULL
 
     x@affine = out.affine
   }
-  # x@ncols = as.integer(ncol(x))
-  # x@nrows = as.integer(nrow(x))
+
   if (x@isTemporal && (grid[tdim(x) > 1])) {
     #adapt temporal reference
     tres = round(tres(x) * grid[tdim(x)])
@@ -93,6 +92,8 @@ NULL
 #' To make the query formulation easier we allow also to pass the aggregation function name of the AFL function as parameter "af", which
 #' will be used on all attributes.
 #'
+#' @name regrid,scidbst
+#' @aliases resample,scidbst
 #' @rdname resample-scidbst-methods
 #'
 #' @param x The scidbst object

@@ -167,7 +167,7 @@ if(!isGeneric("stream")) {
 #' Apply a R script on all chunks of an array
 #'
 #' This function will execute a R function within a ddply call to perform higher level analysis using the [streaming interface of SciDB](https://github.com/Paradigm4/stream).
-#' @aliases stream
+#' @aliases stream,scidbst
 #' @param  x scidbst array
 #' @param array the array name to store the results under
 #' @param packages the names of the R packages that are used during the function call
@@ -178,5 +178,4 @@ if(!isGeneric("stream")) {
 #' @param logfile the file path used to log during the processing
 #' @seealso \link[scidbst]{r.apply}
 #'
-#' @export
 setMethod("stream",signature(x="scidbst",f="function"), .iquery.stream.script)
