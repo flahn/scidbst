@@ -37,7 +37,8 @@ NULL
       limits[yindex] = ymin(out)
       limits[yindex+ndim] = ymax(out)
 
-      res = subarray(x=x,limits=limits,between=between) #use modified subarray version
+      # create a subset by passing on the numeric limits to 'subarray'
+      res = subarray(x=x,limits=limits,between=between)
       if (between) {
         res@extent = e
       }
@@ -74,6 +75,6 @@ NULL
 #' cropped = crop(scidbst.obj,e)
 #' }
 #' @export
-setMethod('crop', signature(x="scidbst", y="ANY"),
+setMethod("crop", signature(x="scidbst", y="ANY"),
           .crop.scidbst
 )

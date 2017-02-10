@@ -112,6 +112,30 @@ setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
 
 
 .aggregate.scidbst = function(x, by, ...) {
+
+  if (!missing(by)) {
+    if (!is.list(by)) {
+      if (is.character(by) && length(by) > 0) {
+        by = as.list(by)
+      }
+    } else {
+      stop("Cannot use the stated parameter 'by'. Type incompatible. Please use 'list' instead.")
+    }
+  }
+
+
+  dots = list(...)
+  usesWindow = any("window" %in% names(dots))
+
+  if (missing(by) && !usesWindow) {
+    by = "" # aggregate over all dimensions -> result will contain one value
+  }
+
+  if (!missing(by) && usesWindow) {
+    by = dimensions(x) #uses all dimensions -> no aggregation, just applying the window operation
+    warning("Ignoring parameter 'by', because 'window' operator is used. To prevent conflicts 'by' is set to all dimensions, meaning the array schema is not changed.")
+  }
+
   aggregate_by_time = FALSE
   aggregate_by_space = FALSE
 

@@ -162,12 +162,12 @@
 #' List all spacetime SciDB arrays
 #'
 #' This function will list all SciDB arrays that have a spatial or temporal reference. It will also list the type of
-#' array: 's' for spatial, 't' for temporal, 'st' for the combination of both. Depending on provided arguments, extent 
+#' array: 's' for spatial, 't' for temporal, 'st' for the combination of both. Depending on provided arguments, extent
 #' and spatial / temporal reference information is returned in additional columns.
 #' @param  extent boolean, whether or not the spacetime extent is returned as additional columns
 #' @param srs boolean, whether or not spatial reference metadata is returned as additional columns
 #' @param trs boolean, whether or not temporal reference metadata is returned as additional columns
-#' @return data.frame with columns "name" and "setting" and 
+#' @return data.frame with columns "name" and "setting" and
 #'
 #' @seealso \code{\link{scidb::scidbls}}
 #' @export
@@ -274,7 +274,7 @@ transformAllTemporalIndices = function(obj,df) {
 }
 
 # x: scidbst object
-.memorySize = function(x,unit) {
+.memorySize = function(x,unit="MB") {
   unit = toupper(unit)
   if (!unit %in% c("KB","MB","GB")) stop("Unrecognized data storage unit.")
 
@@ -301,4 +301,65 @@ transformAllTemporalIndices = function(obj,df) {
     return(total/(8*1024*1024*1024))
   }
 
+}
+
+setGeneric("estimateFileSize", function(x, ...) {
+  standardGeneric("estimateFileSize")
+})
+
+#' Estimates the file size for a scidbst array
+#'
+#' This function uses the meta information on a scidbst array to estimate the potential file size.
+#'
+#' @param x scidbst array
+#' @param unit (optional) one of c("KB","MB","GB") to specify the digital storage unit. Default is MB
+#' @return numeric the estimated file size in the unit specified
+#' @export
+setMethod("estimateFileSize",signature(x="scidbst"), function(x, unit="MB") {
+  return(.memorySize(x, unit))
+})
+
+# recalculates the temporal resolution in seconds
+.tres2seconds = function(A) {
+  if (!A@isTemporal) {
+    stop("Array has no time dimension")
+  }
+  unit = tunit(A)
+  res = tres(A)
+  allUnits = c("secs", "mins", "hours", "days", "weeks")
+  factors = c(1, 60, 60*60, 60*60*24, 60*60*24*7)
+  if (!unit %in% allUnits) {
+    stop("Cannot convert time resolution into seconds. Temporal Unit is not supported")
+  } else {
+    res = res * factors[allUnits == unit]
+
+    #note: might be a  problem with daylight saving times -> will be off about 1 hour if it changes
+  }
+
+  return(res)
+}
+
+# returns a vector of names for potential temporary arrays
+# x: scidbst, n: number of names to be created
+.getTempNames = function(x,n) {
+  if (!is.null(x@temps)) {
+    usedIDs = as.integer(regmatches(x@temps,regexpr("(\\d)+$",x@temps)))
+    ids = sample.int(2147483647,n,replace=FALSE)
+
+    # rule out that there are any double ids
+    loglist = any(ids %in% usedIDs)
+    startExpr = loglist
+    while(startExpr) {
+      doublets = ids[startExpr]
+      amount = length(doublets)
+      newIds = sample.int(2147483647,amount,replace=FALSE)
+      ids[startExpr] = newIds
+      startExpr = any(ids %in% usedIDs)
+    }
+  } else {
+    ids = sample.int(2147483647,n,replace=FALSE)
+  }
+
+  names = paste("__temp_",x@title,"_",ids,sep="")
+  return(names)
 }

@@ -4,6 +4,7 @@
 #' TRS constructor
 #'
 #' This function creates a new temporal reference object
+#'
 #' @rdname TRS-class
 #' @param dimension character - the dimension name
 #' @param t0 POSIXt - the datum
@@ -147,6 +148,9 @@ setMethod("tdim",signature(x="scidbst"),function(x) {
   }
 })
 
+#######################
+# getRefPeriod
+#######################
 
 if (!isGeneric("getRefPeriod")) {
   setGeneric("getRefPeriod", function(x) {
@@ -186,6 +190,10 @@ setMethod("show",signature(object="TRS"), function(object){
   cat(out)
 })
 
+##########################
+# setTRS
+##########################
+
 if (!isGeneric("setTRS")) {
   setGeneric("setTRS", function(x,trs, ...) {
     standardGeneric("setTRS")
@@ -208,4 +216,70 @@ setMethod("setTRS", signature(x="ANY",trs="TRS"), function(x,trs, return=FALSE) 
   if (return) {
     return(scidbst(x@name))
   }
+})
+
+
+######################
+# copyTRS
+######################
+
+if (!isGeneric("copyTRS")) {
+  setGeneric("copyTRS", function(x,y) {
+    standardGeneric("copyTRS")
+  })
+}
+.cptrs = function(x,y) {
+  if (!y@isTemporal) {
+    stop("Cannot copy the temporal reference of 'y', because y is not temporal.")
+  }
+  xname = if (class(x)=="scidbst") x@proxy@name else x@name
+  yname = y@title
+
+  xValidName = length(grep(c("[,\\(\\)]"),xname)) == 0
+  if (!xValidName) {
+    stop("Function statements in name of object 'x' detected. Please execute the calculation and store the results before running this method again.")
+  }
+
+  cmd = sprintf("eo_settrs(%s,%s)",xname,yname)
+  iquery(cmd)
+
+  out = scidbst(xname)
+  return(out)
+}
+
+#' Copy temporal reference
+#'
+#' Copies the temporal reference systems from scidbst object y to scidbst object x.
+#' @rdname copyTRS-methods
+#' @param x scidbst or scidb object
+#' @param y scidbst object
+#'
+#' @return modified x
+#' @export
+setMethod("copyTRS",signature(x="scidbst",y="scidbst"), .cptrs)
+
+#' @rdname copyTRS-methods
+#' @export
+setMethod("copyTRS",signature(x="scidb",y="scidbst"), .cptrs)
+
+
+##############
+# is.temporal
+##############
+if (!isGeneric("is.temporal")) {
+  setGeneric("is.temporal", function(x) {
+    standardGeneric("is.temporal")
+  })
+}
+
+#' Check for a scidbst object having a temporal reference
+#'
+#' The function checks for certain parameter considered to describe the temporal reference.
+#'
+#' @param x scidbst object
+#' @return logical whether or not the object has a temporal reference
+#'
+#' @export
+setMethod("is.temporal",signature(x="scidbst"), function(x) {
+  return(x@isTemporal && !is.null(x@trs) && !is.null(x@tExtent))
 })

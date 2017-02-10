@@ -11,7 +11,6 @@ subarray.scidbst = function (x, limits, between = FALSE) {
     limits = gsub("\\*","Inf",limits)
     limits = as.numeric(unlist(strsplit(limits,",")))
   }
-  #TODO limits = scidbst object
 
   if (length(limits) != 2*ndim) {
     stop("limits do not match dimension description [#limits != (2*#dims)]")
@@ -30,6 +29,7 @@ subarray.scidbst = function (x, limits, between = FALSE) {
       #calculate upper left coordinate (origin of image coordinate system)
       ul = .transformToWorld(affine(x),xvals[1],yvals[1]) #note: image coordinate system trans(i0) > trans(iEnd)
 
+      #TODO lower right + 1 to indices to cover the correct extent
       lr = .transformToWorld(affine(x),xvals[2],yvals[2]) #to get an extent
       newExtent = extent(ul[1],lr[1],lr[2],ul[2])
     }
