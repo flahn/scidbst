@@ -11,7 +11,7 @@
 \arguments{
 \item{expr}{The scidbst object}
 
-\item{name}{The name of the target array in which the data is stored}
+\item{name}{The name of the target array in which the data is stored (required).}
 
 \item{eval}{A flag whether or not the commands shall be executed in scidb}
 
@@ -34,6 +34,9 @@ evaluation of a scidbst object will also set the current spatial and/or temporal
 Using the similar function \code{scidbeval} function will also perform the storing operation, but it will not transfer
 the dimension references for space and/or time. Also, unbounded dimensions that are not dropped will be created
 as bounded dimensions by its minimum/maximum dimension value.
+
+In contrast to \code{\link[scidb]{scidbeval}} the parameter name is required. The creation of arrays with a random name in scidb are
+not supported by \code{scidbsteval}.
 }
 \examples{
 \dontrun{
