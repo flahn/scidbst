@@ -30,6 +30,6 @@ transform.scidbst = function (`_data`, ...) {
 #' ls7_calc = transform(ls7_brazil_regrid, ndvi = "(band4 - band3) / (band4 + band3)", mdvi = "(band8 - band3) / (band8 + band3)")
 #' }
 #'
-#' @seealso \link{transform}
+#' @seealso \link{transform}, \link{transform.scidb}
 #' @export
 setMethod("transform", signature(`_data`="scidbst"), transform.scidbst)

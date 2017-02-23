@@ -3,10 +3,13 @@ NULL
 
 
 
-#' Creates a SpatialPointsDataFrame from scidbst
+#' As SpatialPointsDataFrame
 #'
-#' @name as-SpatialPointsDataFrame
-#' @family scidbst
+#' Coerces a scidbst object into a \code{\link{SpatialPointsDataFrame}} by downloading the array information and recalculating
+#' the spatial dimension indices into spatial coordinates.
+#'
+#' @name as-scidbst,SpatialPointsDataFrame
+#' @family coerce-scidbst
 #' @importClassesFrom sp SpatialPointsDataFrame
 setAs("scidbst","SpatialPointsDataFrame",function(from,to) {
 
@@ -37,10 +40,13 @@ setAs("scidbst","SpatialPointsDataFrame",function(from,to) {
   }
 })
 
-#' Creates a RasterBrick from scidbst
+#' As RasterBrick
 #'
-#' @name as-RasterBrick
-#' @family scidbst
+#' Coerces a scidbst object into a \code{RasterBrick} object. The information of the array will be downloaded to the local client
+#' and will be hold in memory. The spatial dimension indices will be recalculated into spatial coordinates during the process.
+#'
+#' @name as-scidbst,RasterBrick
+#' @family coerce-scidbst
 #' @importClassesFrom raster RasterBrick
 setAs("scidbst","RasterBrick",function(from,to) {
   points = as(from,"SpatialPointsDataFrame")
@@ -51,10 +57,13 @@ setAs("scidbst","RasterBrick",function(from,to) {
 })
 
 
-#' Creates a STSDF from scidbst
+#' As STSDF
 #'
-#' @name as-STSDF
-#' @family scidbst
+#' Coerces a scidbst object into a STSDF object. Spatial and temporal dimension indices are calculated into real-world
+#' coordinates using existing spatio-temporal references.
+#'
+#' @name as-scidbst,STSDF
+#' @family coerce-scidbst
 #' @importClassesFrom spacetime STSDF
 setAs("scidbst","STSDF",function(from,to) {
   if (from@isSpatial && from@isTemporal) {
@@ -65,8 +74,6 @@ setAs("scidbst","STSDF",function(from,to) {
 
     # sp
     .data = transformAllSpatialIndices(from,.data)
-    #uniqueLocations = unique(cbind(y=spdata["y"],x=spdata[,"x"]))
-
 
     # in principle it would be great to use unique locations, but it is hard to assign the indices of the tuples (with 'which')
     # so we are going to try out if it works with redundant points
@@ -101,10 +108,12 @@ setAs("scidbst","STSDF",function(from,to) {
 
 setOldClass("xts")
 
-#' Creates a RasterBrick from scidbst
+#' As xts
 #'
-#' @name as-xts
-#' @family scidbst
+#' Coerces a scidbst object into a xts time series.
+#'
+#' @name as-scidbst,xts
+#' @family coerce-scidbst
 #' @importFrom xts xts
 setAs("scidbst","xts",function(from,to) {
   if (from@isTemporal && !from@isSpatial) {
@@ -128,18 +137,24 @@ setAs("scidbst","xts",function(from,to) {
   }
 })
 
-#' Creates a data.frame from the scidbst object
+#' As data.frame
 #'
-#' @name as-data.frame
-#' @family scidbst
+#' Coerces the scidbst object into a data.frame object. The dimension values will NOT be recalculated!
+#'
+#' @note Dimensions and attributes will be treated as columns of the data.frame in the same way as \code{\link{[.scidb}}
+#' does.
+#'
+#' @seealso \link{[.scidb}
+#' @name as-scidbst,data.frame
+#' @family coerce-scidbst
 setAs("scidbst","data.frame",function(from,to) {
   return(.downloadData(from))
 })
 
 #' Returns the scidb proxy part of the scidbst object
 #'
-#' @name as-scidb
-#' @family scidbst
+#' @name as-scidbst,scidb
+#' @family coerce-scidbst
 setAs("scidbst","scidb",function(from,to) {
   return(from@proxy)
 })
