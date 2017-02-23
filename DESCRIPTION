@@ -41,7 +41,6 @@ Collate:
     'dimension.R'
     'extent.R'
     'join.R'
-    'names.R'
     'pkg.R'
     'project.R'
     'regrid.R'
