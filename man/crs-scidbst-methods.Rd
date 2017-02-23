@@ -3,19 +3,37 @@
 \docType{methods}
 \name{crs,scidbst}
 \alias{crs,scidbst}
-\title{Gets the Coordinate Reference System}
+\alias{crs<-,scidb}
+\alias{crs<-,scidbst}
+\alias{setCRS,scidb}
+\alias{setCRS,scidbst}
+\title{Gets and sets the Coordinate Reference System for a scidb/scidbst object}
 \usage{
 \S4method{crs}{scidbst}(x, ...)
+
+\S4method{crs}{scidbst,CRS}(x) <- value
+
+\S4method{crs}{scidb,CRS}(x) <- value
 }
 \arguments{
-\item{x}{scidbst object}
+\item{x}{scidb or scidbst object}
+
+\item{...}{additional parameter passed to \link[raster]{crs}}
+
+\item{value}{An CRS-class object}
 }
 \value{
-CRS object
-
-\link[rgdal]{CRS}
+A \link{scidbst} object for set, a \link[rgdal]{CRS} object for get
 }
 \description{
-Returns the coordinate reference system of a scidbst object in form of a CRS object.
+Returns the coordinate reference system of a scidbst object in form of a CRS object. The method can also be used to
+set or replace the CRS for a scidb or scidbst object.
+}
+\note{
+The changes only apply in R. To persist the changes, make the object truly spatial by setting also the
+affine transformation and the spatial extent and then run scidbsteval.
+}
+\seealso{
+\code{\link[raster]{projection}}, \code{\link[sp]{CRS-class}}
 }
 

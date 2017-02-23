@@ -125,7 +125,7 @@ setMethod("aggregate.sp", signature(x="scidbst"), .aggregate.sp.scidbst)
 
 
   dots = list(...)
-  usesWindow = any("window" %in% names(dots))
+  usesWindow = any(c("window","variable_window") %in% names(dots))
 
   if (missing(by) && !usesWindow) {
     by = "" # aggregate over all dimensions -> result will contain one value

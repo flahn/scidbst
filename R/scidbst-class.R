@@ -93,7 +93,7 @@ setMethod("show",signature(object="scidbst"), function(object){
     cat(paste("\t",crs(object),"\n",sep=""))
   }
   if (object@isTemporal) {
-    show(t.extent(object))
+    show(textent(object))
     show(trs(object))
   }
   if(!is.null(s)) {

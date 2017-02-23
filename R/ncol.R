@@ -13,13 +13,6 @@ NULL
   }
 }
 
-#' Number of columns
-#'
-#' returns the number of columns
-#'
-#' @param x scibst
-#' @return number of columns for a scidbst object
-#'
-#' @name ncol,scidbst
+#' @rdname resolution-scidbst-methods
 #' @export
 setMethod("ncol",signature(x="scidbst"),.ncol)

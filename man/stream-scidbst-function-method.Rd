@@ -2,7 +2,7 @@
 % Please edit documentation in R/stream.R
 \docType{methods}
 \name{stream,scidbst,function-method}
-\alias{stream}
+\alias{stream,scidbst}
 \alias{stream,scidbst,function-method}
 \title{Apply a R script on all chunks of an array}
 \usage{

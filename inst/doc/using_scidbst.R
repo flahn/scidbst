@@ -24,7 +24,7 @@ l7_ethiopia = scidbst("L7_SW_ETHOPIA")
 l7_ethiopia
 extent(l7_ethiopia)
 crs(l7_ethiopia)
-t.extent(l7_ethiopia)
+textent(l7_ethiopia)
 trs(l7_ethiopia)
 
 ## ----ehtiopiaSubset, cache=1---------------------------------------------

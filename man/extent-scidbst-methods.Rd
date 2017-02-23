@@ -3,13 +3,27 @@
 \docType{methods}
 \name{extent,scidbst}
 \alias{extent,scidbst}
+\alias{extent<-,scidb}
+\alias{extent<-,scidb,Extent-method}
+\alias{extent<-,scidbst}
+\alias{extent<-,scidbst,Extent-method}
+\alias{setExtent,scidb}
+\alias{setExtent,scidbst}
 \alias{xmax,scidbst}
+\alias{xmax,scidbst-method}
 \alias{xmin,scidbst}
+\alias{xmin,scidbst-method}
 \alias{ymax,scidbst}
+\alias{ymax,scidbst-method}
 \alias{ymin,scidbst}
-\title{Get the spatial extent of a scidbst array}
+\alias{ymin,scidbst-method}
+\title{Gets and sets the spatial extent of a scidbst array}
 \usage{
 \S4method{extent}{scidbst}(x)
+
+\S4method{extent}{scidbst,Extent}(x) <- value
+
+\S4method{extent}{scidb,Extent}(x) <- value
 
 \S4method{xmin}{scidbst}(x)
 
@@ -20,14 +34,21 @@
 \S4method{ymax}{scidbst}(x)
 }
 \arguments{
-\item{x}{scidbst array}
+\item{x}{scidb or scidbst array}
+
+\item{value}{An object of class Extent}
 }
 \value{
-Extent-class object
+\code{\link[raster]{Extent-class}} object or \code{\link{scidbst}} object
 }
 \description{
 This function let you retrieve the spatial extent as a Extent-class object. With the additional functions xmin, xmax, ymin and ymax
-particular information about the extent can be retrieved directly from the scidbst object.
+particular information about the extent can be retrieved directly from the scidbst object. Using the "<-" operator a spatial extent can be set for a scidb array or it replaces the spatial extent of a scidbst
+array with an Extent-class object.
+}
+\note{
+Setting the extent with \code{extent<-} has an informative meaning. By setting the extent on a scidbst object the
+extent will be replaced, but NO cropping or subsetting will be performed.
 }
 \examples{
 \dontrun{
@@ -38,5 +59,8 @@ xmax(arr)
 ymin(arr)
 ymax(arr)
 }
+}
+\seealso{
+\code{\link[raster]{extent}}
 }
 

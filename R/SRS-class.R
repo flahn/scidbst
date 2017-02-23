@@ -1,7 +1,7 @@
 #' @include SRS-class-decl.R
 #' @include scidbst-class-decl.R
-#' @include ncol.R
 #' @include nrow.R
+#' @include ncol.R
 NULL
 
 #' SRS class constructor
@@ -39,19 +39,21 @@ if (!isGeneric("setSRS")) {
   })
 }
 
-#' Sets the spatial reference system to a given array
+#' Sets the spatial reference system at a given array
 #'
-#' By stating the srs and the affine projection together with a given scidb array, that array
-#' becomes a spatial array.
+#' By knowing the \code{\link{SRS}} and the \code{\link{affine}} projection a spatial reference can be established on a given
+#' scidb array.
 #'
-#' @param x a scidb array
-#' @param srs a SRS class
+#' @name setSRS,scidb
+#' @aliases setSRS setSRS,scidbst
+#' @param x a \link{scidb} array
+#' @param srs a \link{SRS} class
 #' @param affine a 2x3 matrix containing the affine projection
 #' @param return logical - if a scidbst object shall be returned (default FALSE)
 #' @return a scidbst object if return=TRUE
 #'
 #' @export
-setMethod("setSRS", signature(x="ANY",srs="SRS",affine="matrix"), .setSRS)
+setMethod("setSRS", signature(x="scidb",srs="SRS",affine="matrix"), .setSRS)
 
 ###################
 # srs

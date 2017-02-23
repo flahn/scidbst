@@ -2,6 +2,7 @@
 % Please edit documentation in R/affine.R
 \docType{methods}
 \name{affine,scidbst}
+\alias{affine}
 \alias{affine,scidbst}
 \alias{affine<-,scidb}
 \alias{affine<-,scidbst}

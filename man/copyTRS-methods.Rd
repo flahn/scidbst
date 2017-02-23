@@ -21,4 +21,17 @@ modified x
 \description{
 Copies the temporal reference systems from scidbst object y to scidbst object x.
 }
+\examples{
+\dontrun{
+ st.arr1 = scidbst("st_arr_1")
+ st.arr2  = scidbst("st_arr_2")
+ simple.arr = scidb("some_array")
+
+ # overwrite trs of array 1 with trs of array 2
+ st.arr1 = copyTRS(st.arr1, st.arr2)
+
+ # set the TRS of array 2 for the simple array (having the same named temporal dimension)
+ t.arr1 = copyTRS(simple.arr, st.arr2)
+}
+}
 

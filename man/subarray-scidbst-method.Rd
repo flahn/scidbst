@@ -2,6 +2,7 @@
 % Please edit documentation in R/subarray.R
 \docType{methods}
 \name{subarray,scidbst}
+\alias{subarray,scidb}
 \alias{subarray,scidbst}
 \title{Subarray function for scidbst object}
 \usage{
