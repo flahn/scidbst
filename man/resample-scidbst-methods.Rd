@@ -33,9 +33,9 @@ interpolation.
 The resample method performs the same operation as regrid, but it is limited to change the spatial resoultion.
 }
 \note{
-For information on the aggregation statements in scidb have a look on the supported AFL functions (\url{http://paradigm4.com/HTMLmanual/13.3/scidb_ug/ch12.html}).
-To make the query formulation easier we allow also to pass the aggregation function name of the AFL function as parameter "af", which
-will be used on all attributes.
+For information on the aggregation statements in scidb have a look on the supported AFL functions
+(\href{https://paradigm4.atlassian.net/wiki/display/ESD/SciDB+Aggregate+Operators+and+Functions}{SciDB 15.12 Doc}). To make the query formulation easier we allow also to
+pass the aggregation function name of the AFL function as parameter "af", which will be used on all attributes.
 }
 \examples{
 \dontrun{

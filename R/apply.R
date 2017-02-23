@@ -610,19 +610,13 @@ if(!isGeneric("r.apply")) {
 #' SciDB.
 #'
 #' @aliases r.apply r_exec
-#' @details The script that is created during this function will handle the installation of required R-packages on
-#' each of the instances. Then it combines the incoming attribute vectors to a data.frame object, which is passed
-#' on to the '\code{\link[plyr]{ddply}}' function of the package 'plyr'. Depending on the stated aggregates parameter
-#' the function 'f' is applied on that grouped sub data.frame object (parameter x of function f). Using the output
-#' list the array will be projected on to the selected attributes. When specifying 'dim' and 'dim.spec' the stated
-#' columns of the data.frame will be used as dimension in a perceeding redimension call.
 #'
 #' @note The function that can be stated has the following description "function(x,...) {}". The x parameter is a
 #' data.frame of the attributes stored in one chunk. In most cases you are advised to transform the array to have the
 #' dimension values as attributes if you need those to perform calculations. The function will be passed on to the \link[plyr]{ddply}
 #' function.
 #'
-#' @note parameter option "stream" for 'method' currently not supported, use \link[scidbst]{stream} instead
+#' @note parameter option "stream" for 'method' currently not supported.
 #'
 #' @param x scidbst array or scidb array
 #' @param f r function of form \code{function(x) { ... }} expecting parameter x, which is a subset of the incoming data based on the aggregate statement
@@ -639,9 +633,18 @@ if(!isGeneric("r.apply")) {
 #' @param ... see Details
 #' @return scidbst array or scidb array depending on the input
 #'
-#' @details The \code{...} operator can contain the parameter 'eval', which is set to TRUE as default. If changed to FALSE
-#' the AFL query for the r_exec part will be returned. Even if the new dimensions are stated, the execution will hold at
-#' the mentioned point.
+#' @details The script that is created during this function will handle the installation of required R-packages on
+#' each of the instances. Then it combines the incoming attribute vectors to a data.frame object, which is passed
+#' on to the '\code{\link[plyr]{ddply}}' function of the package 'plyr'. Depending on the stated aggregates parameter
+#' the function 'f' is applied on that grouped sub data.frame object (parameter x of function f). Using the output
+#' list the array will be projected on to the selected attributes. When specifying 'dim' and 'dim.spec' the stated
+#' columns of the data.frame will be used as dimension in a perceeding redimension call.
+#'
+#' The \code{...} operator can contain the parameter \code{eval}, which is set to TRUE as default.
+#' Also \code{...} can contain a developer parameter called \code{result} with the allowed values "afl" and
+#' "rscript". \code{r.apply} then returns the submitted R-Script or the resulting AFL query. To
+#' prevent the function from being executed use result in combination with "eval=FALSE".
+#'
 #' The following variable names are reserved if the spatial and temporal references exists and are transferred to ddply
 #' function:
 #' \describe{
@@ -653,8 +656,8 @@ if(!isGeneric("r.apply")) {
 #'  \item{\code{tunit}}{character describing the temporal measurement unit}
 #'  \item{\code{tres}}{a number describing the temporal resolution}
 #' }
-#' Also ... can contain a developer parameter called "result" with the allowed values "afl" and "rscript". To
-#' prevent the function from being executed.
+#'
+#'
 #'
 #' @examples
 #' \dontrun{
