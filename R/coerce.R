@@ -1,6 +1,8 @@
 #' @include utils.R
 NULL
 
+
+
 #' Creates a SpatialPointsDataFrame from scidbst
 #'
 #' @name as-SpatialPointsDataFrame
