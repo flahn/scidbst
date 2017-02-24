@@ -176,7 +176,6 @@ Currently, there is a problem with long-running queries and unintended connectio
 Interestingly we experienced also the problem, that a query has run successfully, but there was no notification about it and the process seemed to run forever, probably caused by a nightly IP connection change that did not abort the process, but made it impossible to fetch the servers callback.
 
 If you encounter those problems, we recommend that you try to extract the appropriate AFL queries and run them with 'iquery' on the server (if you have access). Otherwise make sure to not loose the connection to the SHIM client, e.g.:
-
 - use network cable instead of WIFI
 - prevent your computer from shutdown (energy saving options)
 
