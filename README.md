@@ -89,8 +89,6 @@ The mentioned functions will give you just a glimpse of the functionality of thi
 or check the vignettes in R using `browseVignettes(package="scidbst")`
 
 ## Authors & Contributors
-===
-
 - Florian Lahn
 - Marius Appel
 
