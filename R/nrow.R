@@ -12,11 +12,6 @@ NULL
   stop("Did not expect to go here. Probably no spatial or temporal reference")
 }
 
-#' Number of rows
-#'
-#' returns the number of rows
-#'
-#' @param x scibst
-#' @return number of rows for a scidbst object
+#' @rdname resolution-scidbst-methods
 #' @export
 setMethod("nrow",signature(x="scidbst"),.nrow)

@@ -1,7 +1,7 @@
 #' @include SRS-class-decl.R
 #' @include scidbst-class-decl.R
-#' @include ncol.R
 #' @include nrow.R
+#' @include ncol.R
 NULL
 
 #' SRS class constructor
@@ -18,163 +18,6 @@ SRS = function(projargs, dimnames) {
   .srs@dimnames = dimnames
   return(.srs)
 }
-
-#' Returns the Coordinate Reference System
-#'
-#' Returns the coordinate reference system of a scidbst object in form of a CRS object.
-#'
-#' @note The changes only apply in R. To persist the changes make the object truly spatial by setting also the
-#' affine transformation as well as the spatial extent and then run scidbsteval.
-#' @param x scidbst object
-#' @rdname crs-scidbst-methods
-#' @return \link[rgdal]{CRS}
-#' @export
-setMethod("crs",signature(x="scidbst"),function(x, ...) {
-  return(CRS(x@srs@projargs))
-})
-
-.setCRS = function(x,value) {
-  if (class(x) == "scidb") {
-    .scidbst = new("scidbst")
-    .scidbst@proxy = x
-    .scidbst@srs = new("SRS")
-    .scidbst@srs@projargs <- value@projargs
-    return(.scidbst)
-  }
-
-  if (class(x) == "scidbst") {
-    x@srs@projargs <- value@projargs
-
-    if (length(x@affine) == 6 && !is.null(x@extent)) {
-      x@isSpatial = TRUE
-    }
-  }
-  return(x)
-}
-
-if (!isGeneric("crs<-")) {
-  setGeneric("crs<-", function(x,value) standardGeneric("crs<-"))
-}
-
-#' @rdname crs-scidbst-methods
-#' @export
-setReplaceMethod("crs", signature(x="scidbst", value="CRS"), .setCRS)
-#' @rdname crs-scidbst-methods
-#' @export
-setReplaceMethod("crs", signature(x="ANY", value="CRS"), .setCRS)
-
-
-
-if (!isGeneric("xdim")) {
-  setGeneric("xdim",function(x) standardGeneric("xdim"))
-}
-
-#' Get spatial x dimension name
-#'
-#' Returns the name of the spatial dimension of a scidbst array, that relates to a West-East dimension. If the object is not
-#' spatially referenced it will return the second dimension name.
-#'
-#' @name xdim
-#' @rdname xdim-method
-#' @param x scidbst object
-#' @return The name of the spatia West-East dimension or the first dimension name
-#' @export
-setMethod("xdim",signature(x="scidbst"),function(x){
-  if (x@isSpatial) {
-    return(xdim(x@srs))
-  } else {
-    warning("No explicit spatial reference found. Using second dimension instead.")
-    return(dimensions(x)[2])
-  }
-})
-
-#' @rdname xdim-method
-#' @export
-setMethod("xdim",signature(x="SRS"),function(x){
-  return(x@dimnames[2])
-})
-
-if (!isGeneric("ydim")){
-  setGeneric("ydim",function(x) standardGeneric("ydim"))
-}
-
-#' Get spatial y dimension name
-#'
-#' Returns the name of the spatial dimension of a scidbst array, that relates to a North-South dimension. If the object is not
-#' spatially referenced it will return the first dimension name.
-#'
-#' @name ydim
-#' @rdname ydim-method
-#' @param x scidbst object
-#' @return The name of the spatia North-South dimension or the first dimension name
-#' @export
-setMethod("ydim",signature(x="scidbst"),function(x){
-  if (x@isSpatial) {
-    return(ydim(x@srs))
-  } else {
-    warning("No explicit spatial reference found. Using first dimension instead.")
-    return(dimensions(x)[1])
-  }
-})
-
-#' @rdname ydim-method
-#' @export
-setMethod("ydim",signature(x="SRS"),function(x){
-  return(x@dimnames[1])
-})
-
-#' @export
-setMethod("xmin",signature(x="scidbst"),function(x) {
-  return(xmin(x@extent))
-})
-
-#' @export
-setMethod("ymin",signature(x="scidbst"),function(x) {
-  return(ymin(x@extent))
-})
-
-#' @export
-setMethod("xmax",signature(x="scidbst"),function(x) {
-  return(xmax(x@extent))
-})
-
-#' @export
-setMethod("ymax",signature(x="scidbst"),function(x) {
-  return(ymax(x@extent))
-})
-
-#' @rdname resolution
-#' @export
-setMethod("xres", signature(x="scidbst"), function(x) {
-  e = extent(x)
-  dx = xmax(e)-xmin(e)
-  ncol = .ncol(x)
-  return(dx/ncol)
-})
-
-#' @rdname resolution
-#' @export
-setMethod("yres", signature(x="scidbst"), function(x) {
-  e = extent(x)
-  dy = ymax(e)-ymin(e)
-  nrow = .nrow(x)
-  return(dy/nrow)
-})
-
-#' Spatial resolution
-#'
-#' Returns informaiton about the spatial resolution as a numeric values, e.g.(xres,yres), xres or yres.
-#'
-#' @rdname resolution
-#' @param x scidbst
-#' @return numeric or numeric vector
-#'
-#' @export
-setMethod("res", signature(x="scidbst"), function(x) {
-  if (x@isSpatial) {
-    return(c(xres(x),yres(x)))
-  }
-})
 
 ########################
 # setSRS
@@ -196,19 +39,21 @@ if (!isGeneric("setSRS")) {
   })
 }
 
-#' Sets the spatial reference system to a given array
+#' Sets the spatial reference system at a given array
 #'
-#' By stating the srs and the affine projection together with a given scidb array, that array
-#' becomes a spatial array.
+#' By knowing the \code{\link{SRS}} and the \code{\link{affine}} projection a spatial reference can be established on a given
+#' scidb array.
 #'
-#' @param x a scidb array
-#' @param srs a SRS class
+#' @name setSRS,scidb
+#' @aliases setSRS setSRS,scidbst
+#' @param x a \link{scidb} array
+#' @param srs a \link{SRS} class
 #' @param affine a 2x3 matrix containing the affine projection
 #' @param return logical - if a scidbst object shall be returned (default FALSE)
 #' @return a scidbst object if return=TRUE
 #'
 #' @export
-setMethod("setSRS", signature(x="ANY",srs="SRS",affine="matrix"), .setSRS)
+setMethod("setSRS", signature(x="scidb",srs="SRS",affine="matrix"), .setSRS)
 
 ###################
 # srs

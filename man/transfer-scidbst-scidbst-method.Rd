@@ -2,15 +2,16 @@
 % Please edit documentation in R/transfer.R
 \docType{methods}
 \name{transfer,scidbst,scidbst-method}
+\alias{eo_over}
 \alias{transfer,scidbst,scidbst-method}
 \title{Transfers dimension indices}
 \usage{
 \S4method{transfer}{scidbst,scidbst}(x, y)
 }
 \arguments{
-\item{x}{the source object}
+\item{x}{scidbst object used as the source system}
 
-\item{y}{the target system}
+\item{y}{scidbst object defining the target system}
 }
 \value{
 source object extended with its coordinates in the target system
@@ -21,5 +22,14 @@ as attributes on object x.
 }
 \note{
 It uses the "eo_over" function of the scidb4geo package in scidb.
+}
+\examples{
+\dontrun{
+src.arr = scidbst("st_arr_1")
+tar.arr = scidbst("st_arr_2")
+src.arr = transfer(src.arr,tar.arr)
+# returns the source array with new attributes (the calculated coordinates
+# in the target array)
+}
 }
 

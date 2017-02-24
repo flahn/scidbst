@@ -2,29 +2,6 @@
 NULL
 
 ##############################
-# dimensions
-##############################
-
-if (!isGeneric("dimensions")) {
-  setGeneric("dimensions",function(obj){
-    standardGeneric("dimensions")
-  })
-}
-
-#' @importFrom sp dimensions
-#' @export
-setMethod("dimensions",signature(obj="scidbst"), function(obj) {
-  .scidb = as(obj,"scidb")
-  dims = scidb::dimensions(.scidb)
-  return(dims)
-})
-
-#' @export
-setMethod("dimensions",signature(obj="scidb"), function(obj) {
-  return(scidb::dimensions(x=obj))
-})
-
-##############################
 # scidb_op
 ##############################
 
@@ -54,11 +31,15 @@ if (!isGeneric("scidb_attributes")) {
     standardGeneric("scidb_attributes")
   })
 }
-#' @export
-setMethod("scidb_attributes",signature(x="scidbst"), function(x) {
+
+.get.attributes.wrapper = function(x) {
   .scidb = as(x,"scidb")
   return(scidb::scidb_attributes(.scidb))
-})
+}
+
+#' @rdname schema-scidbst-methods
+#' @export
+setMethod("scidb_attributes",signature(x="scidbst"), .get.attributes.wrapper)
 
 #' @export
 setMethod("scidb_attributes",signature(x="scidb"), scidb::scidb_attributes)
@@ -73,11 +54,14 @@ if (!isGeneric("scidb_coordinate_bounds")) {
   })
 }
 
-#' @export
-setMethod("scidb_coordinate_bounds",signature(x="scidbst"), function(x) {
+.get.coordinate.bounds.wrapper = function(x) {
   .scidb = as(x,"scidb")
   return(scidb::scidb_coordinate_bounds(.scidb))
-})
+}
+
+#' @rdname schema-scidbst-methods
+#' @export
+setMethod("scidb_coordinate_bounds",signature(x="scidbst"), .get.coordinate.bounds.wrapper)
 
 #' @export
 setMethod("scidb_coordinate_bounds",signature(x="scidb"),scidb::scidb_coordinate_bounds)
@@ -93,11 +77,14 @@ if (!isGeneric("scidb_coordinate_start")) {
   })
 }
 
-#' @export
-setMethod("scidb_coordinate_start",signature(x="scidbst"), function(x) {
+.get.coordinate.start.wrapper = function(x) {
   .scidb = as(x,"scidb")
   return(scidb::scidb_coordinate_start(.scidb))
-})
+}
+
+#' @rdname schema-scidbst-methods
+#' @export
+setMethod("scidb_coordinate_start",signature(x="scidbst"), .get.coordinate.start.wrapper)
 
 #' @export
 setMethod("scidb_coordinate_start",signature(x="scidb"), scidb::scidb_coordinate_start)
@@ -112,11 +99,14 @@ if (!isGeneric("scidb_coordinate_end")) {
   })
 }
 
-#' @export
-setMethod("scidb_coordinate_end",signature(x="scidbst"), function(x) {
+.get.coordinate.end.wrapper = function(x) {
   .scidb = as(x,"scidb")
   return(scidb::scidb_coordinate_end(.scidb))
-})
+}
+
+#' @rdname schema-scidbst-methods
+#' @export
+setMethod("scidb_coordinate_end",signature(x="scidbst"), .get.coordinate.end.wrapper)
 
 #' @export
 setMethod("scidb_coordinate_end",signature(x="scidb"), scidb::scidb_coordinate_end)
@@ -131,11 +121,14 @@ if (!isGeneric("scidb_coordinate_overlap")) {
   })
 }
 
-#' @export
-setMethod("scidb_coordinate_overlap",signature(x="scidbst"), function(x) {
+.get.coordinate.overlap.wrapper = function(x) {
   .scidb = as(x,"scidb")
   return(scidb::scidb_coordinate_overlap(.scidb))
-})
+}
+
+#' @rdname schema-scidbst-methods
+#' @export
+setMethod("scidb_coordinate_overlap",signature(x="scidbst"), .get.coordinate.overlap.wrapper)
 
 #' @export
 setMethod("scidb_coordinate_overlap",signature(x="scidb"),scidb::scidb_coordinate_overlap)
@@ -150,11 +143,14 @@ if (!isGeneric("scidb_coordinate_chunksize")) {
   })
 }
 
-#' @export
-setMethod("scidb_coordinate_chunksize",signature(x="scidbst"), function(x) {
+.get.coordinate.chunksize.wrapper = function(x) {
   .scidb = as(x,"scidb")
   return(scidb::scidb_coordinate_chunksize(.scidb))
-})
+}
+
+#' @rdname schema-scidbst-methods
+#' @export
+setMethod("scidb_coordinate_chunksize",signature(x="scidbst"), .get.coordinate.chunksize.wrapper)
 
 #' @export
 setMethod("scidb_coordinate_chunksize",signature(x="scidb"),scidb::scidb_coordinate_chunksize)
@@ -169,11 +165,44 @@ if (!isGeneric("schema")) {
   })
 }
 
-#' @export
-setMethod("schema",signature(x="scidbst"), function(x) {
+.get.schema.wrapper = function(x) {
   .scidb = as(x,"scidb")
   return(scidb::schema(.scidb))
-})
+}
+
+#' Schema related functions
+#'
+#' The listed functions are wrapped from the scidb package. The intention of those wrapped functions is the direct access
+#' to strucutural information about the scidb array, e.g. the used schema, overlap, start/end coordinates.
+#'
+#' @name schema,scidbst
+#' @rdname schema-scidbst-methods
+#' @aliases scidb_coordinate_bounds,scidbst scidb_attributes,scidbst scidb_coordinate_start,scidbst scidb_coordinate_end,scidbst
+#' scidb_coordinate_overlap,scidbst scidb_coordinate_chunksize,scidbst
+#' @param x scidbst array
+#' @return list or vector of characters, numerics or a character string
+#'
+#' @examples
+#' \dontrun{
+#'  array = scidbst("some_st_array")
+#'
+#'  # information operations
+#'  scidb_coordinate_bounds(array) # returns a list
+#'  scidb_attributes(array) # return names of the attributes
+#'
+#'  scidb_coordinate_start(array)
+#'  scidb_coordinate_end(array)
+#'  scidb_coordinate_overlap(array)
+#'  scidb_coordinate_chunksize(array)
+#'  # the above return mostly numeric vectors, except the boundary is unbounded with "*" (then a vector of characters)
+#'
+#'  schema(array) #returns a string
+#' }
+#' @seealso \link{dimensions,scidbst}, \link[scidb]{scidb_coordinate_bounds}, \link[scidb]{scidb_attributes}, \link[scidb]{scidb_coordinate_start}
+#' \link[scidb]{scidb_coordinate_end}, \link[scidb]{scidb_coordinate_overlap}, \link[scidb]{scidb_coordinate_chunksize},
+#' \link[scidb]{schema}
+#' @export
+setMethod("schema",signature(x="scidbst"), .get.schema.wrapper)
 
 #' @export
 setMethod("schema",signature(x="scidb"),scidb::schema)

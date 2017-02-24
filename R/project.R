@@ -19,5 +19,6 @@ if (!isGeneric("project")) {
 #' @return a new \code{scidbst} object
 #'
 #' @seealso \code{\link[scidb]{project}}
+#' @name project,scidbst
 #' @export
 setMethod("project",signature(x="scidbst"), .project.scidbst)

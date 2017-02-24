@@ -1,0 +1,185 @@
+---
+title: "Slope and Aspect Calculation using 'scidbst' and r_exec"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteIndexEntry{Slope and Aspect Calculation using scidbst and r_exec}
+---
+
+```{r connecting}
+library(scidbst)
+library(rgdal)
+source("/home/lahn/GitHub/scidbst/vignettes/assets/credentials.R")
+scidbconnect(host=host,port=port,user=user,password=password,protocol="https",auth_type = "digest")
+```
+
+# Aim and Goals
+In this example we will demonstrate the use of r.apply with in a use case that incorporates the spatial neighborhood of cells using a custom function that will allow a more powerful data manipulation as the standard functions of SciDB. We will calculate the slope and aspect based on heights from a SRTM dataset for Africa.
+
+# Develop and test the slope-aspect function with a subset of the SRTM array
+
+In the following we are going to create a subset of the SRTM array and run a custom function to calculate the slope and aspects on this heights data set.
+
+## Create a subset and prepare it for r.apply
+```{r, eval=FALSE}
+srtm.ethiopia = scidbst("srtm_ethiopia")
+
+srtm.sub = subarray(srtm.ethiopia,limits=extent(33.5,35,6.5,8))
+srtm.sub = scidbsteval(srtm.sub,"temp_srtm_sub")
+estimateFileSize(srtm.sub, unit="MB")
+
+srtm.sub@proxy = scidb::repart(as(srtm.sub,"scidb"),upper=c(1801,1801),chunk=c(451,451),overlap=c(1,1))
+srtm.sub = scidbsteval(srtm.sub, "srtm_sub_reparted")
+
+scidbrm("temp_srtm_sub",force=TRUE)
+
+srtm.ethiopia.prep = transform(srtm.sub, dimy="double(y)",dimx="double(x)",band1 = "double(band1)")
+srtm.ethiopia.prep = scidbsteval(srtm.ethiopia.prep,"srtm_sub_reparted_prep")
+```
+
+## Develop the slope and aspect function
+
+The function 'slopeAspect' will work in the following way:
+1. create a RasterStack object of the chunk data by creating a data.frame into a SpatialPixelDataFrame and coercing this to a RasterStack
+2. use focal operators with 9x9 matrices as a moving window calculating the derivations in x and y
+3. calculate the slope and aspect values in degrees for each cell using the derivations and add it to the RasterStack
+4. create the output data.frame from the RasterStack and return it 
+
+Note: Due to the lack of values in the outer boundary there will be a 1 pixel border around the array. With na.omit we will remove it from being stored as a NA value.
+
+```{r, eval=FALSE}
+slopeAspect = function(x, ...) {
+  data = x
+  xdim = "dimx"
+  ydim = "dimy"
+  heightAttr = "band1"
+  
+  coordinates(data) <- c(xdim,ydim)
+  gridded(data) <- TRUE
+  data = as(data, "RasterStack")
+  x_cellsize = 90
+  y_cellsize = 90
+
+  dx = focal(subset(x=data,subset=heightAttr,drop=TRUE), w=matrix(c(-1,-2,-1, 0, 0, 0, 1, 2, 1)/(8*x_cellsize),nr = 3, nc=3))
+  dy = focal(subset(x=data,subset=heightAttr,drop=TRUE), w=matrix(c(-1,-2,-1, 0, 0, 0, 1, 2, 1)/(8*y_cellsize),nr = 3, nc=3,byrow = TRUE))
+  slope = atan(sqrt(dx^2+dy^2)) *180/pi
+  names(slope) = c("slope")
+  aspect = atan2(dy,-1 * dx)* 180/pi
+  names(aspect) = c("aspect")
+  data = stack(list(data,slope,aspect))
+  out = cbind(dimy=coordinates(data)[,"y"],dimx=coordinates(data)[,"x"],as.data.frame(data))
+  out = na.omit(out)
+  out = as.data.frame(out)
+
+  
+  return(out)
+}
+```
+
+## Run the function on the subset
+```{r, eval=FALSE}
+#<band1:int16> [y=0:1801,451,1,x=0:1801,451,1]
+system.time({
+sa.array <- r.apply(x=srtm.ethiopia.prep,
+                   f = slopeAspect,
+                   array = "srtm_eth_slo_asp",
+                   packages = c("raster","sp","rgdal"),
+                   aggregates=c(),
+                   output = list(dimy="double",dimx="double",band1="double",slope="double",aspect="double"),
+                   dim = list(dimy="y",dimx = "x"),
+                   dim.spec=list(y=list(min=0,max=1801,chunk=451,overlap=1),x=list(min=0,max=1801,chunk=451,overlap=1))
+                   )
+}) #~ 23s
+```
+
+
+## Visualization
+```{r, include=FALSE}
+sa.array = scidbst("srtm_eth_slo_asp")
+```
+
+```{r}
+brick = as(sa.array,"RasterBrick")
+spplot(subset(brick,"band1"),main="Heights in m")
+spplot(subset(brick,"slope"),main="Slope in degree")
+spplot(subset(brick,"aspect"),main="Aspect in degree")
+```
+
+
+# Testing slope and aspect calculation on the complete SRTM dataset
+
+After the intial test, we will now apply the function to the whole African SRTM dataset.
+
+## Prepare data
+
+Prepare the original SRTM data set to incorporate overlap.
+
+```{r, eval=FALSE}
+srtm = scidbst("SRTM_AFRICA")
+# estimateFileSize(srtm) ~ 72GB
+
+schema(as(srtm,"scidb"))
+# <band1:int16> [y=-6001:84001,2048,0,x=-1:90002,2048,0]
+
+srtm@proxy = scidb::repart(as(srtm,"scidb"),upper=c(84001,90002),chunk=c(2048,2048),overlap=c(1,1))
+srtm.prep = transform(srtm,dimy="double(y)",dimx="double(x)",band1="double(band1)")
+
+srtm.prep = scidbsteval(srtm.prep,"srtm_africa_prep")
+
+```
+
+We need to state the x and y cellsizes of the image in order to calculate slope and aspect in meters, since the height is also stated in meters. The source array has coordinates in latitude-longitude and therefore the meter sizes of the cells would vary through out the image. To make the example easier to understand we will neglect the inaccuracies and use an approximated meter value for the resolutions. We justify this by the assumption that the cellsizes of neighboring cells will change similarly throughout the image, so that the differences are quite small. So we state the cellsizes with 90m in this calculation.
+
+## Apply the slopeAspect function
+
+The *aggregates* parameter will be empty. In this case the whole chunk is passed to ddply and the function will be applied. In this example we will be performing the redimensioning after the calculation was performed. This means that the dimension names and schema need to be stated. Since there is almost no change in the array structure, except the 1 pixel border, we will reuse the array schema of the source SRTM array.
+By renaming the dimension in the same manner as the source array, the spatial reference will be copied as well.
+
+```{r runAnalysisComplete, eval=FALSE}
+system.time({
+sa.array <- r.apply(x=srtm.prep,
+                   f = slopeAspect,
+                   array = "srtm_africa_slope_asp",
+                   packages = c("raster","sp","rgdal"),
+                   aggregates=c(),
+                   output = list(dimy="double",dimx="double",band1="double",slope="double",aspect="double"),
+                   dim = list(dimy="y",dimx = "x"),
+                   dim.spec=list(y=list(min=-6001,max=84001,chunk=2048,overlap=1),x=list(min=-1,max=90002,chunk=2048,overlap=1))
+                   )
+})
+```
+
+
+## When things go sideways...
+When running the query on the complete dataset, the r.apply call including the redimensioning has run for a long time and it seemed that the process will never finish, although at the server there was no scidb process running anymore. 
+
+In this case you can look up the temporary arrays that might have been created during the process. In this case the temporary array was created like the following: "__temp_srtm_africa_prep_120395534".
+
+To finish the prior task, we need to rename and redimension the array manually.
+
+```{r, eval=FALSE}
+temp = scidb("__temp_srtm_africa_prep_120395534")
+rename = transform(temp,y="int64(expr_value_0)",x="int64(expr_value_1)",height="expr_value_2",slope="expr_value_3",aspect="expr_value_4")
+selection = scidb::project(rename,c("y","x","height","slope","aspect"))
+schema = "<height:double,slope:double,aspect:double> [y=-6001:84001,2048,0,x=-1:90002,2048,0]"
+redim = scidb::redimension(selection,schema=schema)
+
+srtm.africa.sa = scidbeval(redim,name="srtm_africa_slope_aspect")
+
+copySRS(srtm.africa.sa,srtm.ethiopia)
+```
+
+# Note
+Currently, there is a problem with long-running queries and unintended connection losses that cannot be fixed in this package. This problem is caused by the fact that the webinterface SHIM is used to interact with SciDB from a local client. There they use sessions with unique IDs, which are valid as long as the process is still running and the client holds the connection. When the client aborts the process or if the server throws an error, the session garbage cleaner will kill those sessions.
+
+Interestingly we experienced also the problem, that a query has run successfully, but there was no notification about it and the process seemed to run forever, probably caused by a nightly IP connection change that did not abort the process, but made it impossible to fetch the servers callback.
+
+If you encounter those problems, we recommend that you try to extract the appropriate AFL queries and run them with 'iquery' on the server (if you have access). Otherwise make sure to not loose the connection to the SHIM client, e.g.:
+- use network cable instead of WIFI
+- prevent your computer from shutdown (energy saving options)
+
+In order to extract the AFL query you might consider using the function "scidb_op()" or configure the r.apply call with the parameters "eval=FALSE" and "result='afl'".
+
+
+

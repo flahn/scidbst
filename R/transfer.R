@@ -27,10 +27,18 @@ if (!isGeneric("transfer")) {
 #' as attributes on object x.
 #'
 #' @note It uses the "eo_over" function of the scidb4geo package in scidb.
-#'
-#' @param x the source object
-#' @param y the target system
+#' @aliases eo_over
+#' @param x scidbst object used as the source system
+#' @param y scidbst object defining the target system
 #' @return source object extended with its coordinates in the target system
 #'
+#' @examples
+#' \dontrun{
+#' src.arr = scidbst("st_arr_1")
+#' tar.arr = scidbst("st_arr_2")
+#' src.arr = transfer(src.arr,tar.arr)
+#' # returns the source array with new attributes (the calculated coordinates
+#' # in the target array)
+#' }
 #' @export
 setMethod("transfer",signature(x="scidbst",y="scidbst"),.eo_over)

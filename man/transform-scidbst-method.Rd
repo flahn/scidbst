@@ -28,6 +28,6 @@ ls7_calc = transform(ls7_brazil_regrid, ndvi = "(band4 - band3) / (band4 + band3
 
 }
 \seealso{
-\link{transform}
+\link{transform}, \link{transform.scidb}
 }
 

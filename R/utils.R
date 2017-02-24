@@ -254,7 +254,22 @@ transformAllTemporalIndices = function(obj,df) {
   return(.data)
 }
 
+.check.file.size.constraint = function(size) {
+  threshold = 200
+  if (size > threshold) {
+    warning(sprintf("Estimated file size (%f MB) is higher than %i MB. Do you wish to continue?",size,threshold),immediate. = TRUE)
+    input = readline(prompt="yes / no: \t")
+
+    if (! toupper(input) %in% c("Y","YES") ) {
+      stop("Aborting download.")
+    }
+  }
+}
+
 .downloadData = function(object) {
+  size=estimateFileSize(object,"MB")
+  .check.file.size.constraint(size)
+
   cat("Downloading data...\n")
   .data = iquery(object@proxy@name,return=T) #query scidb for data
   cat("Done.\n")

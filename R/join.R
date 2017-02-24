@@ -197,5 +197,6 @@ if (!isGeneric("join")) {
 #' @param raf the aggregation function to be applied during the spatial regrid
 #' @return scidbst object with a combined object
 #'
+#' @name join,scidbst
 #' @export
 setMethod("join",signature(x="scidbst",y="scidbst"), .join)

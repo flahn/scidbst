@@ -15,7 +15,7 @@ if (!isGeneric("cumulate")) {
 #'
 #' This function wraps scidbs cumulate function in order to maintain the scidbst object with the dimension references.
 #'
-#' @aliases cumulate.scidbst
+#' @name cumulate,scidbst
 
 #' @param x scidbst object
 #' @param expression any valid SciDB aggregate expression as a character string
@@ -38,3 +38,7 @@ if (!isGeneric("cumulate")) {
 setMethod("cumulate", signature(x="scidbst"), .cumulate.scidbst)
 
 
+#'@export
+setMethod("cumulate",signature(x="scidb"), function(x,expression,dimension) {
+  scidb::cumulate(x=x,expression = expression, dimension = dimension)
+})

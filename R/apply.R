@@ -364,8 +364,6 @@ if(!isGeneric("r.apply")) {
 #      dimension values need to be int64 values user should be aware!
 # dim.spec: named list of the specification from dimensions
 # method: a string defining the processing mechanism used. possible = "rexec" or "stream"
-
-# TODO ... theoretically this can be passed on to .fun in ddply, but not implemented yet
 .apply.scidbst.fun = function(x,f,array,packages,parallel=FALSE,cores=1,aggregates,output,logfile,dim,dim.spec, method="rexec",...) {
 
     dimMissing = missing(dim)
@@ -611,20 +609,14 @@ if(!isGeneric("r.apply")) {
 #' This function applies a custom r function on each individual scidbst array chunk using the r_exec interface with
 #' SciDB.
 #'
-#' @aliases r.apply
-#' @details The script that is created during this function will handle the installation of required R-packages on
-#' each of the instances. Then it combines the incoming attribute vectors to a data.frame object, which is passed
-#' on to the '\code{\link[plyr]{ddply}}' function of the package 'plyr'. Depending on the stated aggregates parameter
-#' the function 'f' is applied on that grouped sub data.frame object (parameter x of function f). Using the output
-#' list the array will be projected on to the selected attributes. When specifying 'dim' and 'dim.spec' the stated
-#' columns of the data.frame will be used as dimension in a perceeding redimension call.
+#' @aliases r.apply r_exec
 #'
 #' @note The function that can be stated has the following description "function(x,...) {}". The x parameter is a
 #' data.frame of the attributes stored in one chunk. In most cases you are advised to transform the array to have the
 #' dimension values as attributes if you need those to perform calculations. The function will be passed on to the \link[plyr]{ddply}
 #' function.
 #'
-#' @note parameter option "stream" for 'method' currently not supported, use \link[scidbst]{stream} instead
+#' @note parameter option "stream" for 'method' currently not supported.
 #'
 #' @param x scidbst array or scidb array
 #' @param f r function of form \code{function(x) { ... }} expecting parameter x, which is a subset of the incoming data based on the aggregate statement
@@ -641,26 +633,52 @@ if(!isGeneric("r.apply")) {
 #' @param ... see Details
 #' @return scidbst array or scidb array depending on the input
 #'
-#' @details The \code{...} operator can contain the parameter 'eval', which is set to TRUE as default. If changed to FALSE
-#' the AFL query for the r_exec part will be returned. Even if the new dimensions are stated, the execution will hold at
-#' the mentioned point.
+#' @details The script that is created during this function will handle the installation of required R-packages on
+#' each of the instances. Then it combines the incoming attribute vectors to a data.frame object, which is passed
+#' on to the '\code{\link[plyr]{ddply}}' function of the package 'plyr'. Depending on the stated aggregates parameter
+#' the function 'f' is applied on that grouped sub data.frame object (parameter x of function f). Using the output
+#' list the array will be projected on to the selected attributes. When specifying 'dim' and 'dim.spec' the stated
+#' columns of the data.frame will be used as dimension in a perceeding redimension call.
+#'
+#' The \code{...} operator can contain the parameter \code{eval}, which is set to TRUE as default.
+#' Also \code{...} can contain a developer parameter called \code{result} with the allowed values "afl" and
+#' "rscript". \code{r.apply} then returns the submitted R-Script or the resulting AFL query. To
+#' prevent the function from being executed use result in combination with "eval=FALSE".
+#'
 #' The following variable names are reserved if the spatial and temporal references exists and are transferred to ddply
 #' function:
-#' - affine: a 2x3 matrix for spatial coordinate transformation
-#' - crs: a CRS object stating the used coordinate reference system
-#' - extent: a extent object stating the spatial extent
-#' - tmin / tmax: POSIXlt objects stating the minimum and maximum temporal boundary
-#' - t0: POSIXlt object marking the datum (time at value 0)
-#' - tunit: character describing the temporal measurement unit
-#' - tres: a number describing the temporal resolution
-#' Also ... can contain a developer parameter called "result" with the allowed values "afl" and "rscript". To
-#' prevent the function from being executed.
+#' \describe{
+#'  \item{\code{affine}}{a 2x3 matrix for spatial coordinate transformation}
+#'  \item{\code{crs}}{a CRS object stating the used coordinate reference system}
+#'  \item{\code{extent}}{a extent object stating the spatial extent}
+#'  \item{\code{tmin} / \code{tmax}}{POSIXlt objects stating the minimum and maximum temporal boundary}
+#'  \item{\code{t0}}{POSIXlt object marking the datum (time at value 0)}
+#'  \item{\code{tunit}}{character describing the temporal measurement unit}
+#'  \item{\code{tres}}{a number describing the temporal resolution}
+#' }
+#'
+#'
 #'
 #' @examples
 #' \dontrun{
 #'  input.arr = scidbst("some_scidbst_array")
+#'
+#'  # make sure to have the dimensions as attributes if you plan to use them in calculations
 #'  input.arr = transform(input.arr, dimx="double(x)",dimy="double(y)", dimt="double(t)")
-#'  f <- function(x) {
+#'  f <- function(x,...) {
+#'      # parse the parameter passed as ... into the function and assign them to the functions
+#'      # environment
+#'      dot.input = list(...)
+#'      i <- 1
+#'      lapply(dot.input, function(x,y) {
+#'          assign(x=y[i],value=x,envir=parent.env(environment()))
+#'          i <<- i+1
+#'          x
+#'        },
+#'        names(dot.input)
+#'      )
+#'      rm(i)
+#'
 #'      if (is.null(x)) {
 #'        return(c(nt=0,var=0,median=0,mean=0))
 #'      }
@@ -679,10 +697,12 @@ if(!isGeneric("r.apply")) {
 #'      dim.spec=list(y=c(min=0,max=99,chunk=20,overlap=0),x=c(min=0,max=99,chunk=20,overlap=0)),
 #'      logfile="/tmp/logfile.log")
 #' }
+#' @name r.apply,scidbst
 #' @rdname r-apply-scidbst-method
 #' @export
 setMethod("r.apply",signature(x="scidbst",f="function"), .apply.scidbst.fun)
 
+#' @name r.apply,scidb
 #' @rdname r-apply-scidbst-method
 #' @export
 setMethod("r.apply",signature(x="scidb",f="function"), function(x,f,array,packages,parallel=FALSE,cores=1,aggregates=c(),output, logfile, ...) {

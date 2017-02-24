@@ -123,28 +123,22 @@ setMethod("t0",signature(x="scidbst"),function(x) {
   return(t0(x@trs))
 })
 
-#' Get temporal dimension name
-#'
-#' Returns the name of the temporal dimension of a scidbst array. If the object is not temporal it will
-#' return the first dimension name.
-#' @name tdim
-#' @rdname tdim-method
-#' @param x TRS object
-#' @return The temporal dimension name or the first dimension name
-#' @export
-setMethod("tdim",signature(x="TRS"),function(x) {
-  return(x@dimname)
-})
+if (!isGeneric("trs")) {
+  setGeneric("trs", function(x) {
+    standardGeneric("trs")
+  })
+}
 
-#' @rdname tdim-method
-#' @param x TRS object
+#' Returns the Temporal reference object
+#'
+#' @param x scidbst object
+#' @return \code{\link{TRS} object}
 #' @export
-setMethod("tdim",signature(x="scidbst"),function(x) {
-  if (x@isTemporal) {
-    return(tdim(x@trs))
+setMethod("trs",signature(x="scidbst"), function(x){
+  if (x@isTemporal || !is.null(x@trs)) {
+    return(x@trs)
   } else {
-    warning("scidbst object has no temporal reference. Returning first dimension.")
-    return(dimensions(x)[1])
+    stop("Object has no temporal reference")
   }
 })
 
@@ -200,6 +194,14 @@ if (!isGeneric("setTRS")) {
   })
 }
 
+.setTRS = function(x,trs, return=FALSE) {
+  cmd = paste("eo_settrs(",x@name,",'",tdim(trs),"','",as.character(t0(trs)),"','",getRefPeriod(trs),"'",")",sep="")
+  iquery(cmd)
+  if (return) {
+    return(scidbst(x@name))
+  }
+}
+
 #' Add a TRS to a scidb array
 #'
 #' The function adds a temporal reference to a scidb array and returns a scidbst object
@@ -209,14 +211,10 @@ if (!isGeneric("setTRS")) {
 #' @param return logical - if a scidbst object shall be returned (default FALSE)
 #' @return scidbst if parameter return=TRUE
 #'
+#' @note Using \code{setTRS} will also persist the metadata for the array directly in SciDB.
+#'
 #' @export
-setMethod("setTRS", signature(x="ANY",trs="TRS"), function(x,trs, return=FALSE) {
-  cmd = paste("eo_settrs(",x@name,",'",tdim(trs),"','",as.character(t0(trs)),"','",getRefPeriod(trs),"'",")",sep="")
-  iquery(cmd)
-  if (return) {
-    return(scidbst(x@name))
-  }
-})
+setMethod("setTRS", signature(x="scidb",trs="TRS"), .setTRS)
 
 
 ######################
@@ -255,6 +253,19 @@ if (!isGeneric("copyTRS")) {
 #' @param y scidbst object
 #'
 #' @return modified x
+#'
+#' @examples
+#' \dontrun{
+#'  st.arr1 = scidbst("st_arr_1")
+#'  st.arr2  = scidbst("st_arr_2")
+#'  simple.arr = scidb("some_array")
+#'
+#'  # overwrite trs of array 1 with trs of array 2
+#'  st.arr1 = copyTRS(st.arr1, st.arr2)
+#'
+#'  # set the TRS of array 2 for the simple array (having the same named temporal dimension)
+#'  t.arr1 = copyTRS(simple.arr, st.arr2)
+#' }
 #' @export
 setMethod("copyTRS",signature(x="scidbst",y="scidbst"), .cptrs)
 
@@ -272,6 +283,10 @@ if (!isGeneric("is.temporal")) {
   })
 }
 
+.is.temporal = function(x) {
+  return(x@isTemporal && !is.null(x@trs) && !is.null(x@tExtent))
+}
+
 #' Check for a scidbst object having a temporal reference
 #'
 #' The function checks for certain parameter considered to describe the temporal reference.
@@ -280,6 +295,4 @@ if (!isGeneric("is.temporal")) {
 #' @return logical whether or not the object has a temporal reference
 #'
 #' @export
-setMethod("is.temporal",signature(x="scidbst"), function(x) {
-  return(x@isTemporal && !is.null(x@trs) && !is.null(x@tExtent))
-})
+setMethod("is.temporal",signature(x="scidbst"), .is.temporal)

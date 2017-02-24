@@ -3,35 +3,6 @@
 NULL
 
 
-#' TemporalExtent class constructor
-#'
-#' This constructor function creates a TemporalExtent object that defines an interval on the temporal dimension.
-#' @rdname TemporalExtent-class
-#' @param min A POSIXt derived object for the minimum inclusive boundary
-#' @param max A POSIXt derived object for the maximum inclusive boundary
-#' @return TemporalExtent object
-#'
-#' @examples
-#' tmin = as.POSIXlt("2016-01-01")
-#' tmax = strptime("01-02-2016",format="%d-%m-%Y")
-#' ext = textent(tmin,tmax)
-#' @export
-textent = function(min, max) {
-  if (!(inherits(min,"POSIXt") && inherits(max,"POSIXt"))) {
-    stop("Minimum or maximum value is not a POSIXt value.")
-  }
-
-  out = .textent_class()
-  if (max < min) {
-    out@min = max
-    out@max = min
-  } else {
-    out@min = min
-    out@max = max
-  }
-  return(out)
-}
-
 if (!isGeneric("tmin")) {
   setGeneric("tmin",function(x) {
     standardGeneric("tmin")
