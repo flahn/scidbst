@@ -1,10 +1,58 @@
 Package: scidbst
 Type: Package
-Title: What the Package Does (Title Case)
-Version: 0.1.0
-Author: Who wrote it
-Maintainer: Who to complain to <yourfault@somewhere.net>
-Description: More about what it does (maybe more than one line)
-License: What license is it under?
+Title: Spatio Temporal Extension for SciDB (scidbst)
+Version: 1.0.0
+Author: Florian Lahn
+Maintainer: Florian Lahn <florian.lahn@uni-muenster.de>
+Description: This package extends the package scidb for spatial and temporal
+    referenced dimensions. A set of functions were modified in order to maintain the
+    correct references, when applying the functions in scidb.
+License: AGPL-3
 LazyData: TRUE
 RoxygenNote: 5.0.1
+VignetteBuilder: knitr
+Encoding: UTF-8
+BuildVignette: FALSE
+Depends:
+    scidb,raster
+Imports:
+    spacetime,xts,sp,methods,stats,utils
+Suggests:
+    knitr
+Collate:
+    'SRS-class-decl.R'
+    'TRS-class-decl.R'
+    'TemporalExtent-class-decl.R'
+    'scidbst-class-decl.R'
+    'ncol.R'
+    'nrow.R'
+    'SRS-class.R'
+    'TRS-class.R'
+    'TemporalExtent-class.R'
+    'affine.R'
+    'scidbst-class.R'
+    'aggregate.R'
+    'apply.R'
+    'utils.R'
+    'coerce.R'
+    'crop.R'
+    'crs.R'
+    'cumulate.R'
+    'dimension.R'
+    'extent.R'
+    'join.R'
+    'pkg.R'
+    'project.R'
+    'regrid.R'
+    'repart.R'
+    'resolution.R'
+    'scidb-basic.R'
+    'scidbsteval.R'
+    'slice.R'
+    'spplot.R'
+    'stream.R'
+    'subarray.R'
+    'subset.R'
+    'textent.R'
+    'transfer.R'
+    'transform-apply.R'

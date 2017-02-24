@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+
+
+<title>Interfacing R_EXEC on SciDB</title>
+
+
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+div.sourceCode { overflow-x: auto; }
+table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
+  margin: 0; padding: 0; vertical-align: baseline; border: none; }
+table.sourceCode { width: 100%; line-height: 100%; }
+td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; color: #aaaaaa; border-right: 1px solid #aaaaaa; }
+td.sourceCode { padding-left: 5px; }
+code > span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code > span.dt { color: #902000; } /* DataType */
+code > span.dv { color: #40a070; } /* DecVal */
+code > span.bn { color: #40a070; } /* BaseN */
+code > span.fl { color: #40a070; } /* Float */
+code > span.ch { color: #4070a0; } /* Char */
+code > span.st { color: #4070a0; } /* String */
+code > span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code > span.ot { color: #007020; } /* Other */
+code > span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code > span.fu { color: #06287e; } /* Function */
+code > span.er { color: #ff0000; font-weight: bold; } /* Error */
+code > span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+code > span.cn { color: #880000; } /* Constant */
+code > span.sc { color: #4070a0; } /* SpecialChar */
+code > span.vs { color: #4070a0; } /* VerbatimString */
+code > span.ss { color: #bb6688; } /* SpecialString */
+code > span.im { } /* Import */
+code > span.va { color: #19177c; } /* Variable */
+code > span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code > span.op { color: #666666; } /* Operator */
+code > span.bu { } /* BuiltIn */
+code > span.ex { } /* Extension */
+code > span.pp { color: #bc7a00; } /* Preprocessor */
+code > span.at { color: #7d9029; } /* Attribute */
+code > span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code > span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code > span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+</style>
+
+
+
+<link href="data:text/css;charset=utf-8,body%20%7B%0Abackground%2Dcolor%3A%20%23fff%3B%0Amargin%3A%201em%20auto%3B%0Amax%2Dwidth%3A%20700px%3B%0Aoverflow%3A%20visible%3B%0Apadding%2Dleft%3A%202em%3B%0Apadding%2Dright%3A%202em%3B%0Afont%2Dfamily%3A%20%22Open%20Sans%22%2C%20%22Helvetica%20Neue%22%2C%20Helvetica%2C%20Arial%2C%20sans%2Dserif%3B%0Afont%2Dsize%3A%2014px%3B%0Aline%2Dheight%3A%201%2E35%3B%0A%7D%0A%23header%20%7B%0Atext%2Dalign%3A%20center%3B%0A%7D%0A%23TOC%20%7B%0Aclear%3A%20both%3B%0Amargin%3A%200%200%2010px%2010px%3B%0Apadding%3A%204px%3B%0Awidth%3A%20400px%3B%0Aborder%3A%201px%20solid%20%23CCCCCC%3B%0Aborder%2Dradius%3A%205px%3B%0Abackground%2Dcolor%3A%20%23f6f6f6%3B%0Afont%2Dsize%3A%2013px%3B%0Aline%2Dheight%3A%201%2E3%3B%0A%7D%0A%23TOC%20%2Etoctitle%20%7B%0Afont%2Dweight%3A%20bold%3B%0Afont%2Dsize%3A%2015px%3B%0Amargin%2Dleft%3A%205px%3B%0A%7D%0A%23TOC%20ul%20%7B%0Apadding%2Dleft%3A%2040px%3B%0Amargin%2Dleft%3A%20%2D1%2E5em%3B%0Amargin%2Dtop%3A%205px%3B%0Amargin%2Dbottom%3A%205px%3B%0A%7D%0A%23TOC%20ul%20ul%20%7B%0Amargin%2Dleft%3A%20%2D2em%3B%0A%7D%0A%23TOC%20li%20%7B%0Aline%2Dheight%3A%2016px%3B%0A%7D%0Atable%20%7B%0Amargin%3A%201em%20auto%3B%0Aborder%2Dwidth%3A%201px%3B%0Aborder%2Dcolor%3A%20%23DDDDDD%3B%0Aborder%2Dstyle%3A%20outset%3B%0Aborder%2Dcollapse%3A%20collapse%3B%0A%7D%0Atable%20th%20%7B%0Aborder%2Dwidth%3A%202px%3B%0Apadding%3A%205px%3B%0Aborder%2Dstyle%3A%20inset%3B%0A%7D%0Atable%20td%20%7B%0Aborder%2Dwidth%3A%201px%3B%0Aborder%2Dstyle%3A%20inset%3B%0Aline%2Dheight%3A%2018px%3B%0Apadding%3A%205px%205px%3B%0A%7D%0Atable%2C%20table%20th%2C%20table%20td%20%7B%0Aborder%2Dleft%2Dstyle%3A%20none%3B%0Aborder%2Dright%2Dstyle%3A%20none%3B%0A%7D%0Atable%20thead%2C%20table%20tr%2Eeven%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0A%7D%0Ap%20%7B%0Amargin%3A%200%2E5em%200%3B%0A%7D%0Ablockquote%20%7B%0Abackground%2Dcolor%3A%20%23f6f6f6%3B%0Apadding%3A%200%2E25em%200%2E75em%3B%0A%7D%0Ahr%20%7B%0Aborder%2Dstyle%3A%20solid%3B%0Aborder%3A%20none%3B%0Aborder%2Dtop%3A%201px%20solid%20%23777%3B%0Amargin%3A%2028px%200%3B%0A%7D%0Adl%20%7B%0Amargin%2Dleft%3A%200%3B%0A%7D%0Adl%20dd%20%7B%0Amargin%2Dbottom%3A%2013px%3B%0Amargin%2Dleft%3A%2013px%3B%0A%7D%0Adl%20dt%20%7B%0Afont%2Dweight%3A%20bold%3B%0A%7D%0Aul%20%7B%0Amargin%2Dtop%3A%200%3B%0A%7D%0Aul%20li%20%7B%0Alist%2Dstyle%3A%20circle%20outside%3B%0A%7D%0Aul%20ul%20%7B%0Amargin%2Dbottom%3A%200%3B%0A%7D%0Apre%2C%20code%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0Aborder%2Dradius%3A%203px%3B%0Acolor%3A%20%23333%3B%0Awhite%2Dspace%3A%20pre%2Dwrap%3B%20%0A%7D%0Apre%20%7B%0Aborder%2Dradius%3A%203px%3B%0Amargin%3A%205px%200px%2010px%200px%3B%0Apadding%3A%2010px%3B%0A%7D%0Apre%3Anot%28%5Bclass%5D%29%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0A%7D%0Acode%20%7B%0Afont%2Dfamily%3A%20Consolas%2C%20Monaco%2C%20%27Courier%20New%27%2C%20monospace%3B%0Afont%2Dsize%3A%2085%25%3B%0A%7D%0Ap%20%3E%20code%2C%20li%20%3E%20code%20%7B%0Apadding%3A%202px%200px%3B%0A%7D%0Adiv%2Efigure%20%7B%0Atext%2Dalign%3A%20center%3B%0A%7D%0Aimg%20%7B%0Abackground%2Dcolor%3A%20%23FFFFFF%3B%0Apadding%3A%202px%3B%0Aborder%3A%201px%20solid%20%23DDDDDD%3B%0Aborder%2Dradius%3A%203px%3B%0Aborder%3A%201px%20solid%20%23CCCCCC%3B%0Amargin%3A%200%205px%3B%0A%7D%0Ah1%20%7B%0Amargin%2Dtop%3A%200%3B%0Afont%2Dsize%3A%2035px%3B%0Aline%2Dheight%3A%2040px%3B%0A%7D%0Ah2%20%7B%0Aborder%2Dbottom%3A%204px%20solid%20%23f7f7f7%3B%0Apadding%2Dtop%3A%2010px%3B%0Apadding%2Dbottom%3A%202px%3B%0Afont%2Dsize%3A%20145%25%3B%0A%7D%0Ah3%20%7B%0Aborder%2Dbottom%3A%202px%20solid%20%23f7f7f7%3B%0Apadding%2Dtop%3A%2010px%3B%0Afont%2Dsize%3A%20120%25%3B%0A%7D%0Ah4%20%7B%0Aborder%2Dbottom%3A%201px%20solid%20%23f7f7f7%3B%0Amargin%2Dleft%3A%208px%3B%0Afont%2Dsize%3A%20105%25%3B%0A%7D%0Ah5%2C%20h6%20%7B%0Aborder%2Dbottom%3A%201px%20solid%20%23ccc%3B%0Afont%2Dsize%3A%20105%25%3B%0A%7D%0Aa%20%7B%0Acolor%3A%20%230033dd%3B%0Atext%2Ddecoration%3A%20none%3B%0A%7D%0Aa%3Ahover%20%7B%0Acolor%3A%20%236666ff%3B%20%7D%0Aa%3Avisited%20%7B%0Acolor%3A%20%23800080%3B%20%7D%0Aa%3Avisited%3Ahover%20%7B%0Acolor%3A%20%23BB00BB%3B%20%7D%0Aa%5Bhref%5E%3D%22http%3A%22%5D%20%7B%0Atext%2Ddecoration%3A%20underline%3B%20%7D%0Aa%5Bhref%5E%3D%22https%3A%22%5D%20%7B%0Atext%2Ddecoration%3A%20underline%3B%20%7D%0A%0Acode%20%3E%20span%2Ekw%20%7B%20color%3A%20%23555%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%0Acode%20%3E%20span%2Edt%20%7B%20color%3A%20%23902000%3B%20%7D%20%0Acode%20%3E%20span%2Edv%20%7B%20color%3A%20%2340a070%3B%20%7D%20%0Acode%20%3E%20span%2Ebn%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Efl%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Ech%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Est%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Eco%20%7B%20color%3A%20%23888888%3B%20font%2Dstyle%3A%20italic%3B%20%7D%20%0Acode%20%3E%20span%2Eot%20%7B%20color%3A%20%23007020%3B%20%7D%20%0Acode%20%3E%20span%2Eal%20%7B%20color%3A%20%23ff0000%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%0Acode%20%3E%20span%2Efu%20%7B%20color%3A%20%23900%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%20code%20%3E%20span%2Eer%20%7B%20color%3A%20%23a61717%3B%20background%2Dcolor%3A%20%23e3d2d2%3B%20%7D%20%0A" rel="stylesheet" type="text/css" />
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Interfacing R_EXEC on SciDB</h1>
+
+
+
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>SciDB offers a multitude of functions to store, manipulate and obtain array-based data. Following the Big-Data analysis trend to open up infrastructures to process data at its source, SciDB offers two methods to perform analysis or manipulations besides there provided functions. The first method is provided by the scidb extension for R_EXEC, where r scripts can be executed on each instance of the scidb cluster using the R_EXEC server interface. The second option is the Hadoop aligned Streaming interface, where you can run arbitrary command line commands at each instance in order to processes the data chunks. In this document we will cover the interaction possibilities of the ‘scidbst’ package towards the execution of custom R functions on data chunks using R_EXEC.</p>
+</div>
+<div id="requirements" class="section level2">
+<h2>Requirements</h2>
+<ol style="list-style-type: decimal">
+<li>Make sure that you have installed and running SciDB + Shim setup</li>
+<li>install and load the <a href="https://github.com/appelmar/scidb4geo">scidb4geo extension</a>, the <a href="https://github.com/Paradigm4/stream">stream extension</a> and the [r_exec extension] (<a href="https://github.com/Paradigm4/r_exec" class="uri">https://github.com/Paradigm4/r_exec</a>)</li>
+</ol>
+</div>
+<div id="general-workflow-of-r.apply" class="section level2">
+<h2>General workflow of r.apply</h2>
+<p>r.apply is a quite comprehensive and powerful tool to analyze spatio-temporal arrays in scidb. The general workflow can be categorized as follows: 1. Preparation of the R-Script and execute the r_exec operation passed as argument to the r_exec operation 2. Redimensioning, if the dimension schema is stated or if it can be derived 3. storing the spatial and/or temporal references</p>
+<div id="r-script" class="section level3">
+<h3>R-Script</h3>
+<p>The R-script is created dynamically during the r.apply call based on a template. The template is structured to first install required R-packages on each SciDB instance. Then the stated function is written into the the script and the input data vectors are bound to a data.frame. We further use ‘ddply’ to group the data by certain attributes (<em>aggregates</em>) and apply the stated function on each of those grouped sub data sets. After the ddply function has run the output needs to be created in the form the user described (<em>output</em>).</p>
+<p>Since r_exec only operates on the attributes it is necessary to project the dimensions into attributes if they are necessary in the calculation.</p>
+</div>
+<div id="redimensioning" class="section level3">
+<h3>Redimensioning</h3>
+<p>The array ouput after the execution of the R-script will be a 1-dimensional array with the specified output attributes. By stating stating the dimensions and optionally renaming them (<em>dim</em>) the redimension operation will be conducted. To do that the dimension schema is also needed. If the new dimension names are the same as in the input array, that schema will be used. Otherwise the user needs to state the schema or the attributes will be simply renamed. In the latter case there will be no redimensioning.</p>
+</div>
+</div>
+<div id="demonstration" class="section level2">
+<h2>Demonstration</h2>
+<p>In this chapter we will briefly introduce the r.apply function of the scidbst package and its internal process. We will create and store an spatio-temporal array with random values and we will apply a custom r function on the data that was grouped by space.</p>
+<div id="connecting-and-creating-example-data" class="section level3">
+<h3>Connecting and creating Example Data</h3>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(scidbst)
+<span class="kw">library</span>(rgdal)
+<span class="kw">source</span>(<span class="st">&quot;/home/lahn/GitHub/scidbst/vignettes/assets/credentials2.R&quot;</span>)
+<span class="kw">scidbconnect</span>(<span class="dt">host=</span>host,<span class="dt">port=</span>port,<span class="dt">user=</span>user,<span class="dt">password=</span>password,<span class="dt">protocol=</span><span class="st">&quot;https&quot;</span>,<span class="dt">auth_type =</span> <span class="st">&quot;digest&quot;</span>)</code></pre></div>
+<p>In the following example we will create a spatio-temporal array with random values for a size 100 values for each dimension. We will also give it an arbitrary spatial and temporal reference.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">EPSG =<span class="st"> </span><span class="kw">make_EPSG</span>()
+srid =<span class="st"> </span><span class="dv">4326</span>
+proj4args =<span class="st"> </span><span class="kw">as.character</span>(<span class="kw">subset</span>(EPSG,code==<span class="dv">4326</span>)$prj4)
+
+aff =<span class="st"> </span><span class="kw">matrix</span>(<span class="kw">c</span>(<span class="fl">34.5</span>,<span class="fl">8.0</span>, <span class="fl">0.01</span>,<span class="dv">0</span>, <span class="dv">0</span>,-<span class="fl">0.01</span>),<span class="dt">nrow=</span><span class="dv">2</span>,<span class="dt">ncol=</span><span class="dv">3</span>)
+ex =<span class="st"> </span><span class="kw">extent</span>(<span class="fl">34.5</span>,<span class="fl">35.5</span>,<span class="dv">7</span>,<span class="dv">8</span>)
+tex =<span class="st"> </span><span class="kw">textent</span>(<span class="kw">as.POSIXlt</span>(<span class="st">&quot;2003-07-28&quot;</span>),<span class="kw">as.POSIXlt</span>(<span class="st">&quot;2003-11-05&quot;</span>))
+srs =<span class="st"> </span><span class="kw">SRS</span>(proj4args,<span class="kw">c</span>(<span class="st">&quot;y&quot;</span>,<span class="st">&quot;x&quot;</span>))
+srs@authority =<span class="st"> &quot;EPSG&quot;</span>
+srs@srid =<span class="st"> </span><span class="kw">as.integer</span>(srid)
+srs@srtext =<span class="st"> </span><span class="kw">showWKT</span>(proj4args)
+
+trs =<span class="st"> </span><span class="kw">TRS</span>(<span class="dt">dimension=</span><span class="st">&quot;t&quot;</span>,<span class="dt">t0=</span><span class="st">&quot;2003-07-28&quot;</span>,<span class="dt">tres=</span><span class="dv">1</span>,<span class="dt">tunit=</span><span class="st">&quot;days&quot;</span>)
+
+sizex =<span class="st"> </span><span class="dv">100</span>
+sizey =<span class="st"> </span><span class="dv">100</span>
+sizet =<span class="st"> </span><span class="dv">100</span>
+
+<span class="co"># random array</span>
+gr =<span class="st"> </span><span class="kw">expand.grid</span>(<span class="dv">0</span>:(sizex<span class="dv">-1</span>),<span class="dv">0</span>:(sizey<span class="dv">-1</span>),<span class="dv">0</span>:(sizet<span class="dv">-1</span>))
+gr =<span class="st"> </span><span class="kw">cbind</span>(gr,<span class="kw">runif</span>(sizex*sizey*sizet,<span class="dv">1</span>,<span class="dv">100</span>))
+<span class="kw">colnames</span>(gr) =<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;y&quot;</span>,<span class="st">&quot;x&quot;</span>,<span class="st">&quot;t&quot;</span>,<span class="st">&quot;val&quot;</span>)
+
+array =<span class="st"> </span><span class="kw">as.scidb</span>(<span class="dt">X=</span>gr,<span class="dt">name=</span><span class="st">&quot;tmp_arr&quot;</span>,<span class="dt">chunkSize=</span><span class="kw">nrow</span>(gr))</code></pre></div>
+<pre><code>## Warning in POST(X, list(id = session)): NAs durch Umwandlung erzeugt</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">schema =<span class="st"> </span><span class="kw">sprintf</span>(<span class="st">&quot;&lt;val:double NULL&gt; [y=0:%i,20,0,x=0:%i,20,0,t=0:%i,100,0]&quot;</span>,(sizey<span class="dv">-1</span>),(sizex<span class="dv">-1</span>),(sizet<span class="dv">-1</span>))
+
+st.arr =<span class="st"> </span><span class="kw">new</span>(<span class="st">&quot;scidbst&quot;</span>)
+st.arr@title=<span class="st">&quot;random_st&quot;</span>
+st.arr@srs =<span class="st"> </span>srs
+st.arr@extent =<span class="st"> </span>ex
+st.arr@trs =<span class="st"> </span>trs
+st.arr@tExtent =<span class="st"> </span>tex
+st.arr@affine =<span class="st"> </span>aff
+st.arr@isSpatial =<span class="st"> </span><span class="ot">TRUE</span>
+st.arr@isTemporal =<span class="st"> </span><span class="ot">TRUE</span>
+st.arr@proxy =<span class="st"> </span><span class="kw">redimension</span>(array,<span class="dt">schema=</span>schema)
+
+st.arr =<span class="st"> </span><span class="kw">scidbsteval</span>(st.arr,<span class="st">&quot;random_st&quot;</span>)
+<span class="kw">scidbrm</span>(<span class="st">&quot;tmp_arr&quot;</span>,<span class="dt">force=</span>T)</code></pre></div>
+</div>
+<div id="preparing-the-array-for-r_exec" class="section level3">
+<h3>Preparing the array for R_EXEC</h3>
+<p>An important aspect when using R_EXEC is the fact that only the chunkwise attribute values are used as input for the R script. If we want to use the dimensions in the calculation, then the array needs to be prepared to have the dimensions as attributes. However, this will temporarily remove the spatial and temporal references from the scidbst array. The user needs to specify the dimension explicitly later and in case there are matching names of the dimension, the function restores the references for those.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">arr.prep =<span class="st"> </span><span class="kw">transform</span>(st.arr, <span class="dt">dimx=</span><span class="st">&quot;double(x)&quot;</span>,<span class="dt">dimy=</span><span class="st">&quot;double(y)&quot;</span>, <span class="dt">dimt=</span><span class="st">&quot;double(t)&quot;</span>)
+arr.prep =<span class="st"> </span><span class="kw">scidbsteval</span>(arr.prep,<span class="dt">name=</span><span class="st">&quot;random_st_prep&quot;</span>)
+arr.prep@proxy</code></pre></div>
+<pre><code>## SciDB expression  random_st_prep
+## SciDB schema  &lt;val:double,dimx:double NOT NULL,dimy:double NOT NULL,dimt:double NOT NULL&gt; [y=0:99,20,0,x=0:99,20,0,t=0:99,100,0] 
+##   variable dimension   type nullable start end chunk
+## 1        y      TRUE  int64    FALSE     0  99    20
+## 2        x      TRUE  int64    FALSE     0  99    20
+## 3        t      TRUE  int64    FALSE     0  99   100
+## 4      val     FALSE double     TRUE                
+## 5     dimx     FALSE double    FALSE                
+## 6     dimy     FALSE double    FALSE                
+## 7     dimt     FALSE double    FALSE</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">scidbrm</span>(<span class="st">&quot;random_st&quot;</span>,<span class="dt">force=</span>T)</code></pre></div>
+<p>At this point we have created an array that has its dimensions additionally as attributes with new names.</p>
+</div>
+<div id="preparing-the-parameter" class="section level3">
+<h3>Preparing the parameter</h3>
+<p>The next step is most important, because it will decide whether the processing will be successful. The ‘output’ parameter is directly related to the data that is the result of the applied function ‘f’. This means new attributes must be stated here as well as potential dimensions. For example, the following function will be applied during the r_exec call within the function ‘ddply’ of the package ‘plyr’. ddply will be used to aggregate the data chunk, e.g. partioning the data set by space or time. Grouping by space would mean that the rows in the data set with the same spatial coordinate will be partioned and on each partition in the chunk the function ‘f’ will be applied.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">f &lt;-<span class="st"> </span>function(x) {
+  if (<span class="kw">is.null</span>(x)) {
+    <span class="kw">return</span>(<span class="kw">c</span>(<span class="dt">nt=</span><span class="dv">0</span>,<span class="dt">var=</span><span class="dv">0</span>,<span class="dt">median=</span><span class="dv">0</span>,<span class="dt">mean=</span><span class="dv">0</span>))
+  }
+  t =<span class="st"> </span>x$dimt
+  n =<span class="st"> </span>x$val
+
+  <span class="kw">return</span>(<span class="kw">c</span>(<span class="dt">nt=</span><span class="kw">length</span>(t),<span class="dt">var=</span><span class="kw">var</span>(n),<span class="dt">median=</span><span class="kw">median</span>(n),<span class="dt">mean=</span><span class="kw">mean</span>(n)))
+}</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">aggregates=<span class="kw">c</span>(<span class="st">&quot;dimy&quot;</span>,<span class="st">&quot;dimx&quot;</span>)</code></pre></div>
+<p>As mentioned the ‘output’ parameter relates to the data output of the r script after the function with ddply was executed. Since we will aggregate by space, meaning that we will process time series in our function, the output will not have the former temporal dimension “dimt”. But function ‘f’ returns a named vector and those names and their data types must be added in the same order as in the function output. Internally the r.apply function will add the results of the function into a data.frame object consisting of the used aggregate attributes and the function output attributes (here: “dimy”,“dimx”, “nt”, “var”, “median”, “mean”).</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">output=<span class="kw">list</span>(<span class="dt">dimy=</span><span class="st">&quot;double&quot;</span>,<span class="dt">dimx=</span><span class="st">&quot;double&quot;</span>,<span class="dt">nt=</span><span class="st">&quot;double&quot;</span>,<span class="dt">var=</span><span class="st">&quot;double&quot;</span>,<span class="dt">median=</span><span class="st">&quot;double&quot;</span>,<span class="dt">mean=</span><span class="st">&quot;double&quot;</span>)</code></pre></div>
+<p>In principal this would be enough to run a successful r.apply query, but the result will be a 1-dimensional array containing the stated output attributes. If you want to run an additional redimensioning on the data, then the dimensions need to be named and specified.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">dim=<span class="kw">list</span>(<span class="dt">dimy=</span><span class="st">&quot;y&quot;</span>,<span class="dt">dimx=</span><span class="st">&quot;x&quot;</span>)
+dim.spec=<span class="kw">list</span>(<span class="dt">y=</span><span class="kw">c</span>(<span class="dt">min=</span><span class="dv">0</span>,<span class="dt">max=</span><span class="dv">99</span>,<span class="dt">chunk=</span><span class="dv">20</span>,<span class="dt">overlap=</span><span class="dv">0</span>),<span class="dt">x=</span><span class="kw">c</span>(<span class="dt">min=</span><span class="dv">0</span>,<span class="dt">max=</span><span class="dv">99</span>,<span class="dt">chunk=</span><span class="dv">20</span>,<span class="dt">overlap=</span><span class="dv">0</span>))</code></pre></div>
+<p>The parameter ‘dim’ expects a named list of the dimensions. The keys of the list refer to the attribute names for the dimensions after function ‘f’ was executed on each chunk. As values use either NULL to keep the name or use a character string for new dimension name. The use of “dim” as a parameter will run scidb’s ‘redimension’ operation on the 1-dimensional array in order to create dimensions from attributes. To perform the ‘redimension’ operation we need to state the new dimension schema manually. Therefore you need to state the start/end/chunksizes/overlap parameter for each of the dimensions.</p>
+<p>After the redimension call r.apply tries to naively assume that the spatial and temporal references, as well as the extents, are the same as from the input, when the dimension names match after the redimension. Only in this case a scidbst array will be returned, otherwise it will be a scidb array, where users have to set the required parameter by themselves.</p>
+</div>
+<div id="running-r_exec" class="section level3">
+<h3>Running R_EXEC</h3>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">rexec.arr =<span class="st"> </span><span class="kw">r.apply</span>(<span class="dt">x=</span>arr.prep,
+                 <span class="dt">f=</span>f,
+                 <span class="dt">array=</span><span class="st">&quot;rexec_applied&quot;</span>,
+                 <span class="dt">aggregates=</span>aggregates,
+                 <span class="dt">output =</span> output,
+                 <span class="dt">dim=</span>dim,
+                 <span class="dt">dim.spec=</span>dim.spec)</code></pre></div>
+<p>In this example we will run a minimalisitc example, meaning that we will not make use of ddply’s parallelization capabilities (parallel = FALSE and cores=1) and without logging. Also the function we stated did not use any additional R packages, that is why the parameter ‘packages’ is also missing.</p>
+</div>
+<div id="result" class="section level3">
+<h3>Result</h3>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">rexec.arr</code></pre></div>
+<pre><code>## Title:       rexec_applied
+## Spatial Extent:
+##  xmin:   34.5
+##  xmax:   35.5
+##  ymin:   7
+##  ymax:   8
+## CRS:
+##  +proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0
+## SciDB expression  rexec_applied
+## SciDB schema  &lt;nt:double,var:double,median:double,mean:double&gt; [y=0:99,20,0,x=0:99,20,0] 
+##   variable dimension   type nullable start end chunk
+## 1        y      TRUE  int64    FALSE     0  99    20
+## 2        x      TRUE  int64    FALSE     0  99    20
+## 3       nt     FALSE double     TRUE                
+## 4      var     FALSE double     TRUE                
+## 5   median     FALSE double     TRUE                
+## 6     mean     FALSE double     TRUE</code></pre>
+</div>
+</div>
+
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
